@@ -97,12 +97,12 @@ bool RenderWindow::Open(int width, int height, bool windowed, const char* title,
 		screen->m_VideoModeHandle = m_AvailableVideoModes.size() - 1; // TODO : config
 
 		glfwGetWindowSize(m_Window, &screen->m_ScreenWidth, &screen->m_ScreenHeight);
-		std::string s = "Window Size[ width: " + util::to_str(screen->m_ScreenWidth) + ", height: " + util::to_str(screen->m_ScreenHeight) + "]";
-		WRITE_LOG(s, "normal");
+		//std::string s = "Window Size[ width: " + util::to_str(screen->m_ScreenWidth) + ", height: " + util::to_str(screen->m_ScreenHeight) + "]";
+		//WRITE_LOG(s, "normal");
 
 		glfwGetFramebufferSize(m_Window, &screen->m_FrameBuffWidth, &screen->m_FrameBuffHeight);
-		s = "FrameBuf Size[ width: " + util::to_str(screen->m_FrameBuffWidth) + ", height: " + util::to_str(screen->m_FrameBuffHeight) + "]";
-		WRITE_LOG(s, "normal");
+		//s = "FrameBuf Size[ width: " + util::to_str(screen->m_FrameBuffWidth) + ", height: " + util::to_str(screen->m_FrameBuffHeight) + "]";
+		//WRITE_LOG(s, "normal");
 	}
 
 	return true;

@@ -11,8 +11,10 @@
 
 class Mesh;
 class LightingTechnique;
+class BasicDiffuseTechnique;
 class Camera;
 class Font;
+class Texture;
 class FontTechnique;
 
 class Renderer
@@ -33,12 +35,14 @@ private:
 
 	// ---- Removing ----
 	std::vector<Mesh*> m_Meshes;
+	std::vector<Texture*> m_Textures;
 
 	Font* m_Font{ nullptr };
 	//GLuint m_FontShaderProg;
 	Camera* m_Camera{ nullptr };
 
 	LightingTechnique* m_pEffect{ nullptr };
+	BasicDiffuseTechnique* m_DiffuseMat{ nullptr };
 	
 	// These would be in the scene, maybe even component based
 	DirectionalLight m_directionalLight;

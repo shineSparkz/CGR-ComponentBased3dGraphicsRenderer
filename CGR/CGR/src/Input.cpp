@@ -53,8 +53,6 @@ void Input::SetMousePosition(double x, double y)
 	if (Application::Instance()->GetRenderWindow())
 	{
 		glfwSetCursorPos(Application::Instance()->GetRenderWindow()->m_Window, x, y);
-		Mouse::Instance()->m_Xpos = x;
-		Mouse::Instance()->m_Ypos = y;
 	}
 }
 
@@ -127,7 +125,9 @@ void Input::joystick_callback(int joy, int event)
 
 // ---- Mouse ----
 Mouse::Mouse(Input* input) :
-	m_InputManager(input)
+	m_InputManager(input),
+	m_Xpos(0.0),
+	m_Ypos(0.0)
 {
 
 }
@@ -144,6 +144,8 @@ double Mouse::PosY() const
 
 void Mouse::SetMousePosition(double x, double y)
 {
+	m_Xpos = x;
+	m_Ypos = y;
 	m_InputManager->SetMousePosition(m_Xpos, m_Ypos);
 }
 

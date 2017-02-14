@@ -102,6 +102,8 @@ private:
 	} m_spotLightsLocation[MAX_SPOT_LIGHTS];
 };
 
+
+
 class RenderTechnique
 {
 public:
@@ -109,6 +111,7 @@ public:
 	void Use();
 	void Close();
 
+	GLuint m_ShaderProgram;
 protected:
 	bool CreateProgram(const std::vector<Shader>& shaders, const std::string& fragout_identifier, GLuint frag_loc);
 	
@@ -120,7 +123,6 @@ protected:
 	void setMat4_(GLuint* mat, int count, bool transpose, const Mat4& val);
 
 private:
-	GLuint m_ShaderProgram;
 };
 
 class FontTechnique : public RenderTechnique
@@ -135,6 +137,22 @@ public:
 private:
 	GLuint m_Ufm_ProjId;
 	GLuint m_Ufm_ColId;
+};
+
+class BasicDiffuseTechnique : public RenderTechnique
+{
+public:
+	BasicDiffuseTechnique();
+	bool Init();
+
+	void setModelXform(const Mat4& m);
+	void setProjXform(const Mat4& m);
+	void setViewXform(const Mat4& m);
+
+private:
+	GLuint m_Ufm_ModelXform;
+	GLuint m_Ufm_ViewXform;
+	GLuint m_Ufm_ProjXform;
 };
 
 

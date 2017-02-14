@@ -8,14 +8,12 @@
 #include "types.h"
 #include "Vertex.h"
 
-class Image;
-class Texture;
 struct aiMesh;
 
-struct MeshLayout
+struct SubMesh
 {
-	MeshLayout();
-	~MeshLayout();
+	SubMesh();
+	~SubMesh();
 
 	void Init(const aiMesh* paiMesh, std::vector<Vertex>& vertices, std::vector<dword>& indices);
 
@@ -32,12 +30,13 @@ public:
 	~Mesh();
 
 	bool Load(const std::string& mesh);
-	bool AddTexture(Image* i, int activeTexture, unsigned int meshIndex);
-	bool AddTexture(Image* i, int activeTexture);
+	
+	bool AddTexture(size_t texHandle, unsigned int meshIndex);
+	bool AddTexture(size_t texHandle);
 
 	//private:
-	std::vector<MeshLayout> m_MeshLayouts;
-	std::vector<Texture*> m_Textures;
+	std::vector<SubMesh> m_MeshLayouts;
+	std::vector<size_t> m_TextureHandles;
 	GLuint m_VAO;
 	GLuint m_VertexVBO;
 	GLuint m_IndexVBO;

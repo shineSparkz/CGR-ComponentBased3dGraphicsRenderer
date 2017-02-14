@@ -4,6 +4,7 @@
 #include "Vertex.h"
 #include "LogFile.h"
 #include <sstream>
+#include "utils.h"
 
 // Remove
 #include "Time.h"
@@ -169,8 +170,14 @@ bool Renderer::Init()
 		WRITE_LOG("Light effect error", "error");
 		return false;
 	}
-	m_pEffect->Enable();
+	//m_pEffect->Enable();
 	m_pEffect->SetTextureUnit(0);
+
+	m_DiffuseMat = new BasicDiffuseTechnique();
+	if (!m_DiffuseMat->Init())
+	{
+		WRITE_LOG("Failed to create diffuse mat", "error");
+	}
 
 	// ** These states could differ **
 	glEnable(GL_DEPTH_TEST);
@@ -179,7 +186,7 @@ bool Renderer::Init()
 
 	//ReloadShaders();
 
-	// ---- Textures ----
+	// ---- Images ----
 	Image maleImg;
 	if (!maleImg.LoadImg("../resources/textures/male_body_low_albedo.tga"))
 	{
@@ -208,26 +215,39 @@ bool Renderer::Init()
 		return false;
 	}
 
+	// ---- Textures ----
+	Texture* maleTex2 = new Texture(GL_TEXTURE_2D, GL_TEXTURE0);
+	Texture* maleTex = new Texture(GL_TEXTURE_2D, GL_TEXTURE0);
+	Texture* dinoTex = new Texture(GL_TEXTURE_2D, GL_TEXTURE0);
+	Texture* wallTex = new Texture(GL_TEXTURE_2D, GL_TEXTURE0);
+	m_Textures.push_back(maleTex);
+	m_Textures.push_back(maleTex2);
+	m_Textures.push_back(dinoTex);
+	m_Textures.push_back(wallTex);
+	if (!maleTex2->Create(&maleImg2)) return false;
+	if (!maleTex->Create(&maleImg)) return false;
+	if (!dinoTex->Create(&dinoImg))return false;
+	if (!wallTex->Create(&wallImg))return false;
+
+	const size_t MALE_TEX1 = 0;
+	const size_t MALE_TEX2 = 1;
+	const size_t DINO_TEX =  2;
+	const size_t WALL_TEX =  3;
+
+
 	// ---- Load Meshes ----
 	Mesh* male = new Mesh();
-	if (!male->Load("male.obj"))
-	{
-		SAFE_DELETE(male);
-		return false;
-	}
+	if (!male->Load("male.obj")){ SAFE_DELETE(male); return false;}
+
 	// Create Mat
 	m_Meshes.push_back(male);
-	if (!male->AddTexture(&maleImg2, GL_TEXTURE0, 0)) return false;
-	if (!male->AddTexture(&maleImg, GL_TEXTURE0, 1)) return false;
+	if (!male->AddTexture(MALE_TEX2, 0)) return false;
+	if (!male->AddTexture(MALE_TEX1,  1)) return false;
 
 	Mesh* dino = new Mesh();
-	if (!dino->Load("dino.obj"))
-	{
-		SAFE_DELETE(dino);
-		return false;
-	}
+	if (!dino->Load("dino.obj")){ SAFE_DELETE(dino); return false;}
 
-	if (!dino->AddTexture(&dinoImg, GL_TEXTURE0)) return false;	// if no 3rd param then apply to all
+	if (!dino->AddTexture(DINO_TEX)) return false;	// if no 3rd param then apply to all
 	m_Meshes.push_back(dino);
 
 	Mesh* cube = new Mesh();
@@ -237,7 +257,7 @@ bool Renderer::Init()
 		return false;
 	}
 
-	if (!cube->AddTexture(&wallImg, GL_TEXTURE0)) return false;	// if no 3rd param then apply to all
+	if (!cube->AddTexture(WALL_TEX)) return false;	// if no 3rd param then apply to all
 	m_Meshes.push_back(cube);
 
 	return true;
@@ -330,36 +350,46 @@ void Renderer::ReloadShaders()
 void Renderer::Render()
 {
 	// Clear color buffer  
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	m_Camera->Update();
 
-	m_pEffect->Enable();
-	// ---- Set Light shader uniforms ----
-	m_PointLights[0].Position = Vec3(3.0f, 1.0f, 10.0f * (cosf(2.0f) + 1.0f) / 2.0f);
-	m_PointLights[1].Position = Vec3(7.0f, 2.0f, 10.0f * (sinf(2.0f) + 1.0f) / 2.0f);
-	m_pEffect->SetPointLights(2, m_PointLights);
+	bool useLighting = true;
 	
-	m_SpotLights[0].Position = m_Camera->position;
-	m_SpotLights[0].Direction = m_Camera->position + m_Camera->forward;
-	m_SpotLights[1].Position = Vec3(sinf(Time::ElapsedTime()), 2.0f, -1.0f);
-	m_pEffect->SetSpotLights(2, m_SpotLights);
 
-	m_pEffect->SetDirectionalLight(m_directionalLight);
-	m_pEffect->SetEyeWorldPos(m_Camera->position);
-	m_pEffect->SetMatSpecularIntensity(0.2f);
-	m_pEffect->SetMatSpecularPower(0.2f);
+	if (!useLighting)
+	{
+		m_DiffuseMat->Use();
+	}
+	else
+	{
+		m_pEffect->Enable();
+		// ---- Set Light shader uniforms ----
+		m_PointLights[0].Position = Vec3(3.0f, 1.0f, 10.0f * (cosf(2.0f) + 1.0f) / 2.0f);
+		m_PointLights[1].Position = Vec3(7.0f, 2.0f, 10.0f * (sinf(2.0f) + 1.0f) / 2.0f);
+		m_pEffect->SetPointLights(2, m_PointLights);
+
+		m_SpotLights[0].Position = m_Camera->position;
+		m_SpotLights[0].Direction = m_Camera->position + m_Camera->forward;
+		m_SpotLights[1].Position = Vec3(sinf(Time::ElapsedTime()), 2.0f, -1.0f);
+		m_pEffect->SetSpotLights(2, m_SpotLights);
+
+		m_pEffect->SetDirectionalLight(m_directionalLight);
+		m_pEffect->SetEyeWorldPos(m_Camera->position);
+		m_pEffect->SetMatSpecularIntensity(0.2f);
+		m_pEffect->SetMatSpecularPower(0.2f);
+	}
 
 	// Would get the transformation matrix from each object that needed rendering
 	Mat4 malemodelMat =
 		glm::translate(Mat4(1.0f), Vec3(-0.5f, -1.0f, 0.0f)) *
-		( Maths::RotateY(cosf(Time::ElapsedTime() * 0.1f) * 3.0f) ) *
+		//( Maths::RotateY(cosf(Time::ElapsedTime() * 0.1f) * 3.0f) ) *
 		glm::scale(Mat4(1.0f), Vec3(1.0f));
 
 	Mat4 dinomodelMat =
 		glm::translate(Mat4(1.0f), Vec3(0.8f, -1.0f, 0.0f)) *
-		(Maths::RotateY(sinf(Time::ElapsedTime() * 0.1f) * 3.0f)) *
+		//(Maths::RotateY(sinf(Time::ElapsedTime() * 0.1f) * 3.0f)) *
 		glm::scale(Mat4(1.0f), Vec3(0.05f));
 
 	Mat4 floorMat =
@@ -367,8 +397,11 @@ void Renderer::Render()
 		glm::scale(Mat4(1.0f), Vec3(30.0f, 0.5f, 30.0f));
 
 	// Uniforms
-	//glUniformMatrix4fv(uID_projXform, 1, false, glm::value_ptr(projMat));
-	//glUniformMatrix4fv(uID_viewXform, 1, false, glm::value_ptr(view));
+	if (!useLighting)
+	{
+		m_DiffuseMat->setProjXform(m_Camera->projection);
+		m_DiffuseMat->setViewXform(m_Camera->view);
+	}
 
 	int i = 0;
 	// ---- Render ----
@@ -379,51 +412,71 @@ void Renderer::Render()
 
 		if (i == 0)
 		{
-			m_pEffect->SetWorldMatrix(malemodelMat);
-			m_pEffect->SetWVP(m_Camera->projection * m_Camera->view * malemodelMat);
-			//glUniformMatrix4fv(uID_modelXform, 1, false, glm::value_ptr(malemodelMat));
-		}
-		else if(i == 1)
-		{
-			m_pEffect->SetWVP(m_Camera->projection * m_Camera->view * dinomodelMat);
-			m_pEffect->SetWorldMatrix(dinomodelMat);
-		}
-		else
-		{
-			m_pEffect->SetWVP(m_Camera->projection * m_Camera->view * floorMat);
-			m_pEffect->SetWorldMatrix(floorMat);
-		}
-		++i;
-
-		for (std::vector<MeshLayout>::iterator i = thisMesh->m_MeshLayouts.begin();
-			i != thisMesh->m_MeshLayouts.end(); i++)
-		{
-			MeshLayout ml = (*i);
-
-			if (ml.TextureIndex != INVALID_TEXTURE_LOCATION)
+			if (!useLighting)
 			{
-				thisMesh->m_Textures[ml.TextureIndex]->Bind();
-				//glUniform1i(uID_texSampler, 0);
-			}
-
-			if (ml.NumIndices > 0)
-			{
-				glDrawElementsBaseVertex(GL_TRIANGLES,
-					ml.NumIndices,
-					GL_UNSIGNED_INT,
-					(void*)(sizeof(unsigned int) * ml.BaseIndex),
-					ml.BaseVertex);
+				m_DiffuseMat->setModelXform(malemodelMat);
 			}
 			else
 			{
-				glDrawArrays(GL_TRIANGLES, 0, ml.NumVertices);
+				m_pEffect->SetWorldMatrix(malemodelMat);
+				m_pEffect->SetWVP(m_Camera->projection * m_Camera->view * malemodelMat);
+			}
+		}
+		else if(i == 1)
+		{
+			if (!useLighting)
+			{
+				m_DiffuseMat->setModelXform(dinomodelMat);
+			}
+			else
+			{
+				m_pEffect->SetWVP(m_Camera->projection * m_Camera->view * dinomodelMat);
+				m_pEffect->SetWorldMatrix(dinomodelMat);
+			}
+		}
+		else
+		{
+			if (!useLighting)
+			{
+				m_DiffuseMat->setModelXform(floorMat);
+			}
+			else
+			{
+				m_pEffect->SetWVP(m_Camera->projection * m_Camera->view * floorMat);
+				m_pEffect->SetWorldMatrix(floorMat);
+			}
+		}
+		++i;
+
+		for (std::vector<SubMesh>::iterator i = thisMesh->m_MeshLayouts.begin();
+			i != thisMesh->m_MeshLayouts.end(); i++)
+		{
+			SubMesh subMesh = (*i);
+
+			if (subMesh.TextureIndex != INVALID_TEXTURE_LOCATION)
+			{
+				m_Textures[thisMesh->m_TextureHandles[subMesh.TextureIndex]]->Bind();
+			}
+
+			if (subMesh.NumIndices > 0)
+			{
+				glDrawElementsBaseVertex(GL_TRIANGLES,
+					subMesh.NumIndices,
+					GL_UNSIGNED_INT,
+					(void*)(sizeof(unsigned int) * subMesh.BaseIndex),
+					subMesh.BaseVertex);
+			}
+			else
+			{
+				glDrawArrays(GL_TRIANGLES, 0, subMesh.NumVertices);
 			}
 		}
 
 		glBindVertexArray(0);
 	}
 
-	RenderText("Open GL Engine", 8, 16);
+	RenderText("CGR Engine", 8, 16);
+	//RenderText("Cam Fwd: " + util::vec3_to_str(m_Camera->forward), 8, 16);
 }
 
 void Renderer::RenderText(const std::string& txt, float x, float y, FontAlign fa, const Colour& colour)
@@ -522,9 +575,17 @@ void Renderer::Close()
 		SAFE_DELETE(m_Meshes[i]);
 	}
 
+	for (size_t i = 0; i < m_Textures.size(); ++i)
+	{
+		SAFE_DELETE(m_Textures[i]);
+	}
+
 	m_Meshes.clear();
+	m_Textures.clear();
 
 	SAFE_CLOSE(m_FontTechnique);
+	SAFE_CLOSE(m_DiffuseMat);
+
 	SAFE_CLOSE(m_Font);
 	SAFE_CLOSE(m_pEffect);
 

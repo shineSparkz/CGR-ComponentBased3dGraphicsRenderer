@@ -43,25 +43,20 @@ void Camera::Update()
 			velocity - forward * speed;
 	}
 	
+	float hscreenWidth =  (float)Screen::Instance()->ScreenWidth() * 0.5f;
+	float hscreenHeight = (float)Screen::Instance()->ScreenHeight() * 0.5f;
+	float mouseX = (float)Mouse::Instance()->PosX();
+	float mouseY = (float)Mouse::Instance()->PosY();
+
 	// Mouse orient
-	yaw += mouseSpeed   * dt * static_cast<float>(
-		640// (Screen::Instance()->ScreenWidth() / 2)
-		- Mouse::Instance()->PosX());
-	
-	pitch += mouseSpeed * dt * static_cast<float>(
-		480//(Screen::Instance()->ScreenHeight() / 2)
-		- Mouse::Instance()->PosY());
+	yaw   += mouseSpeed * dt * (hscreenWidth  - mouseX);
+	pitch += mouseSpeed * dt * (hscreenHeight - mouseY);
 
-	//Mouse::Instance()->SetMousePosition(
-		//640 / 2, 480 / 2);
-		//Screen::Instance()->ScreenWidth() * 0.5,
-		//Screen::Instance()->ScreenHeight() * 0.5);
+	this->forward = //Vec3(0, 0, -1);
+		Vec3(cosf(pitch) * sinf(yaw), sinf(pitch), cosf(pitch) * cosf(yaw));
 
-	this->forward = Vec3(0, 0, -1);
-		//Vec3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw));
-
-	this->right = Vec3(1, 0, 0);
-		//Vec3(sin(yaw - 3.14f / 2.0f), 0, cos(yaw - 3.14f / 2.0f));
+	this->right = //Vec3(1, 0, 0);
+		Vec3(sinf(yaw - 3.14f / 2.0f), 0, cosf(yaw - 3.14f / 2.0f));
 
 	this->up = glm::cross(right, forward);
 
@@ -69,6 +64,9 @@ void Camera::Update()
 	position += (this->velocity * dt);
 	projection = glm::perspective(fov, aspect, near, far);
 	view = glm::lookAt(position, position + forward, up);
+
+	Mouse::Instance()->SetMousePosition(hscreenWidth, hscreenHeight);
+
 }
 
 void Camera::HandleEvent(Event* e)

@@ -535,3 +535,66 @@ void FontTechnique::setProjection(const Mat4& proj)
 {
 	setMat4_(&m_Ufm_ProjId, 1, GL_FALSE, proj);
 }
+
+
+BasicDiffuseTechnique::BasicDiffuseTechnique() :
+	m_Ufm_ModelXform(0),
+	m_Ufm_ViewXform(0),
+	m_Ufm_ProjXform(0)
+{
+}
+
+bool BasicDiffuseTechnique::Init()
+{
+	// Create Sdaders
+	Shader vert(GL_VERTEX_SHADER);
+	Shader frag(GL_FRAGMENT_SHADER);
+
+	// Set Attribute locations
+	ShaderAttrib vert_pos;
+	vert_pos.layout_location = 0;
+	vert_pos.name = "vertex_position";
+	ShaderAttrib norm_pos{ 1, "vertex_normal" };
+	ShaderAttrib tex_pos{ 2, "vertex_texcoord" };
+
+	// Compile
+	if (!vert.LoadShader("../resources/shaders/test_vs.glsl")){ return false;}
+
+	vert.AddAttribute(vert_pos);
+	vert.AddAttribute(norm_pos);
+	vert.AddAttribute(tex_pos);
+
+	if (!frag.LoadShader("../resources/shaders/test_fs.glsl")) { return false;}
+
+	// Create a program with list of shaders
+	std::vector<Shader> shaders;
+	shaders.push_back(vert);
+	shaders.push_back(frag);
+	if (!this->CreateProgram(shaders, "frag_colour", 0)){ WRITE_LOG("Font technique failed to create program", "error"); return false;}
+
+	// Set Uniforms
+	if (!GetLocation(m_Ufm_ModelXform, "model_xform")){ return false;}
+	if (!GetLocation(m_Ufm_ViewXform, "view_xform")){ return false; }
+	if (!GetLocation(m_Ufm_ProjXform, "proj_xform")){ return false;}
+
+	// Delete these shaders, no need to hold on to them
+	vert.Close();
+	frag.Close();
+
+	return true;
+}
+
+void BasicDiffuseTechnique::setModelXform(const Mat4& m)
+{
+	setMat4_(&m_Ufm_ModelXform, 1, GL_FALSE, m);
+}
+
+void BasicDiffuseTechnique::setProjXform(const Mat4& m)
+{
+	setMat4_(&m_Ufm_ProjXform, 1, GL_FALSE, m);
+}
+
+void BasicDiffuseTechnique::setViewXform(const Mat4& m)
+{
+	setMat4_(&m_Ufm_ViewXform, 1, GL_FALSE, m);
+}

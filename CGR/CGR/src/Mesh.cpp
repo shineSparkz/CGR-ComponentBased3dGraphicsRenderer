@@ -50,7 +50,7 @@ bool Import3DFromFile(const std::string& pFile)
 }
 
 
-MeshLayout::MeshLayout() :
+SubMesh::SubMesh() :
 	NumIndices(0),
 	NumVertices(0),
 	BaseIndex(0),
@@ -59,11 +59,11 @@ MeshLayout::MeshLayout() :
 {
 };
 
-MeshLayout::~MeshLayout()
+SubMesh::~SubMesh()
 {
 }
 
-void MeshLayout::Init(const aiMesh* paiMesh, std::vector<Vertex>& vertices, std::vector<dword>& indices)
+void SubMesh::Init(const aiMesh* paiMesh, std::vector<Vertex>& vertices, std::vector<dword>& indices)
 {
 	const aiVector3D Zero3D(0.0f, 0.0f, 0.0f);
 
@@ -100,13 +100,6 @@ Mesh::~Mesh()
 	OpenGLLayer::clean_GL_vao(&this->m_VAO, 1);
 	OpenGLLayer::clean_GL_buffer(&this->m_VertexVBO, 1);
 	OpenGLLayer::clean_GL_buffer(&this->m_IndexVBO, 1);
-
-	for (size_t i = 0; i < m_Textures.size(); ++i)
-	{
-		SAFE_DELETE(m_Textures[i]);
-	}
-
-	m_Textures.clear();
 }
 
 bool Mesh::Load(const std::string& mesh)
@@ -178,57 +171,26 @@ bool Mesh::Load(const std::string& mesh)
 	return true;
 }
 
-bool Mesh::AddTexture(Image* i, int activeTexture, unsigned int meshIndex)
+bool Mesh::AddTexture(size_t texHandle, unsigned int meshIndex)
 {
-	// TODO : Need to specify the texture type and pass other paramaters
-	if (i)
+	if (meshIndex >= m_MeshLayouts.size())
 	{
-		if (meshIndex >= m_MeshLayouts.size())
-		{
-			WRITE_LOG("Tried to load texture with out of bounds mesh index", "error");
-			return false;
-		}
-
-		m_MeshLayouts[meshIndex].TextureIndex = m_Textures.size();
-		Texture* tex = new Texture(GL_TEXTURE_2D, activeTexture);
-		if (!tex->Create(i))
-		{
-			m_MeshLayouts[meshIndex].TextureIndex = INVALID_TEXTURE_LOCATION;
-			SAFE_DELETE(tex);
-			return false;
-		}
-
-		m_Textures.push_back(tex);
-		return true;
+		WRITE_LOG("Tried to load texture with out of bounds mesh index", "error");
+		return false;
 	}
 
-	WRITE_LOG("Tried to load texture with null image", "error");
-	return false;
+	m_MeshLayouts[meshIndex].TextureIndex = m_TextureHandles.size();
+	m_TextureHandles.push_back(texHandle);
+	return true;
 }
 
-bool Mesh::AddTexture(Image* i, int activeTexture)
+bool Mesh::AddTexture(size_t texHandle)
 {
-	// TODO : Need to specify the texture type and pass other paramaters
-	if (i)
+	for (auto m = m_MeshLayouts.begin(); m != m_MeshLayouts.end(); ++m)
 	{
-		Texture* tex = new Texture(GL_TEXTURE_2D, activeTexture);
-		if (!tex->Create(i))
-		{
-			SAFE_DELETE(tex);
-			return false;
-		}
-
-		for (auto m = m_MeshLayouts.begin(); m != m_MeshLayouts.end(); ++m)
-		{
-			m->TextureIndex = m_Textures.size();
-		}
-
-		m_Textures.push_back(tex);
-		return true;
+		m->TextureIndex = m_TextureHandles.size();
 	}
 
-	WRITE_LOG("Tried to load texture with null image", "error");
-	return false;
+	m_TextureHandles.push_back(texHandle);
+	return true;
 }
-
-
