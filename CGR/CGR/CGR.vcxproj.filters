@@ -1,0 +1,187 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Application">
+      <UniqueIdentifier>{7e850c8a-3e13-4eb4-b660-d4b6686e2111}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game">
+      <UniqueIdentifier>{9b277a22-706f-40ea-9112-5bf4fea1f4ef}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Render">
+      <UniqueIdentifier>{36d44c41-a157-4360-974d-de8ee815a8b1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Common">
+      <UniqueIdentifier>{13b68143-fdc6-4f5a-91b1-8d935731dd36}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Events">
+      <UniqueIdentifier>{7176065b-2cf7-41c8-8dbf-535bd822840f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\AssetLoading">
+      <UniqueIdentifier>{2108a3c4-d0c7-4f80-b088-672fc1dd31dc}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Application.h">
+      <Filter>Application</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Colour.h">
+      <Filter>Application\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gl_headers.h">
+      <Filter>Application\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\LogFile.h">
+      <Filter>Application\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Rect.h">
+      <Filter>Application\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Singleton.h">
+      <Filter>Application\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Time.h">
+      <Filter>Application\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\types.h">
+      <Filter>Application\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\utils.h">
+      <Filter>Application\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Input.h">
+      <Filter>Application</Filter>
+    </ClInclude>
+    <ClInclude Include="src\IScene.h">
+      <Filter>Application</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SceneGraph.h">
+      <Filter>Application</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Event.h">
+      <Filter>Application\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\EventID.h">
+      <Filter>Application\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\EventManager.h">
+      <Filter>Application\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\math_utils.h">
+      <Filter>Application\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Vertex.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\RenderWindow.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\OpenGlLayer.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Renderer.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\KeyEvent.h">
+      <Filter>Application\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\EventHandler.h">
+      <Filter>Application\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Screen.h">
+      <Filter>Application</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Image.h">
+      <Filter>Application\AssetLoading</Filter>
+    </ClInclude>
+    <ClInclude Include="src\TextFile.h">
+      <Filter>Application\AssetLoading</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Mesh.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Texture.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Lights.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Technique.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Camera.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Font.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\FontAlign.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Shader.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="src\Colour.cpp">
+      <Filter>Application\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="src\LogFile.cpp">
+      <Filter>Application\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Time.cpp">
+      <Filter>Application\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utils.cpp">
+      <Filter>Application\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Input.cpp">
+      <Filter>Application</Filter>
+    </ClCompile>
+    <ClCompile Include="src\SceneGraph.cpp">
+      <Filter>Application</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Event.cpp">
+      <Filter>Application\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="src\EventManager.cpp">
+      <Filter>Application\Events</Filter>
+    </ClCompile>
+    <ClCompile Include="src\RenderWindow.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OpenGlLayer.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Application.cpp">
+      <Filter>Application</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Renderer.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Image.cpp">
+      <Filter>Application\AssetLoading</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TextFile.cpp">
+      <Filter>Application\AssetLoading</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Mesh.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Texture.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Technique.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Camera.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Font.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Shaders.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

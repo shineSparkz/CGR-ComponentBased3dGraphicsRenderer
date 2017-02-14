@@ -11,3 +11,4 @@ CGR/bin/Win32_Release/CGR.ipdb
 CGR/bin/Win64_Debug/CGR.exe
 CGR/bin/Win64_Release/CGR.exe
 *.ipdb
+CGR/CGR/obj
