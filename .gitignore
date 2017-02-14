@@ -1,0 +1,13 @@
+CGR/CGR.sdf
+CGR/.vs
+CGR/bin/resources/log/logfile.html
+CGR/bin/Win32_Debug/CGR.exe
+*.ilk
+CGR/bin/Win32_Debug/CGR.pdb
+CGR/bin/Win32_Release/CGR.exe
+*.iobj
+CGR/bin/Win32_Release/CGR.ipdb
+*.pdb
+CGR/bin/Win64_Debug/CGR.exe
+CGR/bin/Win64_Release/CGR.exe
+*.ipdb
