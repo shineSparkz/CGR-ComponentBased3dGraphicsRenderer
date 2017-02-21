@@ -4,6 +4,12 @@
 #include "math_utils.h"
 #include "OpenGlLayer.h"
 
+#include "Camera.h"
+#include "Mesh.h"
+#include "Renderer.h"
+#include "Texture.h"
+#include <glm\glm.hpp>
+
 #include <sstream>
 
 Technique::Technique() :
@@ -534,6 +540,127 @@ void FontTechnique::setColour(const Vec4& col)
 void FontTechnique::setProjection(const Mat4& proj)
 {
 	setMat4_(&m_Ufm_ProjId, 1, GL_FALSE, proj);
+}
+
+
+SkyboxTechnique::SkyboxTechnique() :
+	m_Ufm_WVP(0),
+	m_Ufm_TexLoc(0)
+{
+
+}
+
+bool SkyboxTechnique::Init()
+{
+	Shader vert(GL_VERTEX_SHADER);
+	Shader frag(GL_FRAGMENT_SHADER);
+
+	ShaderAttrib vert_pos;
+	vert_pos.layout_location = 0;
+	vert_pos.name = "vertex_position";
+
+	if (!vert.LoadShader("../resources/shaders/skybox_vs.glsl"))
+	{
+		return false;
+	}
+
+	vert.AddAttribute(vert_pos);
+
+	if (!frag.LoadShader("../resources/shaders/skybox_fs.glsl"))
+	{
+		return false;
+	}
+
+	std::vector<Shader> shaders;
+	shaders.push_back(vert);
+	shaders.push_back(frag);
+
+	if (!this->CreateProgram(shaders, "frag_colour", 0))
+	{
+		WRITE_LOG("Font technique failed to create program", "error");
+		return false;
+	}
+
+	// Uniforms
+	if (!GetLocation(m_Ufm_WVP, "wvp_xform"))
+	{
+		return false;
+	}
+
+	if (!GetLocation(m_Ufm_TexLoc, "cube_sampler"))
+	{
+		return false;
+	}
+
+	vert.Close();
+	frag.Close();
+}
+
+void SkyboxTechnique::Render(Camera* cam, Mesh* m, Renderer* r)
+{
+	this->Use();
+
+	GLint oldCullMode, oldDepthFunc;
+	glGetIntegerv(GL_CULL_FACE_MODE, &oldCullMode);
+	glGetIntegerv(GL_DEPTH_FUNC, &oldDepthFunc);
+
+	glCullFace(GL_FRONT);
+	glDepthFunc(GL_LEQUAL);
+
+	// Hardcode for now
+	Mat4 id(1.0f);
+	Mat4 model = glm::translate(id, cam->position) *
+		// rot
+		glm::scale(id, Vec3(20.0f));
+
+	this->setWVP(cam->projection * cam->view * model);
+	this->setTextureUnit(GL_TEXTURE0);
+
+	// Render mesh with texture here, THIS SHOULDNT BE HERE
+	glBindVertexArray(m->m_VAO);
+	for (std::vector<SubMesh>::iterator i = m->m_MeshLayouts.begin();
+		i != m->m_MeshLayouts.end(); i++)
+	{
+		SubMesh subMesh = (*i);
+
+		if (subMesh.TextureIndex != INVALID_TEXTURE_LOCATION)
+		{
+			Texture* t = r->GetTexture(m->m_TextureHandles[subMesh.TextureIndex]);
+
+			if (t)
+				t->Bind();
+			
+			//m_Textures[thisMesh->m_TextureHandles[subMesh.TextureIndex]]->Bind();
+		}
+
+		if (subMesh.NumIndices > 0)
+		{
+			glDrawElementsBaseVertex(GL_TRIANGLES,
+				subMesh.NumIndices,
+				GL_UNSIGNED_INT,
+				(void*)(sizeof(unsigned int) * subMesh.BaseIndex),
+				subMesh.BaseVertex);
+		}
+		else
+		{
+			glDrawArrays(GL_TRIANGLES, 0, subMesh.NumVertices);
+		}
+	}
+
+	glBindVertexArray(0);
+
+	glCullFace(oldCullMode);
+	glDepthFunc(oldDepthFunc);
+}
+
+void SkyboxTechnique::setWVP(const Mat4& WVP)
+{
+	this->setMat4_(&m_Ufm_WVP, 1, GL_FALSE, WVP);
+}
+
+void SkyboxTechnique::setTextureUnit(unsigned int textureUnit)
+{
+	this->setInt_(&m_Ufm_TexLoc, textureUnit);
 }
 
 

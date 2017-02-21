@@ -11,11 +11,14 @@ public:
 	Texture(GLenum target, int activeTexture);
 	~Texture();
 
+	static bool createTex3D(GLuint* texture, Image* images[6]);
+
 	static bool create_tex2D(GLuint* textureOut, int active, GLint internalformat,
 		GLsizei width, GLsizei height, GLenum format, GLenum type, const void* data,
 		GLint wrapS, GLint wrapT, GLint minFilter, GLint magFilter, bool mips);
 
 	bool Create(Image* img);
+	bool Create(Image* images[6]);
 	void Bind();
 
 private:

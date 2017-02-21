@@ -102,12 +102,15 @@ private:
 	} m_spotLightsLocation[MAX_SPOT_LIGHTS];
 };
 
-
+class Camera;
+class Mesh;
+class Renderer;
 
 class RenderTechnique
 {
 public:
 	RenderTechnique();
+	virtual bool Init() = 0;
 	void Use();
 	void Close();
 
@@ -129,7 +132,7 @@ class FontTechnique : public RenderTechnique
 {
 public:
 	FontTechnique();
-	bool Init();
+	bool Init() override;
 	
 	void setColour(const Vec4& col);
 	void setProjection(const Mat4& proj);
@@ -137,6 +140,22 @@ public:
 private:
 	GLuint m_Ufm_ProjId;
 	GLuint m_Ufm_ColId;
+};
+
+class SkyboxTechnique : public RenderTechnique
+{
+public:
+	SkyboxTechnique();
+	bool Init() override;
+
+	void setWVP(const Mat4& WVP);
+	void setTextureUnit(unsigned int TextureUnit);
+
+	void Render(Camera* cam, Mesh* mesh, Renderer* r);
+
+private:
+	GLuint m_Ufm_WVP;
+	GLuint m_Ufm_TexLoc;
 };
 
 class BasicDiffuseTechnique : public RenderTechnique

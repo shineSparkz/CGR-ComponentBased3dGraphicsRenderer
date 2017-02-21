@@ -16,6 +16,7 @@ class Camera;
 class Font;
 class Texture;
 class FontTechnique;
+class SkyboxTechnique;
 
 class Renderer
 {
@@ -28,6 +29,7 @@ public:
 	void ReloadShaders();
 
 	void RenderText(const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White() );
+	Texture* GetTexture(size_t index);
 
 private:
 	// ---- Keeping ----
@@ -36,6 +38,7 @@ private:
 	// ---- Removing ----
 	std::vector<Mesh*> m_Meshes;
 	std::vector<Texture*> m_Textures;
+	Mesh* m_SkyboxMesh;
 
 	Font* m_Font{ nullptr };
 	//GLuint m_FontShaderProg;
@@ -43,6 +46,7 @@ private:
 
 	LightingTechnique* m_pEffect{ nullptr };
 	BasicDiffuseTechnique* m_DiffuseMat{ nullptr };
+	SkyboxTechnique* m_SkyBoxMat{ nullptr };
 	
 	// These would be in the scene, maybe even component based
 	DirectionalLight m_directionalLight;

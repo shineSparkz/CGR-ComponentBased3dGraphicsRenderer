@@ -179,6 +179,13 @@ bool Renderer::Init()
 		WRITE_LOG("Failed to create diffuse mat", "error");
 	}
 
+	m_SkyBoxMat = new SkyboxTechnique();
+	if (!m_SkyBoxMat->Init())
+	{
+		WRITE_LOG("Failed to create skybox mat", "error");
+		return false;
+	}
+
 	// ** These states could differ **
 	glEnable(GL_DEPTH_TEST);
 	//glDepthFunc(GL_ALWAYS);
@@ -215,25 +222,60 @@ bool Renderer::Init()
 		return false;
 	}
 
+	// Load Images for skybox
+	Image* images[6];
+	Image i0; 
+	Image i1; 
+	Image i2; 
+	Image i3; 
+	Image i4; 
+	Image i5; 
+	if (!i0.LoadImg("../resources/textures/skybox/rightr.tga"))
+		return false;
+	if (!i1.LoadImg("../resources/textures/skybox/leftr.tga"))
+		return false;
+	if (!i2.LoadImg("../resources/textures/skybox/topr.tga"))
+		return false;
+	if (!i3.LoadImg("../resources/textures/skybox/bottomr.tga"))
+		return false;
+	if (!i4.LoadImg("../resources/textures/skybox/backr.tga"))
+		return false;
+	if (!i5.LoadImg("../resources/textures/skybox/frontr.tga"))
+		return false;
+	
+	images[0] = &i0;
+	images[1] = &i1;
+	images[2] = &i2;
+	images[3] = &i3;
+	images[4] = &i4;
+	images[5] = &i5;
+
+	//m_MeshRenderers[SKYBOX_MESH].m_Texture = createTex3D(images);
+
 	// ---- Textures ----
 	Texture* maleTex2 = new Texture(GL_TEXTURE_2D, GL_TEXTURE0);
 	Texture* maleTex = new Texture(GL_TEXTURE_2D, GL_TEXTURE0);
 	Texture* dinoTex = new Texture(GL_TEXTURE_2D, GL_TEXTURE0);
 	Texture* wallTex = new Texture(GL_TEXTURE_2D, GL_TEXTURE0);
+	Texture* cubeMapTex = new Texture(GL_TEXTURE_CUBE_MAP, GL_TEXTURE0);
+
 	m_Textures.push_back(maleTex);
 	m_Textures.push_back(maleTex2);
 	m_Textures.push_back(dinoTex);
 	m_Textures.push_back(wallTex);
+	m_Textures.push_back(cubeMapTex);
+
 	if (!maleTex2->Create(&maleImg2)) return false;
 	if (!maleTex->Create(&maleImg)) return false;
 	if (!dinoTex->Create(&dinoImg))return false;
 	if (!wallTex->Create(&wallImg))return false;
+	if (!cubeMapTex->Create(images))return false;
 
 	const size_t MALE_TEX1 = 0;
 	const size_t MALE_TEX2 = 1;
 	const size_t DINO_TEX =  2;
 	const size_t WALL_TEX =  3;
-
+	const size_t CUBE_TEX = 4;
 
 	// ---- Load Meshes ----
 	Mesh* male = new Mesh();
@@ -259,6 +301,14 @@ bool Renderer::Init()
 
 	if (!cube->AddTexture(WALL_TEX)) return false;	// if no 3rd param then apply to all
 	m_Meshes.push_back(cube);
+
+	m_SkyboxMesh = new Mesh();
+	if (!m_SkyboxMesh->Load("cube.obj"))
+	{
+		return false;
+	}
+
+	if (!m_SkyboxMesh->AddTexture(CUBE_TEX)) return false;
 
 	return true;
 }
@@ -347,6 +397,11 @@ void Renderer::ReloadShaders()
 	*/
 }
 
+Texture* Renderer::GetTexture(size_t index)
+{
+	return index < m_Textures.size() ?  m_Textures[index] : nullptr;
+}
+
 void Renderer::Render()
 {
 	// Clear color buffer  
@@ -357,6 +412,9 @@ void Renderer::Render()
 
 	bool useLighting = true;
 	
+	// Render Skybox here, pass camera and mesh
+	m_SkyBoxMat->Render(m_Camera, m_SkyboxMesh, this);
+
 
 	if (!useLighting)
 	{
@@ -585,9 +643,11 @@ void Renderer::Close()
 
 	SAFE_CLOSE(m_FontTechnique);
 	SAFE_CLOSE(m_DiffuseMat);
+	SAFE_CLOSE(m_SkyBoxMat);
 
 	SAFE_CLOSE(m_Font);
 	SAFE_CLOSE(m_pEffect);
 
+	SAFE_DELETE(m_SkyboxMesh);
 	SAFE_DELETE(m_Camera);
 }

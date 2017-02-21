@@ -4,6 +4,42 @@
 #include "Image.h"
 #include "LogFile.h"
 
+bool Texture::createTex3D(GLuint* texture, Image* images[6])
+{
+	glGenTextures(1, texture);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, *texture);
+
+	GLenum pixel_formats[] = { 0, GL_RED, GL_RG, GL_BGR, GL_BGRA };
+
+	for (size_t i = 0; i < 6; ++i)
+	{
+		glTexImage2D(
+			GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+			0,
+			GL_RGBA,
+			images[i]->Width(),
+			images[i]->Height(),
+			0,
+			pixel_formats[images[i]->NumBytes()],
+			GL_UNSIGNED_BYTE,
+			images[i]->Data()
+			);
+
+		OpenGLLayer::check_GL_error();
+	}
+
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+	return true;
+}
+
 bool Texture::create_tex2D(GLuint* textureOut, int active, GLint internalformat,
 	GLsizei width, GLsizei height, GLenum format, GLenum type, const void* data,
 	GLint wrapS, GLint wrapT, GLint minFilter, GLint magFilter, bool mips)
@@ -69,6 +105,23 @@ Texture::Texture(GLenum target, int active) :
 Texture::~Texture()
 {
 	OpenGLLayer::clean_GL_texture(&m_TexturePtr, 1);
+}
+
+bool Texture::Create(Image* images[6])
+{
+	if (!createTex3D(&m_TexturePtr, images))
+	{
+		WRITE_LOG("Failed to create gl cubemap", "error");
+		return false;
+	}
+
+	if (!glIsTexture(m_TexturePtr))
+	{
+		WRITE_LOG("fail texture", "warning");
+		return false;
+	}
+
+	return true;
 }
 
 bool Texture::Create(Image* img)
