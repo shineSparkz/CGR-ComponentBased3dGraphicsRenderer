@@ -27,6 +27,7 @@ struct SubMesh
 class Mesh
 {
 public:
+	Mesh();
 	~Mesh();
 
 	bool Load(const std::string& mesh);

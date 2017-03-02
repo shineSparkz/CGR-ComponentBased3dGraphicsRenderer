@@ -40,11 +40,6 @@ bool Shader::LoadShader(const char* srcPath)
 
 	// Ask openGL to create a shader of passed in type
 	this->shader = glCreateShader(this->shader_type);
-	if (OpenGLLayer::check_GL_error())
-	{
-		WRITE_LOG("Error: Invalid shader type", "error");
-		return false;
-	}
 
 	// Ask OpenGL to attempt shader compilation
 	GLint compile_status = 0;

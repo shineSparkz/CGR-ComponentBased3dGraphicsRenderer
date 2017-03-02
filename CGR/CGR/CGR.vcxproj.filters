@@ -120,6 +120,9 @@
     <ClInclude Include="src\Shader.h">
       <Filter>Render</Filter>
     </ClInclude>
+    <ClInclude Include="src\ShadowFrameBuffer.h">
+      <Filter>Render</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -181,6 +184,9 @@
       <Filter>Render</Filter>
     </ClCompile>
     <ClCompile Include="src\Shaders.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ShadowFrameBuffer.cpp">
       <Filter>Render</Filter>
     </ClCompile>
   </ItemGroup>

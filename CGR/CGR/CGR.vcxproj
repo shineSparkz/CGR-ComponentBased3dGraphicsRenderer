@@ -178,6 +178,7 @@
     <ClCompile Include="src\RenderWindow.cpp" />
     <ClCompile Include="src\SceneGraph.cpp" />
     <ClCompile Include="src\Shaders.cpp" />
+    <ClCompile Include="src\ShadowFrameBuffer.cpp" />
     <ClCompile Include="src\Technique.cpp" />
     <ClCompile Include="src\TextFile.cpp" />
     <ClCompile Include="src\Texture.cpp" />
@@ -210,6 +211,7 @@
     <ClInclude Include="src\SceneGraph.h" />
     <ClInclude Include="src\Screen.h" />
     <ClInclude Include="src\Shader.h" />
+    <ClInclude Include="src\ShadowFrameBuffer.h" />
     <ClInclude Include="src\Singleton.h" />
     <ClInclude Include="src\Technique.h" />
     <ClInclude Include="src\TextFile.h" />

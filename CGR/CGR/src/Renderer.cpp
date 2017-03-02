@@ -18,116 +18,135 @@
 #include "Mesh.h"
 #include "Texture.h"
 #include "Font.h"
+#include "Screen.h"
+#include "ShadowFrameBuffer.h"
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-bool load_shader(const std::string& srcPath, GLuint& shaderOut, GLenum shaderType)
+// TODO : Remove this tragedy
+const Mat4 MALE_XFORM = glm::translate(Mat4(1.0f), Vec3(-0.5f, -1.5f, 0.0f)) *
+	glm::scale(Mat4(1.0f), Vec3(1.0f));
+const Mat4 DINO_XFORM = glm::translate(Mat4(1.0f), Vec3(1.8f, -1.5f, 0.0f)) *
+	glm::scale(Mat4(1.0f), Vec3(0.05f));
+const Mat4 FLOOR_XFORM = glm::translate(Mat4(1.0f), Vec3(0.0f, -2.0f, -3.0f)) *
+	glm::scale(Mat4(1.0f), Vec3(30.0f, 0.5f, 30.0f));
+
+std::vector<Mat4> TRANSFORMS;
+
+
+Renderer::Renderer() :
+	m_Meshes(),
+	m_Textures(),
+	m_SkyboxMesh(nullptr),
+	m_Font(nullptr),
+	m_Camera(nullptr),
+	m_LightCamera(nullptr),
+	m_ShadowFBO(nullptr),
+	m_FontMaterial(nullptr),
+	m_LightMaterial(nullptr),
+	m_DiffuseMaterial(nullptr),
+	m_SkyBoxMaterial(nullptr),
+	m_ShadowMaterial(nullptr),
+	m_DirectionalLight()
 {
-	TextFile tf;
-	std::string shadersrc = tf.LoadFileIntoStr(srcPath);
-	if (shadersrc == "")
-	{
-		return false;
-	}
-	// Need to cast to a c string for open GL
-	const char* src = shadersrc.c_str();
+}
 
-	shaderOut = glCreateShader(shaderType);
-	if (OpenGLLayer::check_GL_error())
-	{
-		WRITE_LOG("Error: Invalid shader type", "error");
-		return false;
-	}
+bool Renderer::Init()
+{
+	bool success = true;
 
-	// Ask OpenGL to attempt shader compilation
-	GLint compile_status = 0;
-	glShaderSource(shaderOut, 1, (const GLchar**)&src, NULL);
-	glCompileShader(shaderOut);
-	glGetShaderiv(shaderOut, GL_COMPILE_STATUS, &compile_status);
+	success &= setRenderStates();
+	success &= setFrameBuffers();
+	success &= setLights();
+	success &= setCamera();
+	success &= loadFonts();
+	success &= loadTetxures();
+	success &= loadMeshes();
+	success &= createMaterials();
 
-	if (compile_status != GL_TRUE)
+	return success;
+}
+
+bool Renderer::setRenderStates()
+{
+	// ** These states could differ **
+	glEnable(GL_DEPTH_TEST);
+	//glDepthFunc(GL_ALWAYS);
+	//glEnable(GL_CULL_FACE);
+
+	return true;
+}
+
+bool Renderer::setFrameBuffers()
+{
+	m_ShadowFBO = new ShadowFrameBuffer();
+	if (!m_ShadowFBO->Init(Screen::Instance()->FrameBufferWidth(), Screen::Instance()->FrameBufferHeight()))
 	{
-		// Log what went wrong in shader src
-		const int string_length = 1024;
-		GLchar log[string_length] = "";
-		glGetShaderInfoLog(shaderOut, string_length, NULL, log);
-		std::stringstream logger;
-		logger << log << std::endl;
-		WRITE_LOG(logger.str(), "error");
 		return false;
 	}
 
 	return true;
 }
 
-
-Renderer::Renderer()
+void Renderer::WindowSizeChanged(int w, int h)
 {
+	m_Camera->aspect = static_cast<float>(w / h);
+
+	// TODO : Put this in a function
+	m_LightCamera->aspect = static_cast<float>(w / h);
+	m_LightCamera->projection = glm::perspective(m_LightCamera->fov, m_LightCamera->aspect, m_LightCamera->near, m_LightCamera->far);
+
+	// Agh this sucks
+	if (m_ShadowFBO)
+	{
+		m_ShadowFBO->Init(w, h);
+	}
 }
 
-bool Renderer::Init()
+bool Renderer::setLights()
 {
-	m_Font = new Font();
-
-	if (!m_Font->CreateFont("../resources/fonts/cour.ttf", 24))
-	{
-		WRITE_LOG("FONT LOAD FAIL", "error");
-		return false;
-	}
-
-
-	m_FontTechnique = new FontTechnique();
-	if (!m_FontTechnique->Init())
-	{
-		return false;
-	}
+	// Dir Light
+	m_DirectionalLight.Color = Vec3(1.0f, 1.0f, 1.0f);
+	m_DirectionalLight.AmbientIntensity = 0.05f;
+	m_DirectionalLight.DiffuseIntensity = 0.01f;
+	m_DirectionalLight.Direction = Vec3(1.0f, -1.0f, 0.0f);
 
 	/*
-	GLuint vertShader, fragShader;
+	// Point Lights
+	m_PointLights[0].Color = Vec3(1.0f, 1.0f, 1.0f);
+	m_PointLights[0].DiffuseIntensity = 0.5f;
+	m_PointLights[0].Position = Vec3(-7.0f, 5.0f, -7.0f);
+	m_PointLights[0].Attenuation.Linear = 0.1f;
 
-	if (!load_shader("../resources/shaders/font_vs.glsl", vertShader, GL_VERTEX_SHADER))
-	{
-		OpenGLLayer::clean_GL_shader(&vertShader);
-		return false;
-	}
-
-	if (!load_shader("../resources/shaders/font_fs.glsl", fragShader, GL_FRAGMENT_SHADER))
-	{
-		OpenGLLayer::clean_GL_shader(&vertShader);
-		OpenGLLayer::clean_GL_shader(&fragShader);
-		return false;
-	}
-
-	m_FontShaderProg = glCreateProgram();
-	glAttachShader(m_FontShaderProg, vertShader);
-	glAttachShader(m_FontShaderProg, fragShader);
-
-	// **** Dynamic ****
-	glBindAttribLocation(m_FontShaderProg, 0, "vertex_position");
-	glBindFragDataLocation(m_FontShaderProg, 0, "frag_colour");
-
-	glLinkProgram(m_FontShaderProg);
-
-	GLint link_status = 0;
-	glGetProgramiv(m_FontShaderProg, GL_LINK_STATUS, &link_status);
-
-	if (link_status != GL_TRUE)
-	{
-		const int string_length = 1024;
-		GLchar log[string_length] = "";
-		glGetProgramInfoLog(m_FontShaderProg, string_length, NULL, log);
-		std::stringstream logger;
-		logger << log << std::endl;
-		WRITE_LOG(logger.str(), "error");
-		OpenGLLayer::clean_GL_shader(&vertShader);
-		OpenGLLayer::clean_GL_shader(&fragShader);
-	}
-
-	OpenGLLayer::clean_GL_shader(&vertShader);
-	OpenGLLayer::clean_GL_shader(&fragShader);
+	m_PointLights[1].Color = Vec3(1.0f, 1.0f, 1.0f);
+	m_PointLights[1].DiffuseIntensity = 0.5f;
+	m_PointLights[1].Attenuation.Linear = 0.1f;
+	m_PointLights[1].Position = Vec3(7.0f, 5.0f, 7.0f);
 	*/
 
+	// Spot Lights
+	m_SpotLights[0].DiffuseIntensity = 0.9f;
+	m_SpotLights[0].Color = Vec3(1.0f, 1.0f, 1.0f);
+	m_SpotLights[0].Attenuation.Linear = 0.1f;
+	m_SpotLights[0].Cutoff = Maths::ToRadians(30.0f);
+	m_SpotLights[0].Direction = Vec3(-0.1f, -1, 0.0f);
+	m_SpotLights[0].Position = Vec3(2, 5, 5.0f);
+	m_SpotLights[0].Direction = Vec3(-0.5f, -1.0f, 0.0f)/*male mesh pos*/ - m_SpotLights[0].Position;
+
+	/*
+	m_SpotLights[1].DiffuseIntensity = 0.9f;
+	m_SpotLights[1].Color = Vec3(1.0f, 1.0f, 1.0f);
+	m_SpotLights[1].Attenuation.Linear = 0.1f;
+	m_SpotLights[1].Cutoff = Maths::ToRadians(100.0f);
+	m_SpotLights[1].Direction = Vec3(0.1f, -1, -0.1f);
+	*/
+
+	return true;
+}
+
+bool Renderer::setCamera()
+{
 	// Camera
 	m_Camera = new Camera();
 	m_Camera->position = Vec3(0, 1.0f, 4.0f);
@@ -139,60 +158,36 @@ bool Renderer::Init()
 	m_Camera->near = 0.1f;
 	m_Camera->far = 500.0f;
 
-	// Dir Light
-	m_directionalLight.Color = Vec3(1.0f, 1.0f, 1.0f);
-	m_directionalLight.AmbientIntensity = 0.05f;
-	m_directionalLight.DiffuseIntensity = 0.01f;
-	m_directionalLight.Direction = Vec3(1.0f, 1.0f, 0.0f);
+	// Light Camera
+	m_LightCamera = new Camera();
+	m_LightCamera->up = Vec3(0, 1, 0);
+	m_LightCamera->near = m_Camera->near;
+	m_LightCamera->far = m_Camera->far;
+	m_LightCamera->fov = m_Camera->fov;
+	m_LightCamera->aspect = m_Camera->aspect;
+	m_LightCamera->right = Vec3(1, 0, 0);
+	m_LightCamera->position = m_SpotLights[0].Position;
+	m_LightCamera->forward = m_SpotLights[0].Direction;
+	m_LightCamera->view = glm::lookAt(m_LightCamera->position, m_LightCamera->position + m_LightCamera->forward, m_LightCamera->up);
+	m_LightCamera->projection = glm::perspective(m_LightCamera->fov, m_LightCamera->aspect, m_LightCamera->near, m_LightCamera->far);
 
-	// Point Lights
-	m_PointLights[0].DiffuseIntensity = 0.25f;
-	m_PointLights[0].Color = Vec3(1.0f, 0.5f, 0.0f);
-	m_PointLights[0].Attenuation.Linear = 0.1f;
-	m_PointLights[1].DiffuseIntensity = 0.25f;
-	m_PointLights[1].Color = Vec3(0.0f, 0.5f, 1.0f);
-	m_PointLights[1].Attenuation.Linear = 0.1f;
+	return true;
+}
 
-	// Spot Lights
-	m_SpotLights[0].DiffuseIntensity = 0.9f;
-	m_SpotLights[0].Color = Vec3(0.0f, 1.0f, 1.0f);
-	m_SpotLights[0].Attenuation.Linear = 0.1f;
-	m_SpotLights[0].Cutoff = 10.0f;
-	m_SpotLights[1].DiffuseIntensity = 0.9f;
-	m_SpotLights[1].Color = Vec3(1.0f, 1.0f, 1.0f);
-	m_SpotLights[1].Direction = Vec3(-0.1f, -1.0f, 0.0f);
-	m_SpotLights[1].Attenuation.Linear = 0.1f;
-	m_SpotLights[1].Cutoff = 30.0f;
-
-	m_pEffect = new LightingTechnique();
-	if (!m_pEffect->Init())
+bool Renderer::loadFonts()
+{
+	m_Font = new Font();
+	if (!m_Font->CreateFont("../resources/fonts/cour.ttf", 24))
 	{
-		WRITE_LOG("Light effect error", "error");
-		return false;
-	}
-	//m_pEffect->Enable();
-	m_pEffect->SetTextureUnit(0);
-
-	m_DiffuseMat = new BasicDiffuseTechnique();
-	if (!m_DiffuseMat->Init())
-	{
-		WRITE_LOG("Failed to create diffuse mat", "error");
-	}
-
-	m_SkyBoxMat = new SkyboxTechnique();
-	if (!m_SkyBoxMat->Init())
-	{
-		WRITE_LOG("Failed to create skybox mat", "error");
+		WRITE_LOG("FONT LOAD FAIL", "error");
 		return false;
 	}
 
-	// ** These states could differ **
-	glEnable(GL_DEPTH_TEST);
-	//glDepthFunc(GL_ALWAYS);
-	glEnable(GL_CULL_FACE);
+	return true;
+}
 
-	//ReloadShaders();
-
+bool Renderer::loadTetxures()
+{
 	// ---- Images ----
 	Image maleImg;
 	if (!maleImg.LoadImg("../resources/textures/male_body_low_albedo.tga"))
@@ -224,12 +219,12 @@ bool Renderer::Init()
 
 	// Load Images for skybox
 	Image* images[6];
-	Image i0; 
-	Image i1; 
-	Image i2; 
-	Image i3; 
-	Image i4; 
-	Image i5; 
+	Image i0;
+	Image i1;
+	Image i2;
+	Image i3;
+	Image i4;
+	Image i5;
 	if (!i0.LoadImg("../resources/textures/skybox/rightr.tga"))
 		return false;
 	if (!i1.LoadImg("../resources/textures/skybox/leftr.tga"))
@@ -242,15 +237,13 @@ bool Renderer::Init()
 		return false;
 	if (!i5.LoadImg("../resources/textures/skybox/frontr.tga"))
 		return false;
-	
+
 	images[0] = &i0;
 	images[1] = &i1;
 	images[2] = &i2;
 	images[3] = &i3;
 	images[4] = &i4;
 	images[5] = &i5;
-
-	//m_MeshRenderers[SKYBOX_MESH].m_Texture = createTex3D(images);
 
 	// ---- Textures ----
 	Texture* maleTex2 = new Texture(GL_TEXTURE_2D, GL_TEXTURE0);
@@ -271,23 +264,28 @@ bool Renderer::Init()
 	if (!wallTex->Create(&wallImg))return false;
 	if (!cubeMapTex->Create(images))return false;
 
+	return true;
+}
+
+bool Renderer::loadMeshes()
+{
 	const size_t MALE_TEX1 = 0;
 	const size_t MALE_TEX2 = 1;
-	const size_t DINO_TEX =  2;
-	const size_t WALL_TEX =  3;
+	const size_t DINO_TEX = 2;
+	const size_t WALL_TEX = 3;
 	const size_t CUBE_TEX = 4;
 
 	// ---- Load Meshes ----
 	Mesh* male = new Mesh();
-	if (!male->Load("male.obj")){ SAFE_DELETE(male); return false;}
+	if (!male->Load("male.obj")) { SAFE_DELETE(male); return false; }
 
 	// Create Mat
 	m_Meshes.push_back(male);
 	if (!male->AddTexture(MALE_TEX2, 0)) return false;
-	if (!male->AddTexture(MALE_TEX1,  1)) return false;
+	if (!male->AddTexture(MALE_TEX1, 1)) return false;
 
 	Mesh* dino = new Mesh();
-	if (!dino->Load("dino.obj")){ SAFE_DELETE(dino); return false;}
+	if (!dino->Load("dino.obj")) { SAFE_DELETE(dino); return false; }
 
 	if (!dino->AddTexture(DINO_TEX)) return false;	// if no 3rd param then apply to all
 	m_Meshes.push_back(dino);
@@ -309,6 +307,62 @@ bool Renderer::Init()
 	}
 
 	if (!m_SkyboxMesh->AddTexture(CUBE_TEX)) return false;
+
+	TRANSFORMS.push_back(MALE_XFORM);
+	TRANSFORMS.push_back(DINO_XFORM);
+	TRANSFORMS.push_back(FLOOR_XFORM);
+
+	return true;
+}
+
+bool Renderer::createMaterials()
+{
+	// ---- Standard Diffuse Mat ----
+	m_DiffuseMaterial = new BasicDiffuseTechnique();
+	if (!m_DiffuseMaterial->Init())
+	{
+		WRITE_LOG("Failed to create diffuse mat", "error");
+		return false;
+	}
+
+	// ---- Font material -----
+	m_FontMaterial = new FontTechnique();
+	if (!m_FontMaterial->Init())
+	{
+		WRITE_LOG("Failed to create font mat", "error");
+		return false;
+	}
+
+	// Light material for forward rendering
+	m_LightMaterial = new LightTechnique();
+	if (!m_LightMaterial->Init())
+	{
+		WRITE_LOG("Light effect error", "error");
+		return false;
+	}
+	// Assumes lights are set first here
+	m_LightMaterial->Use();
+	m_LightMaterial->setTextureUnit(0);
+	m_LightMaterial->setShadowSampler(1);
+	m_LightMaterial->setDirectionalLight(m_DirectionalLight);
+	m_LightMaterial->setMatSpecularIntensity(1.0f);
+	m_LightMaterial->setMatSpecularPower(2.0f);
+
+	// ---- Skybox material ----
+	m_SkyBoxMaterial = new SkyboxTechnique();
+	if (!m_SkyBoxMaterial->Init())
+	{
+		WRITE_LOG("Failed to create skybox mat", "error");
+		return false;
+	}
+
+	// ---- Shadow material ----
+	m_ShadowMaterial = new ShadowMapTechnique();
+	if (!m_ShadowMaterial->Init())
+	{
+		WRITE_LOG("Failed to create shadow map material", "error");
+		return false;
+	}
 
 	return true;
 }
@@ -402,63 +456,95 @@ Texture* Renderer::GetTexture(size_t index)
 	return index < m_Textures.size() ?  m_Textures[index] : nullptr;
 }
 
+void Renderer::ShadowPass()
+{
+	if (!m_ShadowFBO)
+		return;
+
+	// Bind the Off screen frame buffer
+	m_ShadowFBO->BindForWriting();
+
+	// Clear to offscreen frameBuffer
+	glClear(GL_DEPTH_BUFFER_BIT);
+	m_ShadowMaterial->Use();
+
+	// Update Light camera with spot light that it's using for shadows
+	m_LightCamera->position = m_SpotLights[0].Position;
+	m_LightCamera->forward = m_SpotLights[0].Direction;
+	m_LightCamera->view = glm::lookAt(m_LightCamera->position, m_LightCamera->position + m_LightCamera->forward, m_LightCamera->up);
+
+	// Here you want to render the meshes that you want to check for shadows
+	// We know the floor is last for this hardcoded shit so we dont want that
+	for (size_t i = 0; i < m_Meshes.size() - 1; ++i)
+	{
+		Mesh* thisMesh = m_Meshes[i];
+		glBindVertexArray(thisMesh->m_VAO);
+
+		m_ShadowMaterial->setWvpXform(m_LightCamera->projection * m_LightCamera->view * TRANSFORMS[i]);
+		m_ShadowMaterial->setTextureUnit(1);
+
+		for (std::vector<SubMesh>::iterator j = thisMesh->m_MeshLayouts.begin(); j != thisMesh->m_MeshLayouts.end(); j++)
+		{
+			SubMesh subMesh = (*j);
+
+			if (subMesh.NumIndices > 0)
+			{
+				glDrawElementsBaseVertex(GL_TRIANGLES,
+					subMesh.NumIndices,
+					GL_UNSIGNED_INT,
+					(void*)(sizeof(unsigned int) * subMesh.BaseIndex),
+					subMesh.BaseVertex);
+			}
+			else
+			{
+				glDrawArrays(GL_TRIANGLES, 0, subMesh.NumVertices);
+			}
+		}
+
+		glBindVertexArray(0);
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void Renderer::Render()
 {
+	bool useLighting = true;
+
+	if(useLighting)
+		ShadowPass();
+	
 	// Clear color buffer  
-	glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	m_Camera->Update();
 
-	bool useLighting = true;
-	
 	// Render Skybox here, pass camera and mesh
-	m_SkyBoxMat->Render(m_Camera, m_SkyboxMesh, this);
-
+	m_SkyBoxMaterial->Render(m_Camera, m_SkyboxMesh, this);
 
 	if (!useLighting)
 	{
-		m_DiffuseMat->Use();
+		m_DiffuseMaterial->Use();
 	}
 	else
 	{
-		m_pEffect->Enable();
-		// ---- Set Light shader uniforms ----
-		m_PointLights[0].Position = Vec3(3.0f, 1.0f, 10.0f * (cosf(2.0f) + 1.0f) / 2.0f);
-		m_PointLights[1].Position = Vec3(7.0f, 2.0f, 10.0f * (sinf(2.0f) + 1.0f) / 2.0f);
-		m_pEffect->SetPointLights(2, m_PointLights);
+		m_LightMaterial->Use();
 
-		m_SpotLights[0].Position = m_Camera->position;
-		m_SpotLights[0].Direction = m_Camera->position + m_Camera->forward;
-		m_SpotLights[1].Position = Vec3(sinf(Time::ElapsedTime()), 2.0f, -1.0f);
-		m_pEffect->SetSpotLights(2, m_SpotLights);
+		// Update spot light, to point at male model
+		m_SpotLights[0].Position = Vec3(sinf(Time::ElapsedTime() * 2.0f), 5, 5.0f);
+		m_SpotLights[0].Direction = Vec3(-0.5f, -1.0f, 0.0f)/*male mesh pos*/ - m_SpotLights[0].Position;
 
-		m_pEffect->SetDirectionalLight(m_directionalLight);
-		m_pEffect->SetEyeWorldPos(m_Camera->position);
-		m_pEffect->SetMatSpecularIntensity(0.2f);
-		m_pEffect->SetMatSpecularPower(0.2f);
+		m_LightMaterial->setSpotLights(1, m_SpotLights);
+		m_LightMaterial->setPointLights(0, nullptr);//m_PointLights);
+		m_LightMaterial->setEyeWorldPos(m_Camera->position);
 	}
-
-	// Would get the transformation matrix from each object that needed rendering
-	Mat4 malemodelMat =
-		glm::translate(Mat4(1.0f), Vec3(-0.5f, -1.0f, 0.0f)) *
-		//( Maths::RotateY(cosf(Time::ElapsedTime() * 0.1f) * 3.0f) ) *
-		glm::scale(Mat4(1.0f), Vec3(1.0f));
-
-	Mat4 dinomodelMat =
-		glm::translate(Mat4(1.0f), Vec3(0.8f, -1.0f, 0.0f)) *
-		//(Maths::RotateY(sinf(Time::ElapsedTime() * 0.1f) * 3.0f)) *
-		glm::scale(Mat4(1.0f), Vec3(0.05f));
-
-	Mat4 floorMat =
-		glm::translate(Mat4(1.0f), Vec3(0.0f, -2.0f, -3.0f)) *
-		glm::scale(Mat4(1.0f), Vec3(30.0f, 0.5f, 30.0f));
 
 	// Uniforms
 	if (!useLighting)
 	{
-		m_DiffuseMat->setProjXform(m_Camera->projection);
-		m_DiffuseMat->setViewXform(m_Camera->view);
+		m_DiffuseMaterial->setProjXform(m_Camera->projection);
+		m_DiffuseMaterial->setViewXform(m_Camera->view);
 	}
 
 	int i = 0;
@@ -468,48 +554,25 @@ void Renderer::Render()
 		Mesh* thisMesh = (*mesh);
 		glBindVertexArray(thisMesh->m_VAO);
 
-		if (i == 0)
+		if (!useLighting)
 		{
-			if (!useLighting)
-			{
-				m_DiffuseMat->setModelXform(malemodelMat);
-			}
-			else
-			{
-				m_pEffect->SetWorldMatrix(malemodelMat);
-				m_pEffect->SetWVP(m_Camera->projection * m_Camera->view * malemodelMat);
-			}
-		}
-		else if(i == 1)
-		{
-			if (!useLighting)
-			{
-				m_DiffuseMat->setModelXform(dinomodelMat);
-			}
-			else
-			{
-				m_pEffect->SetWVP(m_Camera->projection * m_Camera->view * dinomodelMat);
-				m_pEffect->SetWorldMatrix(dinomodelMat);
-			}
+			m_DiffuseMaterial->setModelXform(TRANSFORMS[i]);
 		}
 		else
 		{
-			if (!useLighting)
-			{
-				m_DiffuseMat->setModelXform(floorMat);
-			}
-			else
-			{
-				m_pEffect->SetWVP(m_Camera->projection * m_Camera->view * floorMat);
-				m_pEffect->SetWorldMatrix(floorMat);
-			}
+			m_LightMaterial->setWorldMatrix(TRANSFORMS[i]);
+			m_LightMaterial->setWVP(m_Camera->projection * m_Camera->view * TRANSFORMS[i]);
+			
+			// This is the object you expect to receive shadows, in this case it's the hard coded floor
+			m_LightMaterial->setLightWVP(m_LightCamera->projection * m_LightCamera->view * TRANSFORMS[i]);
+			
+			// Use this for sampler in light shader
+			m_ShadowFBO->BindForReading(GL_TEXTURE1);
 		}
-		++i;
 
-		for (std::vector<SubMesh>::iterator i = thisMesh->m_MeshLayouts.begin();
-			i != thisMesh->m_MeshLayouts.end(); i++)
+		for (std::vector<SubMesh>::iterator j = thisMesh->m_MeshLayouts.begin(); j != thisMesh->m_MeshLayouts.end(); j++)
 		{
-			SubMesh subMesh = (*i);
+			SubMesh subMesh = (*j);
 
 			if (subMesh.TextureIndex != INVALID_TEXTURE_LOCATION)
 			{
@@ -531,10 +594,11 @@ void Renderer::Render()
 		}
 
 		glBindVertexArray(0);
+		++i;
 	}
 
 	RenderText("CGR Engine", 8, 16);
-	//RenderText("Cam Fwd: " + util::vec3_to_str(m_Camera->forward), 8, 16);
+	RenderText("Cam Fwd: " + util::vec3_to_str(m_Camera->forward), 8, 32);
 }
 
 void Renderer::RenderText(const std::string& txt, float x, float y, FontAlign fa, const Colour& colour)
@@ -558,18 +622,15 @@ void Renderer::RenderText(const std::string& txt, float x, float y, FontAlign fa
 	*/
 
 	// Activate corresponding render state	
-	m_FontTechnique->Use();
-	//glUseProgram(m_FontShaderProg);
+	m_FontMaterial->Use();
 
 	Mat4 projection = glm::ortho(0.0f, (float)Screen::Instance()->FrameBufferWidth(), 
 		0.0f, 
 		(float)Screen::Instance()->FrameBufferHeight());
 
 	
-	m_FontTechnique->setProjection(projection);
-	m_FontTechnique->setColour(colour.Normalize());
-	//glUniformMatrix4fv(glGetUniformLocation(m_FontShaderProg, "proj_xform"), 1, GL_FALSE, glm::value_ptr(projection));
-	//glUniform4fv(glGetUniformLocation(m_FontShaderProg, "text_colour"),1, glm::value_ptr(colour.Normalize()));
+	m_FontMaterial->setProjection(projection);
+	m_FontMaterial->setColour(colour.Normalize());
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindVertexArray(m_Font->m_Vao);
@@ -583,8 +644,8 @@ void Renderer::RenderText(const std::string& txt, float x, float y, FontAlign fa
 		float xpos = x + ch.bearingX;
 		float ypos = y - (ch.sizeY - ch.bearingY);
 
-		float w = ch.sizeX;
-		float h = ch.sizeY;
+		float w = (float)ch.sizeX;
+		float h = (float)ch.sizeY;
 
 		if (fa == FontAlign::Centre)
 		{
@@ -628,26 +689,31 @@ void Renderer::RenderText(const std::string& txt, float x, float y, FontAlign fa
 
 void Renderer::Close()
 {
+	// Clear meshes
 	for (size_t i = 0; i < m_Meshes.size(); ++i)
 	{
 		SAFE_DELETE(m_Meshes[i]);
 	}
+	SAFE_DELETE(m_SkyboxMesh);
+	m_Meshes.clear();
 
+	// Clear Textures
 	for (size_t i = 0; i < m_Textures.size(); ++i)
 	{
 		SAFE_DELETE(m_Textures[i]);
 	}
-
-	m_Meshes.clear();
 	m_Textures.clear();
 
-	SAFE_CLOSE(m_FontTechnique);
-	SAFE_CLOSE(m_DiffuseMat);
-	SAFE_CLOSE(m_SkyBoxMat);
+	// Clean materials
+	SAFE_CLOSE(m_FontMaterial);
+	SAFE_CLOSE(m_LightMaterial);
+	SAFE_CLOSE(m_DiffuseMaterial);
+	SAFE_CLOSE(m_SkyBoxMaterial);
+	SAFE_CLOSE(m_SkyBoxMaterial);
 
+	// Other objects
 	SAFE_CLOSE(m_Font);
-	SAFE_CLOSE(m_pEffect);
-
-	SAFE_DELETE(m_SkyboxMesh);
 	SAFE_DELETE(m_Camera);
+	SAFE_DELETE(m_LightCamera);
+	SAFE_DELETE(m_ShadowFBO);
 }

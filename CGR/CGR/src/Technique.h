@@ -128,6 +128,81 @@ protected:
 private:
 };
 
+class LightTechnique : public RenderTechnique
+{
+public:
+	static const unsigned int MAX_POINT_LIGHTS = 2;
+	static const unsigned int MAX_SPOT_LIGHTS = 2;
+
+	LightTechnique();
+	bool Init() override;
+
+	void setWVP(const Mat4& WVP);
+	void setWorldMatrix(const Mat4& WVP);
+	void setLightWVP(const Mat4& lwvp);
+
+	void setTextureUnit(unsigned int textureUnit);
+	void setShadowSampler(unsigned int sampler);
+
+	void setDirectionalLight(const DirectionalLight& light);
+	void setPointLights(unsigned int numLights, const PointLight* pLights);
+	void setSpotLights(unsigned int numLights, const SpotLight* pLights);
+	void setEyeWorldPos(const Vec3& eyeWorldPos);
+	void setMatSpecularIntensity(float intensity);
+	void setMatSpecularPower(float power);
+
+private:
+	GLuint m_Ufm_WvpXform;
+	GLuint m_Ufm_WorldXform;
+	GLuint m_Ufm_LightWvpXform;
+
+	GLuint m_Ufm_Sampler;
+	GLuint m_Ufm_ShadowSampler;
+
+	GLuint m_Ufm_EyeWorldPos;
+	GLuint m_Ufm_MatSpecularIntensity;
+	GLuint m_Ufm_MatSpecularPower;
+	GLuint m_Ufm_NumPointLights;
+	GLuint m_Ufm_NumSpotLights;
+
+	struct
+	{
+		GLuint colour;
+		GLuint ambientIntensity;
+		GLuint diffuseIntensity;
+		GLuint direction;
+	} m_Ufm_DirLight;
+
+	struct
+	{
+		GLuint colour;
+		GLuint ambientIntensity;
+		GLuint diffuseIntensity;
+		GLuint position;
+		struct
+		{
+			GLuint constant;
+			GLuint linear;
+			GLuint exp;
+		} Atten;
+	} m_Ufm_PointLights[MAX_POINT_LIGHTS];
+
+	struct {
+		GLuint colour;
+		GLuint ambientIntensity;
+		GLuint diffuseIntensity;
+		GLuint position;
+		GLuint direction;
+		GLuint cutoff;
+		struct {
+			GLuint constant;
+			GLuint linear;
+			GLuint exp;
+		} Atten;
+	} m_Ufm_SpotLights[MAX_SPOT_LIGHTS];
+
+};
+
 class FontTechnique : public RenderTechnique
 {
 public:
@@ -162,7 +237,7 @@ class BasicDiffuseTechnique : public RenderTechnique
 {
 public:
 	BasicDiffuseTechnique();
-	bool Init();
+	bool Init() override;
 
 	void setModelXform(const Mat4& m);
 	void setProjXform(const Mat4& m);
@@ -172,6 +247,20 @@ private:
 	GLuint m_Ufm_ModelXform;
 	GLuint m_Ufm_ViewXform;
 	GLuint m_Ufm_ProjXform;
+};
+
+class ShadowMapTechnique : public RenderTechnique
+{
+public:
+	ShadowMapTechnique();
+
+	bool Init() override;
+	void setWvpXform(const Mat4& wvp);
+	void setTextureUnit(unsigned int textureUnit);
+
+private:
+	GLuint m_Ufm_WvpXform;
+	GLuint m_Ufm_TextureLocation;
 };
 
 

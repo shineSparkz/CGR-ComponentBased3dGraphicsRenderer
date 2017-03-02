@@ -95,6 +95,15 @@ void SubMesh::Init(const aiMesh* paiMesh, std::vector<Vertex>& vertices, std::ve
 }
 
 //--------------------------------
+Mesh::Mesh() :
+	m_IndexVBO(0),
+	m_VAO(0),
+	m_MeshLayouts(),
+	m_TextureHandles(),
+	m_VertexVBO(0)
+{
+}
+
 Mesh::~Mesh()
 {
 	OpenGLLayer::clean_GL_vao(&this->m_VAO, 1);

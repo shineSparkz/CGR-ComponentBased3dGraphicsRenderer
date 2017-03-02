@@ -8,6 +8,7 @@
 #include "Screen.h"
 #include "math_utils.h"
 #include "utils.h"
+#include "Renderer.h"
 
 RenderWindow::RenderWindow() :
 	m_Window(nullptr),
@@ -143,6 +144,7 @@ void RenderWindow::window_size_callback(GLFWwindow* window, int width, int heigh
 	{
 		screen->m_ScreenWidth = width;
 		screen->m_ScreenHeight = height;
+		Renderer::Instance()->WindowSizeChanged(width, height);
 		WRITE_LOG("window size callback: width:" + util::to_str(width) + " height:" + util::to_str(height), "normal");
 	}
 }

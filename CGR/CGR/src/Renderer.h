@@ -8,22 +8,26 @@
 #include "Vertex.h"
 #include "FontAlign.h"
 #include <vector>
+#include "Singleton.h"//remove this and use evnts
 
 class Mesh;
-class LightingTechnique;
+class LightTechnique;
 class BasicDiffuseTechnique;
 class Camera;
 class Font;
 class Texture;
 class FontTechnique;
 class SkyboxTechnique;
+class ShadowFrameBuffer;
+class ShadowMapTechnique;
 
-class Renderer
+class Renderer : public Singleton<Renderer>
 {
 public:
 	Renderer();
 
 	bool Init();
+	void ShadowPass();
 	void Render();
 	void Close();
 	void ReloadShaders();
@@ -31,27 +35,42 @@ public:
 	void RenderText(const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White() );
 	Texture* GetTexture(size_t index);
 
-private:
-	// ---- Keeping ----
-	FontTechnique* m_FontTechnique{ nullptr };
+	void WindowSizeChanged(int w, int h);
 
-	// ---- Removing ----
-	std::vector<Mesh*> m_Meshes;
+private:
+	// These will ALL be moved later, this is not dynamic or user enanled, but not concerned at this stage
+	bool setRenderStates();
+	bool setFrameBuffers();
+	bool setLights();
+	bool setCamera();
+	bool loadFonts();
+	bool loadTetxures();
+	bool loadMeshes();
+	bool createMaterials();
+
+private:
+	// Resources
 	std::vector<Texture*> m_Textures;
+	std::vector<Mesh*> m_Meshes;	// these are mesh instances, not actual mesh resources, needs refactor
 	Mesh* m_SkyboxMesh;
 
-	Font* m_Font{ nullptr };
-	//GLuint m_FontShaderProg;
-	Camera* m_Camera{ nullptr };
+	// Objects
+	Font* m_Font;
+	Camera* m_Camera;
+	Camera* m_LightCamera;
+	ShadowFrameBuffer* m_ShadowFBO;
 
-	LightingTechnique* m_pEffect{ nullptr };
-	BasicDiffuseTechnique* m_DiffuseMat{ nullptr };
-	SkyboxTechnique* m_SkyBoxMat{ nullptr };
+	// 'Materials'
+	FontTechnique* m_FontMaterial;
+	LightTechnique* m_LightMaterial;
+	BasicDiffuseTechnique* m_DiffuseMaterial;
+	SkyboxTechnique* m_SkyBoxMaterial;
+	ShadowMapTechnique* m_ShadowMaterial;
 	
-	// These would be in the scene, maybe even component based
-	DirectionalLight m_directionalLight;
-	SpotLight m_SpotLights[2];
-	PointLight m_PointLights[2];
+	// Lights -- here for now
+	DirectionalLight m_DirectionalLight;
+	SpotLight m_SpotLights[1];
+	//PointLight m_PointLights[2];
 };
 
 #endif
