@@ -8,6 +8,7 @@
 #include "Vertex.h"
 #include "FontAlign.h"
 #include <vector>
+#include <map>
 #include "Singleton.h"//remove this and use evnts
 
 class Mesh;
@@ -48,9 +49,11 @@ private:
 	bool loadMeshes();
 	bool createMaterials();
 
+	bool loadTexture(const std::string& path, size_t key_store, int glTextureIndex);
+
 private:
 	// Resources
-	std::vector<Texture*> m_Textures;
+	std::map<size_t, Texture*> m_Textures;
 	std::vector<Mesh*> m_Meshes;	// these are mesh instances, not actual mesh resources, needs refactor
 	Mesh* m_SkyboxMesh;
 

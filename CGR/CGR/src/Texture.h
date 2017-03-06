@@ -2,13 +2,14 @@
 #define __TEXTURE_H__
 
 #include "gl_headers.h"
+#include <string>
 
 class Image;
 
 class Texture
 {
 public:
-	Texture(GLenum target, int activeTexture);
+	Texture(const std::string& name, GLenum target, int activeTexture);
 	~Texture();
 
 	static bool createTex3D(GLuint* texture, Image* images[6]);
@@ -22,6 +23,7 @@ public:
 	void Bind();
 
 private:
+	std::string name;
 	int m_ActiveTexture;
 	GLenum m_Target;
 	GLuint m_TexturePtr;

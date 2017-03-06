@@ -10,98 +10,6 @@
 
 #include "Shader.h"
 
-class Technique
-{
-public:
-	Technique();
-	virtual ~Technique();
-
-	void Close();
-
-	virtual bool Init();
-	void Enable();
-
-protected:
-	bool AddShader(GLenum ShaderType, const char* pFilename);
-	bool Finalize();
-
-	GLint GetUniformLocation(const char* pUniformName);
-	GLint GetProgramParam(GLint param);
-
-	GLuint m_shaderProg;
-
-private:
-	typedef std::list<GLuint> ShaderObjList;
-	ShaderObjList m_shaderObjList;
-};
-
-class LightingTechnique : public Technique
-{
-public:
-	static const unsigned int MAX_POINT_LIGHTS = 2;
-	static const unsigned int MAX_SPOT_LIGHTS = 2;
-
-	LightingTechnique();
-
-	virtual bool Init();
-
-	void SetWVP(const Mat4& WVP);
-	void SetWorldMatrix(const Mat4& WVP);
-	void SetTextureUnit(unsigned int TextureUnit);
-	void SetDirectionalLight(const DirectionalLight& Light);
-	void SetPointLights(unsigned int NumLights, const PointLight* pLights);
-	void SetSpotLights(unsigned int NumLights, const SpotLight* pLights);
-	void SetEyeWorldPos(const Vec3& EyeWorldPos);
-	void SetMatSpecularIntensity(float Intensity);
-	void SetMatSpecularPower(float Power);
-
-private:
-	GLuint m_WVPLocation;
-	GLuint m_WorldMatrixLocation;
-	GLuint m_samplerLocation;
-	GLuint m_eyeWorldPosLocation;
-	GLuint m_matSpecularIntensityLocation;
-	GLuint m_matSpecularPowerLocation;
-	GLuint m_numPointLightsLocation;
-	GLuint m_numSpotLightsLocation;
-
-	struct
-	{
-		GLuint Color;
-		GLuint AmbientIntensity;
-		GLuint DiffuseIntensity;
-		GLuint Direction;
-	} m_dirLightLocation;
-
-	struct
-	{
-		GLuint Color;
-		GLuint AmbientIntensity;
-		GLuint DiffuseIntensity;
-		GLuint Position;
-		struct
-		{
-			GLuint Constant;
-			GLuint Linear;
-			GLuint Exp;
-		} Atten;
-	} m_pointLightsLocation[MAX_POINT_LIGHTS];
-
-	struct {
-		GLuint Color;
-		GLuint AmbientIntensity;
-		GLuint DiffuseIntensity;
-		GLuint Position;
-		GLuint Direction;
-		GLuint Cutoff;
-		struct {
-			GLuint Constant;
-			GLuint Linear;
-			GLuint Exp;
-		} Atten;
-	} m_spotLightsLocation[MAX_SPOT_LIGHTS];
-};
-
 class Camera;
 class Mesh;
 class Renderer;
@@ -143,6 +51,7 @@ public:
 
 	void setTextureUnit(unsigned int textureUnit);
 	void setShadowSampler(unsigned int sampler);
+	void setNormalSampler(unsigned int sampler);
 
 	void setDirectionalLight(const DirectionalLight& light);
 	void setPointLights(unsigned int numLights, const PointLight* pLights);
@@ -156,8 +65,9 @@ private:
 	GLuint m_Ufm_WorldXform;
 	GLuint m_Ufm_LightWvpXform;
 
-	GLuint m_Ufm_Sampler;
+	GLuint m_Ufm_TextureSampler;
 	GLuint m_Ufm_ShadowSampler;
+	GLuint m_Ufm_NormalSampler;
 
 	GLuint m_Ufm_EyeWorldPos;
 	GLuint m_Ufm_MatSpecularIntensity;

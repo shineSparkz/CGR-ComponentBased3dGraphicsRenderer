@@ -10,4 +10,12 @@ struct Vertex
 	Vec2 texcoord;
 };
 
+struct VertexTan
+{
+	Vec3 position;
+	Vec3 normal;
+	Vec2 texcoord;
+	Vec3 tangent;
+};
+
 #endif

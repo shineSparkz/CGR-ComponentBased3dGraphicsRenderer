@@ -24,13 +24,23 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-// TODO : Remove this tragedy
-const Mat4 MALE_XFORM = glm::translate(Mat4(1.0f), Vec3(-0.5f, -1.5f, 0.0f)) *
-	glm::scale(Mat4(1.0f), Vec3(1.0f));
-const Mat4 DINO_XFORM = glm::translate(Mat4(1.0f), Vec3(1.8f, -1.5f, 0.0f)) *
-	glm::scale(Mat4(1.0f), Vec3(0.05f));
-const Mat4 FLOOR_XFORM = glm::translate(Mat4(1.0f), Vec3(0.0f, -2.0f, -3.0f)) *
-	glm::scale(Mat4(1.0f), Vec3(30.0f, 0.5f, 30.0f));
+// Transforms -- for now
+const Mat4 MALE_XFORM =  glm::translate(Mat4(1.0f), Vec3(-0.5f, -1.5f, 0.0f))  *  glm::scale(Mat4(1.0f), Vec3(1.0f));
+const Mat4 DINO_XFORM =  glm::translate(Mat4(1.0f), Vec3(1.8f, -1.5f, 0.0f))   *  glm::scale(Mat4(1.0f), Vec3(0.05f));
+const Mat4 CUBE1_XFORM = glm::translate(Mat4(1.0f), Vec3(-3.1f, 0.0f, 0.0f))   *  glm::scale(Mat4(1.0f), Vec3(0.5f));
+const Mat4 CUBE2_XFORM = glm::translate(Mat4(1.0f), Vec3(-2.0f, 0.0f, 0.0f))   *  glm::scale(Mat4(1.0f), Vec3(0.5f));
+const Mat4 FLOOR_XFORM = glm::translate(Mat4(1.0f), Vec3(0.0f, -2.0f, -3.0f))  *  glm::scale(Mat4(1.0f), Vec3(30.0f, 0.5f, 30.0f));
+
+// Texture ID's -- for now
+const size_t MALE_TEX1 = 0;
+const size_t MALE_TEX2 = 1;
+const size_t DINO_TEX = 2;
+const size_t WALL_TEX = 3;
+const size_t SKYBOX_TEX = 4;
+const size_t BRICK_TEX = 5;
+const size_t BRICK_NORM_TEX = 6;
+const size_t FAKE_NORMAL_TEX = 7;
+
 
 std::vector<Mat4> TRANSFORMS;
 
@@ -108,7 +118,7 @@ bool Renderer::setLights()
 {
 	// Dir Light
 	m_DirectionalLight.Color = Vec3(1.0f, 1.0f, 1.0f);
-	m_DirectionalLight.AmbientIntensity = 0.05f;
+	m_DirectionalLight.AmbientIntensity = 0.1f;
 	m_DirectionalLight.DiffuseIntensity = 0.01f;
 	m_DirectionalLight.Direction = Vec3(1.0f, -1.0f, 0.0f);
 
@@ -186,36 +196,45 @@ bool Renderer::loadFonts()
 	return true;
 }
 
+bool Renderer::loadTexture(const std::string& path, size_t key_store, int glTextureIndex)
+{
+	Image i;
+	std::string full_path = "../resources/textures/" + path;
+	if (!i.LoadImg(full_path.c_str()))
+	{
+		WRITE_LOG("Failed to load texture: " + path, "error");
+		return false;
+	}
+
+	if (m_Textures.find(key_store) != m_Textures.end())
+	{
+		WRITE_LOG("Tried to use same texture key twice", "error");
+		return false;
+	}
+
+	Texture* t = new Texture(path, GL_TEXTURE_2D, glTextureIndex);
+	m_Textures[key_store] = t;
+
+	if (!t->Create(&i))
+	{
+		WRITE_LOG("Failed to create texture: " + path, "error");
+		return false;
+	}
+	
+	return true;
+}
+
 bool Renderer::loadTetxures()
 {
-	// ---- Images ----
-	Image maleImg;
-	if (!maleImg.LoadImg("../resources/textures/male_body_low_albedo.tga"))
-	{
-		WRITE_LOG("Failed to load wall texture", "error");
-		return false;
-	}
+	bool success = true;
 
-	Image maleImg2;
-	if (!maleImg2.LoadImg("../resources/textures/male_body_high_albedo.tga"))
-	{
-		WRITE_LOG("Failed to load wall texture", "error");
-		return false;
-	}
-
-	Image dinoImg;
-	if (!dinoImg.LoadImg("../resources/textures/dino_diffuse.tga"))
-	{
-		WRITE_LOG("Failed to load wall texture", "error");
-		return false;
-	}
-
-	Image wallImg;
-	if (!wallImg.LoadImg("../resources/textures/wall.tga"))
-	{
-		WRITE_LOG("Failed to load wall texture", "error");
-		return false;
-	}
+	success &= this->loadTexture("male_body_low_albedo.tga", MALE_TEX1, GL_TEXTURE0);
+	success &= this->loadTexture("male_body_high_albedo.tga", MALE_TEX2, GL_TEXTURE0);
+	success &= this->loadTexture("dino_diffuse.tga", DINO_TEX, GL_TEXTURE0);
+	success &= this->loadTexture("wall.tga", WALL_TEX, GL_TEXTURE0);
+	success &= this->loadTexture("bricks/bricks.tga", BRICK_TEX, GL_TEXTURE0);
+	success &= this->loadTexture("bricks/bricks_normal.tga", BRICK_NORM_TEX, GL_TEXTURE2);
+	success &= this->loadTexture("default_normal_map.tga", FAKE_NORMAL_TEX, GL_TEXTURE2);
 
 	// Load Images for skybox
 	Image* images[6];
@@ -245,71 +264,58 @@ bool Renderer::loadTetxures()
 	images[4] = &i4;
 	images[5] = &i5;
 
-	// ---- Textures ----
-	Texture* maleTex2 = new Texture(GL_TEXTURE_2D, GL_TEXTURE0);
-	Texture* maleTex = new Texture(GL_TEXTURE_2D, GL_TEXTURE0);
-	Texture* dinoTex = new Texture(GL_TEXTURE_2D, GL_TEXTURE0);
-	Texture* wallTex = new Texture(GL_TEXTURE_2D, GL_TEXTURE0);
-	Texture* cubeMapTex = new Texture(GL_TEXTURE_CUBE_MAP, GL_TEXTURE0);
+	Texture* cubeMapTex = new Texture("skyboxCubemap", GL_TEXTURE_CUBE_MAP, GL_TEXTURE0);
+	m_Textures[SKYBOX_TEX] = cubeMapTex;
+	success &= cubeMapTex->Create(images);
 
-	m_Textures.push_back(maleTex);
-	m_Textures.push_back(maleTex2);
-	m_Textures.push_back(dinoTex);
-	m_Textures.push_back(wallTex);
-	m_Textures.push_back(cubeMapTex);
-
-	if (!maleTex2->Create(&maleImg2)) return false;
-	if (!maleTex->Create(&maleImg)) return false;
-	if (!dinoTex->Create(&dinoImg))return false;
-	if (!wallTex->Create(&wallImg))return false;
-	if (!cubeMapTex->Create(images))return false;
-
-	return true;
+	return success;
 }
 
 bool Renderer::loadMeshes()
 {
-	const size_t MALE_TEX1 = 0;
-	const size_t MALE_TEX2 = 1;
-	const size_t DINO_TEX = 2;
-	const size_t WALL_TEX = 3;
-	const size_t CUBE_TEX = 4;
-
 	// ---- Load Meshes ----
 	Mesh* male = new Mesh();
-	if (!male->Load("male.obj")) { SAFE_DELETE(male); return false; }
-
-	// Create Mat
+	if (!male->Load("male.obj", true)) { return false; }
 	m_Meshes.push_back(male);
 	if (!male->AddTexture(MALE_TEX2, 0)) return false;
+	if (!male->AddTexture(FAKE_NORMAL_TEX, 0)) return false;
 	if (!male->AddTexture(MALE_TEX1, 1)) return false;
+	if (!male->AddTexture(FAKE_NORMAL_TEX, 1)) return false;
 
 	Mesh* dino = new Mesh();
-	if (!dino->Load("dino.obj")) { SAFE_DELETE(dino); return false; }
-
-	if (!dino->AddTexture(DINO_TEX)) return false;	// if no 3rd param then apply to all
 	m_Meshes.push_back(dino);
+	if (!dino->Load("dino.obj", true)) { return false; }
+	if (!dino->AddTexture(DINO_TEX)) return false;	// if no 3rd param then apply to all
+	if (!dino->AddTexture(FAKE_NORMAL_TEX)) return false;
 
-	Mesh* cube = new Mesh();
-	if (!cube->Load("cube.obj"))
-	{
-		SAFE_DELETE(cube);
-		return false;
-	}
+	Mesh* cube1 = new Mesh();
+	m_Meshes.push_back(cube1);
+	if (!cube1->Load("cube.obj", true)) { return false; }
+	if (!cube1->AddTexture(BRICK_TEX)) return false;
+	if (!cube1->AddTexture(BRICK_NORM_TEX)) return false;
 
-	if (!cube->AddTexture(WALL_TEX)) return false;	// if no 3rd param then apply to all
-	m_Meshes.push_back(cube);
+	Mesh* cube2 = new Mesh();
+	m_Meshes.push_back(cube2);
+	if (!cube2->Load("cube.obj", true)) { return false; }
+	if (!cube2->AddTexture(BRICK_TEX)) return false;	
+	if (!cube2->AddTexture(FAKE_NORMAL_TEX)) return false;
 
+	// -- This is last for current shadows hack --
+	Mesh* floor = new Mesh();
+	m_Meshes.push_back(floor);
+	if (!floor->Load("cube.obj", true)){return false;}
+	if (!floor->AddTexture(WALL_TEX)) return false;
+	if (!floor->AddTexture(FAKE_NORMAL_TEX)) return false;
+
+	// This is separate (for now)
 	m_SkyboxMesh = new Mesh();
-	if (!m_SkyboxMesh->Load("cube.obj"))
-	{
-		return false;
-	}
-
-	if (!m_SkyboxMesh->AddTexture(CUBE_TEX)) return false;
+	if (!m_SkyboxMesh->Load("cube.obj", false)) { return false; }
+	if (!m_SkyboxMesh->AddTexture(SKYBOX_TEX)) return false;
 
 	TRANSFORMS.push_back(MALE_XFORM);
 	TRANSFORMS.push_back(DINO_XFORM);
+	TRANSFORMS.push_back(CUBE1_XFORM);
+	TRANSFORMS.push_back(CUBE2_XFORM);
 	TRANSFORMS.push_back(FLOOR_XFORM);
 
 	return true;
@@ -344,6 +350,7 @@ bool Renderer::createMaterials()
 	m_LightMaterial->Use();
 	m_LightMaterial->setTextureUnit(0);
 	m_LightMaterial->setShadowSampler(1);
+	m_LightMaterial->setNormalSampler(2);
 	m_LightMaterial->setDirectionalLight(m_DirectionalLight);
 	m_LightMaterial->setMatSpecularIntensity(1.0f);
 	m_LightMaterial->setMatSpecularPower(2.0f);
@@ -526,6 +533,8 @@ void Renderer::Render()
 	if (!useLighting)
 	{
 		m_DiffuseMaterial->Use();
+		m_DiffuseMaterial->setProjXform(m_Camera->projection);
+		m_DiffuseMaterial->setViewXform(m_Camera->view);
 	}
 	else
 	{
@@ -540,14 +549,8 @@ void Renderer::Render()
 		m_LightMaterial->setEyeWorldPos(m_Camera->position);
 	}
 
-	// Uniforms
-	if (!useLighting)
-	{
-		m_DiffuseMaterial->setProjXform(m_Camera->projection);
-		m_DiffuseMaterial->setViewXform(m_Camera->view);
-	}
-
 	int i = 0;
+	
 	// ---- Render ----
 	for (auto mesh = m_Meshes.begin(); mesh != m_Meshes.end(); ++mesh)
 	{
@@ -574,9 +577,9 @@ void Renderer::Render()
 		{
 			SubMesh subMesh = (*j);
 
-			if (subMesh.TextureIndex != INVALID_TEXTURE_LOCATION)
+			for (auto tex = subMesh.TextureIndices.begin(); tex != subMesh.TextureIndices.end(); ++tex)
 			{
-				m_Textures[thisMesh->m_TextureHandles[subMesh.TextureIndex]]->Bind();
+				m_Textures[ thisMesh->m_TextureHandles[(*tex)]]->Bind();
 			}
 
 			if (subMesh.NumIndices > 0)
@@ -709,7 +712,7 @@ void Renderer::Close()
 	SAFE_CLOSE(m_LightMaterial);
 	SAFE_CLOSE(m_DiffuseMaterial);
 	SAFE_CLOSE(m_SkyBoxMaterial);
-	SAFE_CLOSE(m_SkyBoxMaterial);
+	SAFE_CLOSE(m_ShadowMaterial);
 
 	// Other objects
 	SAFE_CLOSE(m_Font);

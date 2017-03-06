@@ -5,6 +5,7 @@ const int MAX_SPOT_LIGHTS = 2;
 in vec2 varying_texcoord;                                                                
 in vec3 varying_normal;                                                                    
 in vec3 varying_position;                      
+in vec3 varying_tangent;
 in vec4 varying_light_position;                                            
                                                                                     
 out vec4 frag_colour;                                                                 
@@ -47,9 +48,12 @@ uniform int u_NumPointLights;
 uniform int u_NumSpotLights;                                                                 
 uniform DirectionalLight u_DirectionalLight;                                                 
 uniform PointLight u_PointLights[MAX_POINT_LIGHTS];                                          
-uniform SpotLight u_SpotLights[MAX_SPOT_LIGHTS];                                             
+uniform SpotLight u_SpotLights[MAX_SPOT_LIGHTS];           
+                                  
 uniform sampler2D u_Sampler;     
-uniform sampler2D u_ShadowSampler;                                                            
+uniform sampler2D u_ShadowSampler;              
+uniform sampler2D u_NormalSampler;
+                                              
 uniform vec3 u_EyeWorldPos;                                                                  
 uniform float u_MatSpecularIntensity;                                                        
 uniform float u_SpecularPower;        
@@ -130,17 +134,33 @@ vec4 CalcSpotLight(SpotLight l, vec3 normal, vec4 lightSpacePos)
 	{                                                                                  
         return vec4(0,0,0,0);                                                               
     }                                                                                       
-}                                                                                           
+}                 
+
+vec3 CalcBumpedNormal()
+{
+	vec3 normal = normalize(varying_normal);
+	vec3 tangent = normalize(varying_tangent);
+	
+	tangent = normalize(tangent - dot(tangent, normal) * normal);
+	vec3 biTan = cross(tangent, normal);
+	vec3 bumpNorm = texture(u_NormalSampler, varying_texcoord).xyz;
+	
+	bumpNorm = 2.0 * bumpNorm - vec3(1.0, 1.0, 1.0);                              
+    vec3 newNormal;                                                                         
+    mat3 TBN = mat3(tangent, biTan, normal);                                            
+    newNormal = TBN * bumpNorm;                                                        
+    newNormal = normalize(newNormal);                                                       
+    return newNormal;   
+}	
                                                                                             
 void main()                                                                                 
 {                                                                                           
-    vec3 normal = normalize(varying_normal);                                                       
+    vec3 normal =  CalcBumpedNormal();// normalize(varying_normal);                                                       
     vec4 totalLight = CalcDirectionalLight(normal);                                         
            
     for (int i = 0 ; i < u_NumPointLights ; i++)
 	{     
 		totalLight += CalcPointLight(u_PointLights[i], normal, varying_light_position);
-		//totalLight += pointLight(u_PointLights[i], normal, u_EyeWorldPos, varying_light_position);
 	}
 
     for (int i = 0 ; i < u_NumSpotLights ; i++)

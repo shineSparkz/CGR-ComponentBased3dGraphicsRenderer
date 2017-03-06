@@ -7,12 +7,12 @@
 bool Texture::createTex3D(GLuint* texture, Image* images[6])
 {
 	glGenTextures(1, texture);
-	glActiveTexture(GL_TEXTURE0);
+	//glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, *texture);
 
 	GLenum pixel_formats[] = { 0, GL_RED, GL_RG, GL_BGR, GL_BGRA };
 
-	for (size_t i = 0; i < 6; ++i)
+	for (int i = 0; i < 6; ++i)
 	{
 		glTexImage2D(
 			GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
@@ -62,7 +62,7 @@ bool Texture::create_tex2D(GLuint* textureOut, int active, GLint internalformat,
 
 	glGenTextures(1, textureOut);
 	glBindTexture(GL_TEXTURE_2D, *textureOut);
-	glActiveTexture(active);
+	//glActiveTexture(active);
 
 	// Set texture options
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapS);
@@ -95,7 +95,8 @@ bool Texture::create_tex2D(GLuint* textureOut, int active, GLint internalformat,
 }
 
 
-Texture::Texture(GLenum target, int active) :
+Texture::Texture(const std::string& name_, GLenum target, int active) :
+	name(name_),
 	m_Target(target),
 	m_ActiveTexture(active),
 	m_TexturePtr(0)
