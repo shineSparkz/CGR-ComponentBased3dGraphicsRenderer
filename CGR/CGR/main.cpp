@@ -4,7 +4,7 @@ int main(void)
 {
 	Application* app = new Application();
 
-	if (app->Init(800, 600, true, "changme", 0, 4, 3, 3, 3))
+	if (app->Init(1280, 720, true, "CGR Render Engine - Alex Spellman", 0, 16, 9, 3, 3))
 	{
 		// User Adds scenes here
 		

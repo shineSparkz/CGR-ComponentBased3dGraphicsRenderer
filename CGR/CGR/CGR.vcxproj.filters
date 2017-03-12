@@ -123,6 +123,12 @@
     <ClInclude Include="src\ShadowFrameBuffer.h">
       <Filter>Render</Filter>
     </ClInclude>
+    <ClInclude Include="src\BillboardList.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Terrain.h">
+      <Filter>Render</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -187,6 +193,12 @@
       <Filter>Render</Filter>
     </ClCompile>
     <ClCompile Include="src\ShadowFrameBuffer.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\BillboardList.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Terrain.cpp">
       <Filter>Render</Filter>
     </ClCompile>
   </ItemGroup>

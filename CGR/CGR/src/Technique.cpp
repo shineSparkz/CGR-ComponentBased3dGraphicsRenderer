@@ -110,6 +110,11 @@ void RenderTechnique::setInt_(GLuint* i, GLint val)
 	glUniform1i(*i, val);
 }
 
+void RenderTechnique::setVec2_(GLuint* i, const Vec2& val)
+{
+	glUniform2fv(*i, 1, glm::value_ptr(val));
+}
+
 void RenderTechnique::setVec3_(GLuint* i, const Vec3& val)
 {
 	//glUniform3f(*i, val.x, val.y, val.z);
@@ -662,4 +667,266 @@ void ShadowMapTechnique::setWvpXform(const Mat4& WVP)
 void ShadowMapTechnique::setTextureUnit(unsigned int textureUnit)
 {
 	this->setInt_(&m_Ufm_TextureLocation, textureUnit);
+}
+
+
+
+BillboardTechnique::BillboardTechnique() :
+	m_Ufm_CamPos(0),
+	m_Ufm_TextureMap(0),
+	m_Ufm_ViewProj(0)
+{
+}
+
+bool BillboardTechnique::Init()
+{
+	Shader vert(GL_VERTEX_SHADER);
+	Shader geom(GL_GEOMETRY_SHADER);
+	Shader frag(GL_FRAGMENT_SHADER);
+
+	// Set Attribute locations
+	ShaderAttrib vert_pos;
+	vert_pos.layout_location = 0;
+	vert_pos.name = "vertex_position";
+	vert.AddAttribute(vert_pos);
+
+	if (!vert.LoadShader("../resources/shaders/billboard_vs.glsl")) { return false; }
+	if (!geom.LoadShader("../resources/shaders/billboard_gs.glsl")) { return false; }
+	if (!frag.LoadShader("../resources/shaders/billboard_fs.glsl")) { return false; }
+
+	// Create a program with list of shaders
+	std::vector<Shader> shaders;
+	shaders.push_back(vert);
+	shaders.push_back(geom);
+	shaders.push_back(frag);
+	if (!this->CreateProgram(shaders, "frag_colour", 0)) { WRITE_LOG("Billboard technique failed to create program", "error"); return false; }
+
+	// Set Uniforms
+	if (!GetLocation(m_Ufm_CamPos, "u_CamPos")) { return false; }
+	if (!GetLocation(m_Ufm_Scale, "u_Scale")) { return false; }
+	if (!GetLocation(m_Ufm_TextureMap, "u_TextureMap")) { return false; }
+	if (!GetLocation(m_Ufm_ViewProj, "u_ViewProjXform")) { return false; }
+
+	// Delete these shaders, no need to hold on to them
+	vert.Close();
+	geom.Close();
+	frag.Close();
+
+	return true;
+}
+
+void BillboardTechnique::setViewProjXform(const Mat4& vp)
+{
+	this->setMat4_(&m_Ufm_ViewProj, 1, false, vp);
+}
+
+void BillboardTechnique::setCamPos(const Vec3& pos)
+{
+	this->setVec3_(&m_Ufm_CamPos, pos);
+}
+
+void BillboardTechnique::setTexureMapSampler(unsigned sampler)
+{
+	this->setInt_(&m_Ufm_TextureMap, sampler);
+}
+
+void BillboardTechnique::setBillboardScale(float scale)
+{
+	this->setFloat_(&m_Ufm_Scale, scale);
+}
+
+
+
+TerrainTechnique::TerrainTechnique()
+{
+}
+
+bool TerrainTechnique::Init()
+{
+	Shader vert(GL_VERTEX_SHADER);
+	Shader frag(GL_FRAGMENT_SHADER);
+
+	ShaderAttrib vert_pos, vert_norm, vert_tex;
+	vert_pos.layout_location = 0;
+	vert_norm.layout_location = 1;
+	vert_tex.layout_location = 2;
+	vert_pos.name = "vertex_position";
+	vert_norm.name = "vertex_normal";
+	vert_tex.name = "vertex_texcoord";
+
+	vert.AddAttribute(vert_pos);
+	vert.AddAttribute(vert_norm);
+	vert.AddAttribute(vert_tex);
+
+	if (!vert.LoadShader("../resources/shaders/terrain_vs.glsl"))
+	{
+		return false;
+	}
+
+	if (!frag.LoadShader("../resources/shaders/terrain_fs.glsl"))
+	{
+		return false;
+	}
+
+	std::vector<Shader> shaders;
+	shaders.push_back(vert);
+	shaders.push_back(frag);
+
+	if (!this->CreateProgram(shaders, "frag_colour", 0))
+	{
+		WRITE_LOG("Font technique failed to create program", "error");
+		return false;
+	}
+
+	this->Use();
+
+	// Uniforms - Tedious no?
+	if (!GetLocation(m_Ufm_DirLight.colour, "u_DirectionalLight.color")) { return false; }
+	if (!GetLocation(m_Ufm_DirLight.ambientIntensity, "u_DirectionalLight.ambientIntensity")) { return false; }
+	if (!GetLocation(m_Ufm_DirLight.direction, "u_DirectionalLight.dir")) { return false; }
+
+	if (!GetLocation(m_Ufm_Xforms.proj,  "matrices.projXform")) { return false; }
+	if (!GetLocation(m_Ufm_Xforms.view,  "matrices.viewXform")) { return false; }
+	if (!GetLocation(m_Ufm_Xforms.model, "matrices.modelXform")) { return false; }
+
+	if (!GetLocation(m_Ufm_MaxTexV, "u_MaxTexV")) { return false; }
+	if (!GetLocation(m_Ufm_MaxTexU, "u_MaxTexU")) { return false; }
+	if (!GetLocation(m_Ufm_RenderHeight, "u_RenderHeight")) { return false; }
+	if (!GetLocation(m_Ufm_Colour, "u_Colour")) { return false; }
+	//if (!GetLocation(m_Ufm_ShadowMap, "u_ShadowMap")) { return false; }
+	if (!GetLocation(m_Ufm_HeightMapScaleXform, "u_HeightMapScaleXform")) { return false; }
+
+	
+	for (unsigned int i = 0; i < ARRAY_SIZE_IN_ELEMENTS(m_Ufm_Samplers); ++i)
+	{
+		char Name[128];
+		memset(Name, 0, sizeof(Name));
+
+		SNPRINTF(Name, sizeof(Name), "u_Sampler[%d]", i);
+		if (!GetLocation(m_Ufm_Samplers[i], Name)) return false;
+	}
+	
+	return true;
+}
+
+void TerrainTechnique::setMatrices(Camera* camera, const Mat4& model)
+{
+	this->setMat4_(&m_Ufm_Xforms.view,  1, false, camera->view);
+	this->setMat4_(&m_Ufm_Xforms.proj,  1, false, camera->projection);
+	this->setMat4_(&m_Ufm_Xforms.model, 1, false, model);
+}
+
+void TerrainTechnique::setHeightMapScaleXform(const Mat4& vp)
+{
+	this->setMat4_(&m_Ufm_HeightMapScaleXform, 1, false, vp);
+}
+
+void TerrainTechnique::setTexSampler(int arrayIndex, int textureIndex)
+{
+	this->setInt_(&m_Ufm_Samplers[Maths::Clamp(arrayIndex, 0, 4)], textureIndex);
+}
+
+void TerrainTechnique::setShadowSampler(int samplerIndex)
+{
+	//this->setInt_(&m_Ufm_ShadowMap, samplerIndex);
+}
+
+void TerrainTechnique::setColour(const Vec4& colour)
+{
+	this->setVec4_(&m_Ufm_Colour, colour);
+}
+
+void TerrainTechnique::setDirectionalLight(const DirectionalLight& light)
+{
+	this->setVec3_(&m_Ufm_DirLight.colour, light.Color);
+	this->setVec3_(&m_Ufm_DirLight.direction, glm::normalize(light.Direction));
+	this->setFloat_(&m_Ufm_DirLight.ambientIntensity, light.AmbientIntensity);
+}
+
+void TerrainTechnique::setRenderHeight(float val)
+{
+	this->setFloat_(&m_Ufm_RenderHeight, val);
+}
+
+void TerrainTechnique::setMaxTexU(float val)
+{
+	this->setFloat_(&m_Ufm_MaxTexU, val);
+}
+
+void TerrainTechnique::setMaxTexV(float val)
+{
+	this->setFloat_(&m_Ufm_MaxTexV, val);
+}
+
+
+LavaTechnique::LavaTechnique() :
+	m_Ufm_WVP(0),
+	m_Ufm_Time(0),
+	m_Ufm_TexSampler(0),
+	m_Ufm_Resolution(0)
+{
+}
+
+LavaTechnique::~LavaTechnique()
+{
+}
+
+bool LavaTechnique::Init()
+{
+	Shader vert(GL_VERTEX_SHADER);
+	Shader frag(GL_FRAGMENT_SHADER);
+
+	ShaderAttrib vert_pos, vert_norm, vert_tex;
+	vert_pos.layout_location = 0;
+	vert_norm.layout_location = 1;
+	vert_tex.layout_location = 2;
+	vert_pos.name = "vertex_position";
+	vert_norm.name = "vertex_normal";
+	vert_tex.name = "vertex_texcoord";
+	vert.AddAttribute(vert_pos);
+	vert.AddAttribute(vert_norm);
+	vert.AddAttribute(vert_tex);
+
+	if (!vert.LoadShader("../resources/shaders/lava_vs.glsl")){ return false; }
+	if (!frag.LoadShader("../resources/shaders/lava_fs.glsl")){return false;}
+
+	std::vector<Shader> shaders;
+	shaders.push_back(vert);
+	shaders.push_back(frag);
+
+	if (!this->CreateProgram(shaders, "frag_colour", 0))
+	{
+		WRITE_LOG("Font technique failed to create program", "error");
+		return false;
+	}
+
+	this->Use();
+
+	// Uniforms - Tedious no?
+	if (!GetLocation(m_Ufm_Time, "u_GlobalTime")) { return false; }
+	if (!GetLocation(m_Ufm_WVP, "u_WvpXform")) { return false; }
+	if (!GetLocation(m_Ufm_Resolution, "u_Resolution")) { return true; }
+	if (!GetLocation(m_Ufm_TexSampler, "u_Sampler")) { return true; }// false;
+
+	return true;
+}
+
+void LavaTechnique::setWvpXform(const Mat4& wvp)
+{
+	this->setMat4_(&m_Ufm_WVP, 1, false, wvp);
+}
+
+void LavaTechnique::setTime(float time)
+{
+	this->setFloat_(&m_Ufm_Time, time);
+}
+
+void LavaTechnique::setTexSampler(int sampler)
+{
+	this->setInt_(&m_Ufm_TexSampler, sampler);
+}
+
+void LavaTechnique::setResolution(const Vec2& res)
+{
+	this->setVec2_(&m_Ufm_Resolution, res);
 }

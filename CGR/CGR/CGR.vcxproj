@@ -164,6 +164,7 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="src\Application.cpp" />
+    <ClCompile Include="src\BillboardList.cpp" />
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\Colour.cpp" />
     <ClCompile Include="src\Event.cpp" />
@@ -180,6 +181,7 @@
     <ClCompile Include="src\Shaders.cpp" />
     <ClCompile Include="src\ShadowFrameBuffer.cpp" />
     <ClCompile Include="src\Technique.cpp" />
+    <ClCompile Include="src\Terrain.cpp" />
     <ClCompile Include="src\TextFile.cpp" />
     <ClCompile Include="src\Texture.cpp" />
     <ClCompile Include="src\Time.cpp" />
@@ -187,6 +189,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Application.h" />
+    <ClInclude Include="src\BillboardList.h" />
     <ClInclude Include="src\Camera.h" />
     <ClInclude Include="src\Colour.h" />
     <ClInclude Include="src\Event.h" />
@@ -214,6 +217,7 @@
     <ClInclude Include="src\ShadowFrameBuffer.h" />
     <ClInclude Include="src\Singleton.h" />
     <ClInclude Include="src\Technique.h" />
+    <ClInclude Include="src\Terrain.h" />
     <ClInclude Include="src\TextFile.h" />
     <ClInclude Include="src\Texture.h" />
     <ClInclude Include="src\Time.h" />

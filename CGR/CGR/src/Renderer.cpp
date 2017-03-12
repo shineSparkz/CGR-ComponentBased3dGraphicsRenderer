@@ -20,9 +20,13 @@
 #include "Font.h"
 #include "Screen.h"
 #include "ShadowFrameBuffer.h"
+#include "BillboardList.h"
+#include "Terrain.h"
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
+
+const bool DO_SHADOWS = true;
 
 // Transforms -- for now
 const Mat4 MALE_XFORM =  glm::translate(Mat4(1.0f), Vec3(-0.5f, -1.5f, 0.0f))  *  glm::scale(Mat4(1.0f), Vec3(1.0f));
@@ -30,6 +34,8 @@ const Mat4 DINO_XFORM =  glm::translate(Mat4(1.0f), Vec3(1.8f, -1.5f, 0.0f))   *
 const Mat4 CUBE1_XFORM = glm::translate(Mat4(1.0f), Vec3(-3.1f, 0.0f, 0.0f))   *  glm::scale(Mat4(1.0f), Vec3(0.5f));
 const Mat4 CUBE2_XFORM = glm::translate(Mat4(1.0f), Vec3(-2.0f, 0.0f, 0.0f))   *  glm::scale(Mat4(1.0f), Vec3(0.5f));
 const Mat4 FLOOR_XFORM = glm::translate(Mat4(1.0f), Vec3(0.0f, -2.0f, -3.0f))  *  glm::scale(Mat4(1.0f), Vec3(30.0f, 0.5f, 30.0f));
+
+const Mat4 LAVA_XFORM = glm::translate(Mat4(1.0f),  Vec3(0.0f, 4.0f, 0.0f)) *  glm::scale(Mat4(1.0f), Vec3(400.0f, 2.0f, 400.0f));
 
 // Texture ID's -- for now
 const size_t MALE_TEX1 = 0;
@@ -40,7 +46,13 @@ const size_t SKYBOX_TEX = 4;
 const size_t BRICK_TEX = 5;
 const size_t BRICK_NORM_TEX = 6;
 const size_t FAKE_NORMAL_TEX = 7;
-
+const size_t TREE_BILLBOARD_TEX = 8;
+const size_t TERRAIN1_TEX = 9;//-->
+const size_t TERRAIN2_TEX = 10;
+const size_t TERRAIN3_TEX = 11;
+const size_t TERRAIN4_TEX = 12;
+const size_t TERRAIN5_TEX = 13;//--<
+const size_t LAVA_NOISE_TEX = 14;
 
 std::vector<Mat4> TRANSFORMS;
 
@@ -49,15 +61,23 @@ Renderer::Renderer() :
 	m_Meshes(),
 	m_Textures(),
 	m_SkyboxMesh(nullptr),
+	m_LavaTestMesh(nullptr),
 	m_Font(nullptr),
 	m_Camera(nullptr),
 	m_LightCamera(nullptr),
 	m_ShadowFBO(nullptr),
+	m_TreeBillboardList(nullptr),
+	m_Terrain(nullptr),
+
 	m_FontMaterial(nullptr),
 	m_LightMaterial(nullptr),
 	m_DiffuseMaterial(nullptr),
 	m_SkyBoxMaterial(nullptr),
 	m_ShadowMaterial(nullptr),
+	m_BillboardMaterial(nullptr),
+	m_TerrainMaterial(nullptr),
+	m_LavaMaterial(nullptr),
+
 	m_DirectionalLight()
 {
 }
@@ -75,6 +95,34 @@ bool Renderer::Init()
 	success &= loadMeshes();
 	success &= createMaterials();
 
+	std::vector<Vec3> billboardPositions;
+	// Create Terrain
+	m_Terrain = new Terrain();
+
+	unsigned int textures[5] = { TERRAIN1_TEX, TERRAIN2_TEX, TERRAIN3_TEX, TERRAIN4_TEX, TERRAIN5_TEX };
+	success &= m_Terrain->LoadFromHeightMapWithBillboards(
+		"../resources/textures/terrain/heightmap.tga", 
+		m_TerrainMaterial,
+		textures,
+		Vec3(200, 30, 200),
+		billboardPositions,
+		500
+	);
+
+	// Need material and textures for bill board creation, which again I am not too happy with
+	m_TreeBillboardList = new BillboardList();
+	success &= m_TreeBillboardList->InitWithPositions(m_BillboardMaterial, TREE_BILLBOARD_TEX, 0.5f, billboardPositions);
+	/*
+		m_TreeBillboardList->Init(m_BillboardMaterial, TREE_BILLBOARD_TEX, 
+		0.5f,	// scale
+		10,		// numX
+		10,		// numY
+		2.0f,	// spacing
+		14.0f,	// offset pos
+		-1.4f	// ypos
+	);
+	*/
+
 	return success;
 }
 
@@ -83,17 +131,23 @@ bool Renderer::setRenderStates()
 	// ** These states could differ **
 	glEnable(GL_DEPTH_TEST);
 	//glDepthFunc(GL_ALWAYS);
+	
 	//glEnable(GL_CULL_FACE);
+	//glCullFace(GL_FRONT);
+	//glFrontFace(GL_CCW);
 
 	return true;
 }
 
 bool Renderer::setFrameBuffers()
 {
-	m_ShadowFBO = new ShadowFrameBuffer();
-	if (!m_ShadowFBO->Init(Screen::Instance()->FrameBufferWidth(), Screen::Instance()->FrameBufferHeight()))
+	if (DO_SHADOWS)
 	{
-		return false;
+		m_ShadowFBO = new ShadowFrameBuffer();
+		if (!m_ShadowFBO->Init(Screen::Instance()->FrameBufferWidth(), Screen::Instance()->FrameBufferHeight()))
+		{
+			return false;
+		}
 	}
 
 	return true;
@@ -108,7 +162,7 @@ void Renderer::WindowSizeChanged(int w, int h)
 	m_LightCamera->projection = glm::perspective(m_LightCamera->fov, m_LightCamera->aspect, m_LightCamera->near, m_LightCamera->far);
 
 	// Agh this sucks
-	if (m_ShadowFBO)
+	if (m_ShadowFBO && DO_SHADOWS)
 	{
 		m_ShadowFBO->Init(w, h);
 	}
@@ -118,7 +172,7 @@ bool Renderer::setLights()
 {
 	// Dir Light
 	m_DirectionalLight.Color = Vec3(1.0f, 1.0f, 1.0f);
-	m_DirectionalLight.AmbientIntensity = 0.1f;
+	m_DirectionalLight.AmbientIntensity = 0.4f;
 	m_DirectionalLight.DiffuseIntensity = 0.01f;
 	m_DirectionalLight.Direction = Vec3(1.0f, -1.0f, 0.0f);
 
@@ -231,10 +285,20 @@ bool Renderer::loadTetxures()
 	success &= this->loadTexture("male_body_low_albedo.tga", MALE_TEX1, GL_TEXTURE0);
 	success &= this->loadTexture("male_body_high_albedo.tga", MALE_TEX2, GL_TEXTURE0);
 	success &= this->loadTexture("dino_diffuse.tga", DINO_TEX, GL_TEXTURE0);
-	success &= this->loadTexture("wall.tga", WALL_TEX, GL_TEXTURE0);
+	success &= this->loadTexture("terrain.tga", WALL_TEX, GL_TEXTURE0);
 	success &= this->loadTexture("bricks/bricks.tga", BRICK_TEX, GL_TEXTURE0);
 	success &= this->loadTexture("bricks/bricks_normal.tga", BRICK_NORM_TEX, GL_TEXTURE2);
 	success &= this->loadTexture("default_normal_map.tga", FAKE_NORMAL_TEX, GL_TEXTURE2);
+	success &= this->loadTexture("billboards/grass.tga", TREE_BILLBOARD_TEX, GL_TEXTURE0);
+
+	success &= this->loadTexture("terrain/fungus.tga", TERRAIN1_TEX, GL_TEXTURE0);
+	success &= this->loadTexture("terrain/sand_grass.tga", TERRAIN2_TEX, GL_TEXTURE1);
+	success &= this->loadTexture("terrain/rock.tga", TERRAIN3_TEX, GL_TEXTURE2);
+	success &= this->loadTexture("terrain/sand.tga", TERRAIN4_TEX, GL_TEXTURE3);
+	success &= this->loadTexture("terrain/path.tga", TERRAIN5_TEX, GL_TEXTURE4);
+
+	success &= this->loadTexture("noise.tga", LAVA_NOISE_TEX, GL_TEXTURE0);
+
 
 	// Load Images for skybox
 	Image* images[6];
@@ -312,6 +376,11 @@ bool Renderer::loadMeshes()
 	if (!m_SkyboxMesh->Load("cube.obj", false)) { return false; }
 	if (!m_SkyboxMesh->AddTexture(SKYBOX_TEX)) return false;
 
+	// This is separate (for now)
+	m_LavaTestMesh = new Mesh();
+	if (!m_LavaTestMesh->Load("cube.obj", false)) { return false; }
+	if (!m_LavaTestMesh->AddTexture(LAVA_NOISE_TEX)) return false;
+
 	TRANSFORMS.push_back(MALE_XFORM);
 	TRANSFORMS.push_back(DINO_XFORM);
 	TRANSFORMS.push_back(CUBE1_XFORM);
@@ -370,6 +439,42 @@ bool Renderer::createMaterials()
 		WRITE_LOG("Failed to create shadow map material", "error");
 		return false;
 	}
+
+	// -- Billboard material ----
+	m_BillboardMaterial = new BillboardTechnique();
+	if (!m_BillboardMaterial->Init())
+	{
+		WRITE_LOG("Failed to create billboard material", "error");
+		return false;
+	}
+
+	// -- Terrain material ----
+	m_TerrainMaterial = new TerrainTechnique();
+	if (!m_TerrainMaterial->Init())
+	{
+		WRITE_LOG("Failed to create terrain material", "error");
+		return false;
+	}
+	m_TerrainMaterial->Use();
+	for (int i = 0; i < 5; ++i)
+	{
+		m_TerrainMaterial->setTexSampler(i, i);
+	}
+
+	m_TerrainMaterial->setDirectionalLight(m_DirectionalLight);
+
+	// -- Lava material ----
+	m_LavaMaterial = new LavaTechnique();
+	if (!m_LavaMaterial->Init())
+	{
+		WRITE_LOG("Failed to create lava material", "error");
+		return false;
+	}
+
+	m_LavaMaterial->Use();
+	m_LavaMaterial->setTexSampler(0);
+	m_LavaMaterial->setResolution(Vec2(
+		(float)Screen::Instance()->ScreenWidth(), (float)Screen::Instance()->ScreenHeight()));
 
 	return true;
 }
@@ -518,7 +623,7 @@ void Renderer::Render()
 {
 	bool useLighting = true;
 
-	if(useLighting)
+	if(DO_SHADOWS)
 		ShadowPass();
 	
 	// Clear color buffer  
@@ -542,7 +647,7 @@ void Renderer::Render()
 
 		// Update spot light, to point at male model
 		m_SpotLights[0].Position = Vec3(sinf(Time::ElapsedTime() * 2.0f), 5, 5.0f);
-		m_SpotLights[0].Direction = Vec3(-0.5f, -1.0f, 0.0f)/*male mesh pos*/ - m_SpotLights[0].Position;
+		m_SpotLights[0].Direction = Vec3(-0.5f, -1.0f, 0.0f)- m_SpotLights[0].Position;
 
 		m_LightMaterial->setSpotLights(1, m_SpotLights);
 		m_LightMaterial->setPointLights(0, nullptr);//m_PointLights);
@@ -551,7 +656,7 @@ void Renderer::Render()
 
 	int i = 0;
 	
-	// ---- Render ----
+	// ---- Render Meshes ----
 	for (auto mesh = m_Meshes.begin(); mesh != m_Meshes.end(); ++mesh)
 	{
 		Mesh* thisMesh = (*mesh);
@@ -570,7 +675,8 @@ void Renderer::Render()
 			m_LightMaterial->setLightWVP(m_LightCamera->projection * m_LightCamera->view * TRANSFORMS[i]);
 			
 			// Use this for sampler in light shader
-			m_ShadowFBO->BindForReading(GL_TEXTURE1);
+			if(DO_SHADOWS)
+				m_ShadowFBO->BindForReading(GL_TEXTURE1);
 		}
 
 		for (std::vector<SubMesh>::iterator j = thisMesh->m_MeshLayouts.begin(); j != thisMesh->m_MeshLayouts.end(); j++)
@@ -600,6 +706,48 @@ void Renderer::Render()
 		++i;
 	}
 
+	// Render Lava test mesh
+	m_LavaMaterial->Use();
+	m_LavaMaterial->setTime(Time::ElapsedTime() * 0.16f);
+	m_LavaMaterial->setWvpXform(m_Camera->projection * m_Camera->view * LAVA_XFORM);
+	glBindVertexArray(m_LavaTestMesh->m_VAO);
+	for (std::vector<SubMesh>::iterator j = m_LavaTestMesh->m_MeshLayouts.begin(); j != m_LavaTestMesh->m_MeshLayouts.end(); j++)
+	{
+		SubMesh subMesh = (*j);
+		for (auto tex = subMesh.TextureIndices.begin(); tex != subMesh.TextureIndices.end(); ++tex)
+		{
+			m_Textures[m_LavaTestMesh->m_TextureHandles[(*tex)]]->Bind();
+		}
+
+		if (subMesh.NumIndices > 0)
+		{
+			glDrawElementsBaseVertex(GL_TRIANGLES,
+				subMesh.NumIndices,
+				GL_UNSIGNED_INT,
+				(void*)(sizeof(unsigned int) * subMesh.BaseIndex),
+				subMesh.BaseVertex);
+		}
+		else
+		{
+			glDrawArrays(GL_TRIANGLES, 0, subMesh.NumVertices);
+		}
+	}
+	glBindVertexArray(0);
+
+
+	// --- Render New fancy Terrain ----
+	if (m_Terrain)
+	{
+		m_Terrain->Render(this, m_Camera, Vec4(1.0f));
+	}
+
+	// ---- Render Billboards ----
+	if (m_TreeBillboardList)
+	{
+		m_TreeBillboardList->Render(this, m_Camera->projection * m_Camera->view, m_Camera->position, m_Camera->right);
+	}
+
+	// -- Render Text ----
 	RenderText("CGR Engine", 8, 16);
 	RenderText("Cam Fwd: " + util::vec3_to_str(m_Camera->forward), 8, 32);
 }
@@ -698,6 +846,7 @@ void Renderer::Close()
 		SAFE_DELETE(m_Meshes[i]);
 	}
 	SAFE_DELETE(m_SkyboxMesh);
+	SAFE_DELETE(m_LavaTestMesh);
 	m_Meshes.clear();
 
 	// Clear Textures
@@ -713,10 +862,15 @@ void Renderer::Close()
 	SAFE_CLOSE(m_DiffuseMaterial);
 	SAFE_CLOSE(m_SkyBoxMaterial);
 	SAFE_CLOSE(m_ShadowMaterial);
+	SAFE_CLOSE(m_BillboardMaterial);
+	SAFE_CLOSE(m_TerrainMaterial);
+	SAFE_CLOSE(m_LavaMaterial);
 
 	// Other objects
 	SAFE_CLOSE(m_Font);
 	SAFE_DELETE(m_Camera);
 	SAFE_DELETE(m_LightCamera);
 	SAFE_DELETE(m_ShadowFBO);
+	SAFE_DELETE(m_TreeBillboardList);
+	SAFE_DELETE(m_Terrain);
 }

@@ -17,10 +17,16 @@ class BasicDiffuseTechnique;
 class Camera;
 class Font;
 class Texture;
+class BillboardList;
+class Terrain;
+
 class FontTechnique;
 class SkyboxTechnique;
 class ShadowFrameBuffer;
 class ShadowMapTechnique;
+class BillboardTechnique;
+class TerrainTechnique;
+class LavaTechnique;
 
 class Renderer : public Singleton<Renderer>
 {
@@ -57,11 +63,15 @@ private:
 	std::vector<Mesh*> m_Meshes;	// these are mesh instances, not actual mesh resources, needs refactor
 	Mesh* m_SkyboxMesh;
 
+	Mesh* m_LavaTestMesh;
+
 	// Objects
 	Font* m_Font;
 	Camera* m_Camera;
 	Camera* m_LightCamera;
 	ShadowFrameBuffer* m_ShadowFBO;
+	BillboardList* m_TreeBillboardList;
+	Terrain* m_Terrain;
 
 	// 'Materials'
 	FontTechnique* m_FontMaterial;
@@ -69,11 +79,15 @@ private:
 	BasicDiffuseTechnique* m_DiffuseMaterial;
 	SkyboxTechnique* m_SkyBoxMaterial;
 	ShadowMapTechnique* m_ShadowMaterial;
+	BillboardTechnique* m_BillboardMaterial;
+	TerrainTechnique* m_TerrainMaterial;
+	LavaTechnique* m_LavaMaterial;
 	
 	// Lights -- here for now
 	DirectionalLight m_DirectionalLight;
 	SpotLight m_SpotLights[1];
 	//PointLight m_PointLights[2];
+
 };
 
 #endif
