@@ -930,3 +930,288 @@ void LavaTechnique::setResolution(const Vec2& res)
 {
 	this->setVec2_(&m_Ufm_Resolution, res);
 }
+
+
+// ---- Deferred ----
+GeometryPassTechnique::GeometryPassTechnique() :
+	m_Ufm_WVP(0),
+	m_Ufm_World(0),
+	m_Ufm_ColourSampler(0)
+{
+}
+
+GeometryPassTechnique::~GeometryPassTechnique()
+{
+}
+
+bool GeometryPassTechnique::Init()
+{
+	Shader vert(GL_VERTEX_SHADER);
+	Shader frag(GL_FRAGMENT_SHADER);
+
+	ShaderAttrib vert_pos, vert_norm, vert_tex;
+	vert_pos.layout_location = 0;
+	vert_norm.layout_location = 1;
+	vert_tex.layout_location = 2;
+	vert_pos.name = "vertex_position";
+	vert_norm.name = "vertex_normal";
+	vert_tex.name = "vertex_texcoord";
+	vert.AddAttribute(vert_pos);
+	vert.AddAttribute(vert_norm);
+	vert.AddAttribute(vert_tex);
+
+	if (!vert.LoadShader("../resources/shaders/deferred/geometry_pass_vs.glsl")) { return false; }
+	if (!frag.LoadShader("../resources/shaders/deferred/geometry_pass_fs.glsl")) { return false; }
+
+	std::vector<Shader> shaders;
+	shaders.push_back(vert);
+	shaders.push_back(frag);
+
+	if (!this->CreateProgram(shaders, "frag_colour", 0))
+	{
+		WRITE_LOG("Font technique failed to create program", "error");
+		return false;
+	}
+
+	this->Use();
+
+	if (!GetLocation(m_Ufm_WVP, "u_WVP")) { return false; }
+	if (!GetLocation(m_Ufm_World, "u_World")) { return false; }
+	if (!GetLocation(m_Ufm_ColourSampler, "u_ColourMap")) { return false; }
+
+	return true;
+}
+
+void GeometryPassTechnique::setWVP(const Mat4& wvp)
+{
+	this->setMat4_(&m_Ufm_WVP, 1, false, wvp);
+}
+
+void GeometryPassTechnique::setWorld(const Mat4& w)
+{
+	this->setMat4_(&m_Ufm_World, 1, false, w);
+}
+
+void GeometryPassTechnique::setColourSampler(int sampler)
+{
+	this->setInt_(&m_Ufm_ColourSampler, sampler);
+}
+
+
+DSLightPassTech::DSLightPassTech() :
+	m_WVPLocation(0),
+	m_PosTextureUnitLocation(0),
+	m_NormalTextureUnitLocation(0),
+	m_ColorTextureUnitLocation(0),
+	m_EyeWorldPosLocation(0),
+	m_MatSpecularIntensityLocation(0),
+	m_MatSpecularPowerLocation(0),
+	m_ScreenSizeLocation(0)
+{
+}
+
+bool DSLightPassTech::Init()
+{
+	if (!this->GetLocation(m_WVPLocation, "u_WVP")) return false;
+	if (!this->GetLocation(m_PosTextureUnitLocation, "u_PositionMap")) return false;
+	if (!this->GetLocation(m_ColorTextureUnitLocation, "u_ColourMap")) return false;
+	if (!this->GetLocation(m_NormalTextureUnitLocation, "u_NormalMap")) return false;
+	if (!this->GetLocation(m_EyeWorldPosLocation, "u_EyeWorldPos")) return false;
+	if (!this->GetLocation(m_MatSpecularIntensityLocation, "u_MatSpecularIntensity")) return false;
+	if (!this->GetLocation(m_MatSpecularPowerLocation, "u_SpecularPower")) return false;
+	if (!this->GetLocation(m_ScreenSizeLocation, "u_ScreenSize")) return false;
+
+	return true;
+}
+
+void DSLightPassTech::setWVP(const Mat4& WVP)
+{
+	this->setMat4_(&m_WVPLocation, 1, GL_FALSE, WVP);
+}
+
+void DSLightPassTech::setPositionTextureUnit(unsigned int textureUnit)
+{
+	this->setInt_(&m_PosTextureUnitLocation, textureUnit);
+}
+
+void DSLightPassTech::setColorTextureUnit(unsigned int textureUnit)
+{
+	this->setInt_(&m_ColorTextureUnitLocation, textureUnit);
+}
+
+void DSLightPassTech::setNormalTextureUnit(unsigned int textureUnit)
+{
+	this->setInt_(&m_NormalTextureUnitLocation, textureUnit);
+}
+	
+void DSLightPassTech::setEyeWorldPos(const Vec3& eyeWorldPos)
+{
+	this->setVec3_(&m_EyeWorldPosLocation, eyeWorldPos);
+}
+
+void DSLightPassTech::setMatSpecularIntensity(float intensity)
+{
+	this->setFloat_(&m_MatSpecularIntensityLocation, intensity);
+}
+
+void DSLightPassTech::setMatSpecularPower(float power)
+{
+	this->setFloat_(&m_MatSpecularPowerLocation, power);
+}
+
+void DSLightPassTech::setScreenSize(const Vec2& size)
+{
+	this->setVec2_(&m_ScreenSizeLocation, size);
+}
+
+
+
+DSDirLightPassTech::DSDirLightPassTech()
+{
+}
+
+bool DSDirLightPassTech::Init()
+{
+	Shader vert(GL_VERTEX_SHADER);
+	Shader frag(GL_FRAGMENT_SHADER);
+
+	ShaderAttrib vert_pos, vert_norm, vert_tex;
+	vert_pos.layout_location = 0;
+	vert_norm.layout_location = 1;
+	vert_tex.layout_location = 2;
+	vert_pos.name = "vertex_position";
+	vert_norm.name = "vertex_normal";
+	vert_tex.name = "vertex_texcoord";
+	vert.AddAttribute(vert_pos);
+	vert.AddAttribute(vert_norm);
+	vert.AddAttribute(vert_tex);
+
+	if (!vert.LoadShader("../resources/shaders/deferred/light_pass_vs.glsl")) { return false; }
+	if (!frag.LoadShader("../resources/shaders/deferred/dir_light_pass_fs.glsl")) { return false; }
+
+	std::vector<Shader> shaders;
+	shaders.push_back(vert);
+	shaders.push_back(frag);
+
+	if (!this->CreateProgram(shaders, "frag_colour", 0))
+	{
+		WRITE_LOG("Font technique failed to create program", "error");
+		return false;
+	}
+
+	this->Use();
+
+	if (!GetLocation(m_DirLightLocation.ambientIntensity, "u_DirectionalLight.Base.AmbientIntensity")) { return false; }
+	if (!GetLocation(m_DirLightLocation.colour, "u_DirectionalLight.Base.Color")) { return false; }
+	if (!GetLocation(m_DirLightLocation.diffuseIntensity, "u_DirectionalLight.Base.DiffuseIntensity")) { return false; }
+	if (!GetLocation(m_DirLightLocation.direction, "u_DirectionalLight.Direction")) { return false; }
+
+	return DSLightPassTech::Init();
+}
+
+void DSDirLightPassTech::setDirectionalLight(const DirectionalLight& light)
+{
+	this->setVec3_(&m_DirLightLocation.colour, light.Color);
+	this->setVec3_(&m_DirLightLocation.direction, glm::normalize(light.Direction));
+	this->setFloat_(&m_DirLightLocation.ambientIntensity, light.AmbientIntensity);
+	this->setFloat_(&m_DirLightLocation.diffuseIntensity, light.DiffuseIntensity);
+}
+
+
+DSPointLightPassTech::DSPointLightPassTech()
+{
+}
+
+bool DSPointLightPassTech::Init()
+{
+	Shader vert(GL_VERTEX_SHADER);
+	Shader frag(GL_FRAGMENT_SHADER);
+
+	ShaderAttrib vert_pos, vert_norm, vert_tex;
+	vert_pos.layout_location = 0;
+	vert_norm.layout_location = 1;
+	vert_tex.layout_location = 2;
+	vert_pos.name = "vertex_position";
+	vert_norm.name = "vertex_normal";
+	vert_tex.name = "vertex_texcoord";
+	vert.AddAttribute(vert_pos);
+	vert.AddAttribute(vert_norm);
+	vert.AddAttribute(vert_tex);
+
+	if (!vert.LoadShader("../resources/shaders/deferred/light_pass_vs.glsl")) { return false; }
+	if (!frag.LoadShader("../resources/shaders/deferred/point_light_pass_fs.glsl")) { return false; }
+
+	std::vector<Shader> shaders;
+	shaders.push_back(vert);
+	shaders.push_back(frag);
+
+	if (!this->CreateProgram(shaders, "frag_colour", 0))
+	{
+		WRITE_LOG("Font technique failed to create program", "error");
+		return false;
+	}
+
+	this->Use();
+
+	if (!GetLocation(m_PointLightLocation.colour, "u_PointLight.Base.Color")) { return false; }
+	if (!GetLocation(m_PointLightLocation.ambientIntensity, "u_PointLight.Base.AmbientIntensity")) { return false; }
+	if (!GetLocation(m_PointLightLocation.position, "u_PointLight.Position")) { return false; }
+	if (!GetLocation(m_PointLightLocation.diffuseIntensity, "u_PointLight.Base.DiffuseIntensity")) { return false; }
+
+	if (!GetLocation(m_PointLightLocation.Atten.constant, "u_PointLight.Atten.Constant")) { return false; }
+	if (!GetLocation(m_PointLightLocation.Atten.exp, "u_PointLight.Atten.Exp")) { return false; }
+	if (!GetLocation(m_PointLightLocation.Atten.linear, "u_PointLight.Atten.Linear")) { return false; }
+
+	return DSLightPassTech::Init();
+}
+
+void DSPointLightPassTech::setPointLight(const PointLight& light)
+{
+	this->setVec3_(&m_PointLightLocation.colour, light.Color);
+	this->setVec3_(&m_PointLightLocation.position, light.Position);
+	this->setFloat_(&m_PointLightLocation.ambientIntensity, light.AmbientIntensity);
+	this->setFloat_(&m_PointLightLocation.diffuseIntensity, light.DiffuseIntensity);
+	this->setFloat_(&m_PointLightLocation.Atten.constant, light.Attenuation.Constant);
+	this->setFloat_(&m_PointLightLocation.Atten.exp, light.Attenuation.Exp);
+	this->setFloat_(&m_PointLightLocation.Atten.linear, light.Attenuation.Linear);
+}
+
+NullTechnique::NullTechnique() :
+	m_WVPLocation(0)
+{
+}
+
+bool NullTechnique::Init()
+{
+	Shader vert(GL_VERTEX_SHADER);
+	Shader frag(GL_FRAGMENT_SHADER);
+
+	ShaderAttrib vert_pos;
+	vert_pos.layout_location = 0;
+	vert_pos.name = "vertex_position";
+	vert.AddAttribute(vert_pos);
+
+	if (!vert.LoadShader("../resources/shaders/deferred/stencil_pass_vs.glsl")) { return false; }
+	if (!frag.LoadShader("../resources/shaders/deferred/stencil_pass_fs.glsl")) { return false; }
+
+	std::vector<Shader> shaders;
+	shaders.push_back(vert);
+	shaders.push_back(frag);
+
+	if (!this->CreateProgram(shaders, "frag_colour", 0))
+	{
+		WRITE_LOG("Font technique failed to create program", "error");
+		return false;
+	}
+
+	this->Use();
+
+	if (!GetLocation(m_WVPLocation, "u_WVP")) return false;
+
+	return true;
+}
+
+void NullTechnique::setWVP(const Mat4& WVP)
+{
+	this->setMat4_(&m_WVPLocation, 1, GL_FALSE, WVP);
+}

@@ -170,6 +170,7 @@
     <ClCompile Include="src\Event.cpp" />
     <ClCompile Include="src\EventManager.cpp" />
     <ClCompile Include="src\Font.cpp" />
+    <ClCompile Include="src\GBuffer.cpp" />
     <ClCompile Include="src\Image.cpp" />
     <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\LogFile.cpp" />
@@ -198,6 +199,7 @@
     <ClInclude Include="src\EventManager.h" />
     <ClInclude Include="src\Font.h" />
     <ClInclude Include="src\FontAlign.h" />
+    <ClInclude Include="src\GBuffer.h" />
     <ClInclude Include="src\gl_headers.h" />
     <ClInclude Include="src\Image.h" />
     <ClInclude Include="src\Input.h" />

@@ -25,7 +25,7 @@ namespace random
 
 	float RandFloat(float min, float max)
 	{
-		std::uniform_real_distribution<float> distr(min, max - 1.0f);
+		std::uniform_real_distribution<float> distr(min, max);
 		return distr(RandomEngine);
 	}
 }

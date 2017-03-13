@@ -19,6 +19,7 @@ class Font;
 class Texture;
 class BillboardList;
 class Terrain;
+class GBuffer;
 
 class FontTechnique;
 class SkyboxTechnique;
@@ -27,7 +28,68 @@ class ShadowMapTechnique;
 class BillboardTechnique;
 class TerrainTechnique;
 class LavaTechnique;
+class GeometryPassTechnique;
+class DSDirLightPassTech;
+class DSPointLightPassTech;
+class NullTechnique;
 
+class Renderer : public Singleton<Renderer>
+{
+public:
+	Renderer();
+	bool Init();
+	void Render();
+	void Close();
+	void ReloadShaders();
+
+	void RenderMesh(Mesh* mesh);
+	void RenderText(const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White());
+	Texture* GetTexture(size_t index);
+	void WindowSizeChanged(int w, int h);
+
+private:
+	// These will ALL be moved later, this is not dynamic or user enanled, but not concerned at this stage
+	bool setRenderStates();
+	bool setFrameBuffers();
+	bool setLights();
+	bool setCamera();
+	bool loadFonts();
+	bool loadTetxures();
+	bool loadMeshes();
+	bool createMaterials();
+
+	bool loadTexture(const std::string& path, size_t key_store, int glTextureIndex);
+
+	// Deferred
+	void GeomPass();
+	void StencilPass(int lightIndex);
+	void PointLightPass(int lightIndex);
+	void DirLightPass();
+	void FinalPass();
+
+
+private:
+	Mesh* m_CubeMesh = nullptr;
+	Mesh* m_QuadMesh = nullptr;
+	Mesh* m_SphereMesh = nullptr;
+
+	std::map<size_t, Texture*> m_Textures;
+
+	Font* m_Font;
+	Camera* m_Camera;
+	GBuffer* m_Gbuffer;
+
+	FontTechnique* m_FontMaterial;
+	GeometryPassTechnique* m_GeomPassMaterial;
+	DSPointLightPassTech* m_PointLightPassMaterial;
+	DSDirLightPassTech* m_DirLightPassMaterial;
+	NullTechnique* m_NullTech;
+
+	DirectionalLight m_DirectionalLight;
+	PointLight m_PointLights[8];
+};
+
+/*
 class Renderer : public Singleton<Renderer>
 {
 public:
@@ -62,7 +124,6 @@ private:
 	std::map<size_t, Texture*> m_Textures;
 	std::vector<Mesh*> m_Meshes;	// these are mesh instances, not actual mesh resources, needs refactor
 	Mesh* m_SkyboxMesh;
-
 	Mesh* m_LavaTestMesh;
 
 	// Objects
@@ -89,5 +150,6 @@ private:
 	//PointLight m_PointLights[2];
 
 };
+*/
 
 #endif

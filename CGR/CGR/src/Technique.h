@@ -260,4 +260,104 @@ private:
 	GLuint m_Ufm_Resolution;
 };
 
+// ---- Deferred ----
+class GeometryPassTechnique : public RenderTechnique
+{
+public:
+	GeometryPassTechnique();
+	~GeometryPassTechnique();
+
+	bool Init() override;
+
+	void setWVP(const Mat4& wvp);
+	void setWorld(const Mat4& w);
+	void setColourSampler(int sampler);
+
+private:
+	GLuint m_Ufm_WVP;
+	GLuint m_Ufm_World;
+	GLuint m_Ufm_ColourSampler;
+};
+
+class DSLightPassTech : public RenderTechnique
+{
+public:
+	DSLightPassTech();
+
+	bool Init();
+
+	void setWVP(const Mat4& WVP);
+	void setPositionTextureUnit(unsigned int textureUnit);
+	void setColorTextureUnit(unsigned int textureUnit);
+	void setNormalTextureUnit(unsigned int textureUnit);
+	void setEyeWorldPos(const Vec3& eyeWorldPos);
+	void setMatSpecularIntensity(float intensity);
+	void setMatSpecularPower(float power);
+	void setScreenSize(const Vec2& size);
+
+private:
+	GLuint m_WVPLocation;
+	GLuint m_PosTextureUnitLocation;
+	GLuint m_NormalTextureUnitLocation;
+	GLuint m_ColorTextureUnitLocation;
+	GLuint m_EyeWorldPosLocation;
+	GLuint m_MatSpecularIntensityLocation;
+	GLuint m_MatSpecularPowerLocation;
+	GLuint m_ScreenSizeLocation;
+};
+
+class DSDirLightPassTech : public DSLightPassTech
+{
+public:
+	DSDirLightPassTech();
+
+	bool Init();
+	void setDirectionalLight(const DirectionalLight& Light);
+
+private:
+	struct 
+	{
+		GLuint colour;
+		GLuint ambientIntensity;
+		GLuint diffuseIntensity;
+		GLuint direction;
+	} m_DirLightLocation;
+};
+
+class DSPointLightPassTech : public DSLightPassTech
+{
+public:
+	DSPointLightPassTech();
+
+	bool Init();
+	void setPointLight(const PointLight& Lights);
+
+private:
+	struct
+	{
+		GLuint colour;
+		GLuint ambientIntensity;
+		GLuint diffuseIntensity;
+		GLuint position;
+		struct
+		{
+			GLuint constant;
+			GLuint linear;
+			GLuint exp;
+		} Atten;
+	} m_PointLightLocation;
+};
+
+class NullTechnique : public RenderTechnique
+{
+public:
+	NullTechnique();
+
+	bool Init() override;
+	void setWVP(const Mat4& WVP);
+
+private:
+	GLuint m_WVPLocation;
+};
+
 #endif

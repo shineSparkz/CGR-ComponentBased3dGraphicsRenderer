@@ -129,6 +129,9 @@
     <ClInclude Include="src\Terrain.h">
       <Filter>Render</Filter>
     </ClInclude>
+    <ClInclude Include="src\GBuffer.h">
+      <Filter>Render</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -199,6 +202,9 @@
       <Filter>Render</Filter>
     </ClCompile>
     <ClCompile Include="src\Terrain.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\GBuffer.cpp">
       <Filter>Render</Filter>
     </ClCompile>
   </ItemGroup>
