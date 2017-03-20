@@ -19,6 +19,9 @@
     <Filter Include="Application\AssetLoading">
       <UniqueIdentifier>{2108a3c4-d0c7-4f80-b088-672fc1dd31dc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Component">
+      <UniqueIdentifier>{d8b81f3b-92f8-4bc7-952e-755b83f4cf5e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Application.h">
@@ -132,6 +135,18 @@
     <ClInclude Include="src\GBuffer.h">
       <Filter>Render</Filter>
     </ClInclude>
+    <ClInclude Include="src\Component.h">
+      <Filter>Application\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Transform.h">
+      <Filter>Application\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="src\GameObject.h">
+      <Filter>Application\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="src\MeshRenderer.h">
+      <Filter>Application\Component</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -206,6 +221,18 @@
     </ClCompile>
     <ClCompile Include="src\GBuffer.cpp">
       <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Component.cpp">
+      <Filter>Application\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Transform.cpp">
+      <Filter>Application\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="src\GameObject.cpp">
+      <Filter>Application\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="src\MeshRenderer.cpp">
+      <Filter>Application\Component</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

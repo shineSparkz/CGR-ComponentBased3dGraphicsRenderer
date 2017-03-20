@@ -15,7 +15,7 @@ struct Character
 	int sizeY;
 	int bearingX;
 	int bearingY;
-	GLuint advance;
+	signed long advance;
 };
 
 class Font

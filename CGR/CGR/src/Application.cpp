@@ -237,7 +237,6 @@ void Application::HandleEvent(Event* e)
 			else if (ke->key == GLFW_KEY_F1 && ke->action == GLFW_RELEASE)
 			{
 				//this->ChangeScene("shadow");
-				m_Renderer->ReloadShaders();
 			}
 			else if (ke->key == GLFW_KEY_F2 && ke->action == GLFW_RELEASE)
 			{

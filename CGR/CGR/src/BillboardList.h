@@ -5,7 +5,7 @@
 #include "gl_headers.h"
 #include "types.h"
 
-class BillboardTechnique;
+class ShaderProgram;
 class Renderer;
 
 class BillboardList
@@ -14,15 +14,15 @@ public:
 	BillboardList();
 	~BillboardList();
 
-	bool Init(BillboardTechnique* mat, unsigned textureIndex, float setScale, unsigned numX, unsigned numY, float spacing, float startOffset, float yPos);
-	bool InitWithPositions(BillboardTechnique* mat, unsigned texture, float setScale, const std::vector<Vec3>& positions);
+	bool Init(ShaderProgram* mat, size_t textureIndex, float setScale, size_t numX, size_t numY, float spacing, float startOffset, float yPos);
+	bool InitWithPositions(ShaderProgram* mat, size_t texture, float setScale, const std::vector<Vec3>& positions);
 
 	void Render(Renderer* renderer, const Mat4& viewProj, const Vec3& camPos, const Vec3& camRight);
 
 private:
-	BillboardTechnique* m_Material;
-	unsigned m_TextureIndex;
-	unsigned m_NumInstances;
+	ShaderProgram* m_Material;
+	size_t m_TextureIndex;
+	size_t m_NumInstances;
 	GLuint m_VBO;
 	GLuint m_VAO;
 	float m_BillboardScale;

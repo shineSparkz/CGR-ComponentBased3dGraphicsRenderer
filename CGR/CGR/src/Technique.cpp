@@ -487,61 +487,6 @@ bool SkyboxTechnique::Init()
 	return true;
 }
 
-void SkyboxTechnique::Render(Camera* cam, Mesh* m, Renderer* r)
-{
-	this->Use();
-
-	GLint oldCullMode, oldDepthFunc;
-	glGetIntegerv(GL_CULL_FACE_MODE, &oldCullMode);
-	glGetIntegerv(GL_DEPTH_FUNC, &oldDepthFunc);
-
-	glCullFace(GL_FRONT);
-	glDepthFunc(GL_LEQUAL);
-
-	// Hardcode for now
-	Mat4 id(1.0f);
-	Mat4 model = glm::translate(id, cam->position) *
-		// rot
-		glm::scale(id, Vec3(20.0f));
-
-	this->setWVP(cam->projection * cam->view * model);
-	//this->setTextureUnit(GL_TEXTURE0);
-	this->setTextureUnit(0);
-
-	// Render mesh with texture here, THIS SHOULDNT BE HERE
-	glBindVertexArray(m->m_VAO);
-	for (std::vector<SubMesh>::iterator i = m->m_MeshLayouts.begin();
-		i != m->m_MeshLayouts.end(); i++)
-	{
-		SubMesh subMesh = (*i);
-
-		for (auto tex = subMesh.TextureIndices.begin(); tex != subMesh.TextureIndices.end(); ++tex)
-		{
-			Texture* t = r->GetTexture(m->m_TextureHandles[(*tex)]);
-			if (t)
-				t->Bind();
-		}
-
-		if (subMesh.NumIndices > 0)
-		{
-			glDrawElementsBaseVertex(GL_TRIANGLES,
-				subMesh.NumIndices,
-				GL_UNSIGNED_INT,
-				(void*)(sizeof(unsigned int) * subMesh.BaseIndex),
-				subMesh.BaseVertex);
-		}
-		else
-		{
-			glDrawArrays(GL_TRIANGLES, 0, subMesh.NumVertices);
-		}
-	}
-
-	glBindVertexArray(0);
-
-	glCullFace(oldCullMode);
-	glDepthFunc(oldDepthFunc);
-}
-
 void SkyboxTechnique::setWVP(const Mat4& WVP)
 {
 	this->setMat4_(&m_Ufm_WVP, 1, GL_FALSE, WVP);
@@ -809,10 +754,10 @@ bool TerrainTechnique::Init()
 	return true;
 }
 
-void TerrainTechnique::setMatrices(Camera* camera, const Mat4& model)
+void TerrainTechnique::setMatrices(BaseCamera* camera, const Mat4& model)
 {
-	this->setMat4_(&m_Ufm_Xforms.view,  1, false, camera->view);
-	this->setMat4_(&m_Ufm_Xforms.proj,  1, false, camera->projection);
+	this->setMat4_(&m_Ufm_Xforms.view,  1, false, camera->View());
+	this->setMat4_(&m_Ufm_Xforms.proj,  1, false, camera->Projection());
 	this->setMat4_(&m_Ufm_Xforms.model, 1, false, model);
 }
 

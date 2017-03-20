@@ -59,4 +59,8 @@ typedef unsigned int		uint32;
 typedef long long			int64;
 typedef unsigned long long	uint64;
 
+// Negative values are engine specific
+#define TRANSFORM_COMPONENT -1
+#define MESH_RENDER_COMPONENT -2
+#define CAMERA_COMPONENT -3
 #endif

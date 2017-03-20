@@ -12,22 +12,24 @@
 #include "Singleton.h"//remove this and use evnts
 
 class Mesh;
+class MeshRenderer;
 class LightTechnique;
 class BasicDiffuseTechnique;
-class Camera;
+class BaseCamera;
+class FlyCamera;
 class Font;
 class Texture;
 class BillboardList;
 class Terrain;
 class GBuffer;
-
-class FontTechnique;
-class SkyboxTechnique;
+class GameObject;
+class ShaderProgram;
 class ShadowFrameBuffer;
+
+// Get rid
 class ShadowMapTechnique;
-class BillboardTechnique;
-class TerrainTechnique;
 class LavaTechnique;
+//ds
 class GeometryPassTechnique;
 class DSDirLightPassTech;
 class DSPointLightPassTech;
@@ -40,9 +42,12 @@ public:
 	bool Init();
 	void Render();
 	void Close();
-	void ReloadShaders();
 
+	// Render With mesh resource, no textures or materials considered, use for deferred
 	void RenderMesh(Mesh* mesh);
+
+	void RenderMesh(MeshRenderer* mesh);
+	void RenderSkybox(BaseCamera* cam);
 	void RenderText(const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White());
 	Texture* GetTexture(size_t index);
 	void WindowSizeChanged(int w, int h);
@@ -59,6 +64,7 @@ private:
 	bool createMaterials();
 
 	bool loadTexture(const std::string& path, size_t key_store, int glTextureIndex);
+	bool loadMesh(const std::string& path, size_t key_store, bool tangents);
 
 	// Deferred
 	void GeomPass();
@@ -69,25 +75,33 @@ private:
 
 
 private:
-	Mesh* m_CubeMesh = nullptr;
-	Mesh* m_QuadMesh = nullptr;
-	Mesh* m_SphereMesh = nullptr;
-
+	// This will be somewhere else
 	std::map<size_t, Texture*> m_Textures;
+	std::map<size_t, Mesh*> m_Meshes;
+	std::map<size_t, ShaderProgram*> m_Shaders;
+
+	std::vector<GameObject*> m_GameObjects;
 
 	Font* m_Font;
-	Camera* m_Camera;
+	GameObject* m_CameraObj;
+	BaseCamera* m_Camera;//convenience
 	GBuffer* m_Gbuffer;
 
-	FontTechnique* m_FontMaterial;
+	// SHould be a mesh renderer
+	BillboardList* m_TreeBillboardList;
+	Terrain* m_Terrain;
+
+	// Deferred
 	GeometryPassTechnique* m_GeomPassMaterial;
 	DSPointLightPassTech* m_PointLightPassMaterial;
 	DSDirLightPassTech* m_DirLightPassMaterial;
 	NullTechnique* m_NullTech;
 
+	// These need to be components of a game object
 	DirectionalLight m_DirectionalLight;
-	PointLight m_PointLights[8];
+	PointLight m_PointLights[3];
 };
+
 
 /*
 class Renderer : public Singleton<Renderer>
@@ -101,7 +115,10 @@ public:
 	void Close();
 	void ReloadShaders();
 
+	void RenderMesh(MeshRenderer* mesh, bool withTextures = true);
+	void RenderSkybox(BaseCamera* cam);
 	void RenderText(const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White() );
+	
 	Texture* GetTexture(size_t index);
 
 	void WindowSizeChanged(int w, int h);
@@ -118,18 +135,23 @@ private:
 	bool createMaterials();
 
 	bool loadTexture(const std::string& path, size_t key_store, int glTextureIndex);
+	bool loadMesh(const std::string& path, size_t key_store, bool tangents);
 
 private:
 	// Resources
 	std::map<size_t, Texture*> m_Textures;
-	std::vector<Mesh*> m_Meshes;	// these are mesh instances, not actual mesh resources, needs refactor
-	Mesh* m_SkyboxMesh;
-	Mesh* m_LavaTestMesh;
+	std::map<size_t, Mesh*> m_Meshes;
+
+	std::vector<GameObject*> m_GameObjects;
+
+	MeshRenderer* m_LavaTestMesh;
 
 	// Objects
 	Font* m_Font;
-	Camera* m_Camera;
-	Camera* m_LightCamera;
+	GameObject* m_CameaObj;
+	FlyCamera* m_Camera;
+	GameObject* m_LightCameaObj;
+	BaseCamera* m_LightCamera;
 	ShadowFrameBuffer* m_ShadowFBO;
 	BillboardList* m_TreeBillboardList;
 	Terrain* m_Terrain;

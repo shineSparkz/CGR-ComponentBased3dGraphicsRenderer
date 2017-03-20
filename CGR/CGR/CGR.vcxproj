@@ -167,14 +167,17 @@
     <ClCompile Include="src\BillboardList.cpp" />
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\Colour.cpp" />
+    <ClCompile Include="src\Component.cpp" />
     <ClCompile Include="src\Event.cpp" />
     <ClCompile Include="src\EventManager.cpp" />
     <ClCompile Include="src\Font.cpp" />
+    <ClCompile Include="src\GameObject.cpp" />
     <ClCompile Include="src\GBuffer.cpp" />
     <ClCompile Include="src\Image.cpp" />
     <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\LogFile.cpp" />
     <ClCompile Include="src\Mesh.cpp" />
+    <ClCompile Include="src\MeshRenderer.cpp" />
     <ClCompile Include="src\OpenGlLayer.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
     <ClCompile Include="src\RenderWindow.cpp" />
@@ -186,6 +189,7 @@
     <ClCompile Include="src\TextFile.cpp" />
     <ClCompile Include="src\Texture.cpp" />
     <ClCompile Include="src\Time.cpp" />
+    <ClCompile Include="src\Transform.cpp" />
     <ClCompile Include="src\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -193,12 +197,14 @@
     <ClInclude Include="src\BillboardList.h" />
     <ClInclude Include="src\Camera.h" />
     <ClInclude Include="src\Colour.h" />
+    <ClInclude Include="src\Component.h" />
     <ClInclude Include="src\Event.h" />
     <ClInclude Include="src\EventHandler.h" />
     <ClInclude Include="src\EventID.h" />
     <ClInclude Include="src\EventManager.h" />
     <ClInclude Include="src\Font.h" />
     <ClInclude Include="src\FontAlign.h" />
+    <ClInclude Include="src\GameObject.h" />
     <ClInclude Include="src\GBuffer.h" />
     <ClInclude Include="src\gl_headers.h" />
     <ClInclude Include="src\Image.h" />
@@ -209,6 +215,7 @@
     <ClInclude Include="src\LogFile.h" />
     <ClInclude Include="src\math_utils.h" />
     <ClInclude Include="src\Mesh.h" />
+    <ClInclude Include="src\MeshRenderer.h" />
     <ClInclude Include="src\OpenGlLayer.h" />
     <ClInclude Include="src\Rect.h" />
     <ClInclude Include="src\Renderer.h" />
@@ -223,6 +230,7 @@
     <ClInclude Include="src\TextFile.h" />
     <ClInclude Include="src\Texture.h" />
     <ClInclude Include="src\Time.h" />
+    <ClInclude Include="src\Transform.h" />
     <ClInclude Include="src\types.h" />
     <ClInclude Include="src\utils.h" />
     <ClInclude Include="src\Vertex.h" />

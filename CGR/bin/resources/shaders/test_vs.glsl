@@ -11,6 +11,14 @@ uniform mat4 proj_xform;
 //out vec3 varying_normal;
 out vec2 varying_texcoord;
 
+struct Thing
+{
+	float f;
+	vec3 v;
+};
+
+uniform Thing thing;
+
 void main()
 {
 	// Build Mat
@@ -25,5 +33,5 @@ void main()
 	//varying_normal += 0.5;
 	
 	// Set position
-	gl_Position = mvp * vec4(vertex_position, 1.0);
+	gl_Position = mvp * vec4(vertex_position + thing.v, thing.f);
 }

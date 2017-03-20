@@ -6,9 +6,9 @@
 #include "types.h"
 #include "gl_headers.h"
 
-class TerrainTechnique;
+class ShaderProgram;
 class Renderer;
-class Camera;
+class BaseCamera;
 class DirectionalLight;
 
 class Terrain
@@ -17,13 +17,13 @@ public:
 	Terrain();
 	~Terrain();
 
-	bool LoadFromHeightMap(const std::string& heightmapPath, TerrainTechnique* mat, unsigned textures[5], const Vec3& scale);
-	bool LoadFromHeightMapWithBillboards(const std::string& heightmapPath, TerrainTechnique* mat, unsigned textures[5], const Vec3& scale, std::vector<Vec3>& billboardPositionsOut, int maxBillboards);
+	bool LoadFromHeightMap(const std::string& heightmapPath, ShaderProgram* mat, unsigned textures[5], const Vec3& scale);
+	bool LoadFromHeightMapWithBillboards(const std::string& heightmapPath, ShaderProgram* mat, unsigned textures[5], const Vec3& scale, std::vector<Vec3>& billboardPositionsOut, int maxBillboards);
 
-	void Render(Renderer* renderer, Camera* camera, const Vec4& colour);
+	void Render(Renderer* renderer, BaseCamera* camera, const Vec3& colour);
 
 private:
-	TerrainTechnique* m_Material;
+	ShaderProgram* m_Material;
 	unsigned m_TextureIds[5];
 	Vec3 m_Scale;
 	GLuint m_VAO;

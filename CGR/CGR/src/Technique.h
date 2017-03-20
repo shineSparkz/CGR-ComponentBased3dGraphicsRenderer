@@ -10,7 +10,7 @@
 
 #include "Shader.h"
 
-class Camera;
+class BaseCamera;
 class Mesh;
 class Renderer;
 
@@ -42,7 +42,7 @@ class LightTechnique : public RenderTechnique
 public:
 	static const unsigned int MAX_POINT_LIGHTS = 2;
 	static const unsigned int MAX_SPOT_LIGHTS = 2;
-
+	 
 	LightTechnique();
 	bool Init() override;
 
@@ -137,8 +137,6 @@ public:
 	void setWVP(const Mat4& WVP);
 	void setTextureUnit(unsigned int TextureUnit);
 
-	void Render(Camera* cam, Mesh* mesh, Renderer* r);
-
 private:
 	GLuint m_Ufm_WVP;
 	GLuint m_Ufm_TexLoc;
@@ -200,7 +198,7 @@ public:
 
 	bool Init() override;
 
-	void setMatrices(Camera* camera, const Mat4& model);
+	void setMatrices(BaseCamera* camera, const Mat4& model);
 
 	void setShadowSampler(int samplerIndex);
 	

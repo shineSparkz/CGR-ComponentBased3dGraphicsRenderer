@@ -3,6 +3,7 @@
 #include "Technique.h"
 #include "Texture.h"
 #include "Renderer.h"
+#include "Shader.h"
 #include <vector>
 
 BillboardList::BillboardList() :
@@ -18,7 +19,7 @@ BillboardList::~BillboardList()
 	OpenGLLayer::clean_GL_buffer(&m_VBO, 1);
 }
 
-bool BillboardList::Init(BillboardTechnique* mat, unsigned textureIndex, float scale, unsigned numX, unsigned numY, float displace, float offset, float yPos)
+bool BillboardList::Init(ShaderProgram* mat, size_t textureIndex, float scale, size_t numX, size_t numY, float displace, float offset, float yPos)
 {
 	m_Material = mat;
 	m_TextureIndex = textureIndex;
@@ -50,13 +51,17 @@ bool BillboardList::Init(BillboardTechnique* mat, unsigned textureIndex, float s
 	glBindVertexArray(0);
 
 	// Should this really be here? Or just in material itself
-	if(m_Material)
-		m_Material->setTexureMapSampler(0);
+	if (m_Material)
+	{
+		m_Material->Use();
+		int sampler = 0;
+		m_Material->SetUniformValue<int>("u_TextureMap", &sampler);
+	}
 
 	return true;
 }
 
-bool BillboardList::InitWithPositions(BillboardTechnique* mat, unsigned texture, float setScale, const std::vector<Vec3>& positions)
+bool BillboardList::InitWithPositions(ShaderProgram* mat, size_t texture, float setScale, const std::vector<Vec3>& positions)
 {
 	m_Material = mat;
 	m_TextureIndex = texture;
@@ -78,7 +83,11 @@ bool BillboardList::InitWithPositions(BillboardTechnique* mat, unsigned texture,
 
 	// Should this really be here? Or just in material itself
 	if (m_Material)
-		m_Material->setTexureMapSampler(0);
+	{
+		m_Material->Use();
+		int sampler = 0;
+		m_Material->SetUniformValue<int>("u_TextureMap", &sampler);
+	}
 
 	return true;
 }
@@ -88,9 +97,10 @@ void BillboardList::Render(Renderer* renderer, const Mat4& viewProj, const Vec3&
 	// This should be set globally, not in this one billboard instance, 
 	// what if we have a bunch of different billboards, god this guy is naff!
 	m_Material->Use();
-	m_Material->setViewProjXform(viewProj);
-	m_Material->setCamPos(camPos);
-	m_Material->setBillboardScale(m_BillboardScale);
+
+	m_Material->SetUniformValue<Mat4>("u_ViewProjXform", &viewProj);
+	m_Material->SetUniformValue<Vec3>("u_CamPos", &camPos);
+	m_Material->SetUniformValue<float>("u_Scale", &m_BillboardScale);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -101,6 +111,6 @@ void BillboardList::Render(Renderer* renderer, const Mat4& viewProj, const Vec3&
 
 	// I think we shoulf be asking renderer to do this 
 	glBindVertexArray(m_VAO);
-	glDrawArrays(GL_POINTS, 0, m_NumInstances);
+	glDrawArrays(GL_POINTS, 0, (GLsizei)m_NumInstances);
 	glDisable(GL_BLEND);
 }

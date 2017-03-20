@@ -54,8 +54,8 @@ SubMesh::SubMesh() :
 	NumIndices(0),
 	NumVertices(0),
 	BaseIndex(0),
-	BaseVertex(0),
-	TextureIndices()
+	BaseVertex(0)
+	//TextureIndices()
 {
 };
 
@@ -131,8 +131,8 @@ void SubMesh::Init(const aiMesh* paiMesh, std::vector<VertexTan>& vertices, std:
 Mesh::Mesh() :
 	m_IndexVBO(0),
 	m_VAO(0),
-	m_MeshLayouts(),
-	m_TextureHandles(),
+	m_SubMeshes(),
+	//m_TextureHandles(),
 	m_VertexVBO(0)
 {
 }
@@ -162,22 +162,22 @@ bool Mesh::Load(const std::string& mesh, bool withTangents)
 	glGenBuffers(1, &m_IndexVBO);
 
 	// Load here
-	m_MeshLayouts.resize(scene->mNumMeshes);
+	m_SubMeshes.resize(scene->mNumMeshes);
 	// Textures
 
 	unsigned int num_vertices = 0;
 	unsigned int num_indices = 0;
 
 	// For one VAO for each mesh group, this all needs moving to the mesh class itself
-	for (unsigned int i = 0; i < m_MeshLayouts.size(); i++)
+	for (unsigned int i = 0; i < m_SubMeshes.size(); i++)
 	{
 		//mesh.m_MeshLayouts[i].MaterialIndex = pScene->mMeshes[i]->mMaterialIndex;
-		m_MeshLayouts[i].NumIndices = scene->mMeshes[i]->mNumFaces * 3;
-		m_MeshLayouts[i].BaseVertex = num_vertices;
-		m_MeshLayouts[i].BaseIndex = num_indices;
+		m_SubMeshes[i].NumIndices = scene->mMeshes[i]->mNumFaces * 3;
+		m_SubMeshes[i].BaseVertex = num_vertices;
+		m_SubMeshes[i].BaseIndex = num_indices;
 
 		num_vertices += scene->mMeshes[i]->mNumVertices;
-		num_indices += m_MeshLayouts[i].NumIndices;
+		num_indices += m_SubMeshes[i].NumIndices;
 	}
 	
 	std::vector<unsigned int> indices;
@@ -188,9 +188,9 @@ bool Mesh::Load(const std::string& mesh, bool withTangents)
 		std::vector<Vertex> vertices;
 		vertices.reserve(num_vertices);
 
-		for (int m = 0; m < m_MeshLayouts.size(); ++m)
+		for (int m = 0; m < m_SubMeshes.size(); ++m)
 		{
-			m_MeshLayouts[m].Init(scene->mMeshes[m], vertices, indices);
+			m_SubMeshes[m].Init(scene->mMeshes[m], vertices, indices);
 		}
 
 		// Generate and populate the buffers with vertex attributes and the indices
@@ -210,9 +210,9 @@ bool Mesh::Load(const std::string& mesh, bool withTangents)
 		std::vector<VertexTan> vertTans;
 		vertTans.reserve(num_vertices);
 
-		for (int m = 0; m < m_MeshLayouts.size(); ++m)
+		for (int m = 0; m < m_SubMeshes.size(); ++m)
 		{
-			m_MeshLayouts[m].Init(scene->mMeshes[m], vertTans, indices);
+			m_SubMeshes[m].Init(scene->mMeshes[m], vertTans, indices);
 		}
 
 		// Generate and populate the buffers with vertex attributes and the indices
@@ -244,6 +244,7 @@ bool Mesh::Load(const std::string& mesh, bool withTangents)
 	return true;
 }
 
+/*
 bool Mesh::AddTexture(size_t texHandle, unsigned int meshIndex)
 {
 	if (meshIndex >= m_MeshLayouts.size())
@@ -270,3 +271,4 @@ bool Mesh::AddTexture(size_t texHandle)
 	m_TextureHandles.push_back(texHandle);
 	return true;
 }
+*/

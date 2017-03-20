@@ -20,11 +20,8 @@ struct SubMesh
 
 	unsigned int NumIndices;
 	unsigned int NumVertices;
-	//unsigned int TextureIndex;
 	int BaseVertex;
 	int BaseIndex;
-
-	std::vector<unsigned> TextureIndices;
 };
 
 class Mesh
@@ -35,15 +32,10 @@ public:
 
 	bool Load(const std::string& mesh, bool withTangents);
 	
-	bool AddTexture(size_t texHandle, unsigned int meshIndex);
-	bool AddTexture(size_t texHandle);
-
 	//private:
-	std::vector<SubMesh> m_MeshLayouts;
-	std::vector<size_t> m_TextureHandles;
+	std::vector<SubMesh> m_SubMeshes;
 	GLuint m_VAO;
 	GLuint m_VertexVBO;
 	GLuint m_IndexVBO;
 };
-
 #endif
