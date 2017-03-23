@@ -1,18 +1,69 @@
 #version 330
 
-uniform sampler2D u_TextureMap;
+/*
+// Deferred
+in vec2 geom_texcoord; 
+in vec3 geom_normal; 
+in vec3 geom_position; 
 
-in vec2 varying_texcoord;
+layout (location = 0) out vec3 worldPosOut; 
+layout (location = 1) out vec3 diffuseOut; 
+layout (location = 2) out vec3 normalOut; 
+layout (location = 3) out vec3 texcoordOut; 
 
-out vec4 frag_colour;
+uniform sampler2D u_TextureMap; 
 
 void main()
 {
-	frag_colour = texture2D(u_TextureMap, varying_texcoord);
+	vec4 diffuse = texture2D(u_TextureMap, geom_texcoord);
+	//if (diffuse.a == 0)
+	//	discard;	
+	diffuseOut = diffuse.xyz;
+
+	worldPosOut = geom_position; 
+    normalOut = normalize(geom_normal); 
+	texcoordOut = vec3(geom_texcoord, 0.0); 
 	
-	if(frag_colour.a == 0)
-	//if (frag_colour.r == 0 && frag_colour.g == 0 && frag_colour.b == 0)
-	{
-		discard;                                                                    
-    }       
+	//diffuseOut = texture2D(u_TextureMap, geom_texcoord).xyz;
+}
+*/
+
+// TODO : Pass in directional light data from scene, this shader will not support deffered 
+
+// Forward
+uniform sampler2D u_TextureMap;
+
+in vec2 geom_texcoord; 
+in vec3 geom_normal; 
+in vec3 geom_position; 
+
+out vec4 frag_colour;
+
+vec4 GetDirectionalLightColor(vec3 vNormal)
+{
+	// Hardcode for now
+	vec3 dirLightDir = vec3(1,-1,0);
+	vec3 dirLightCol = vec3(1.0);
+	float dirLightAmbient = 0.1;
+	float dirLightDiff = 0.1;
+
+	float fDiffuseIntensity = max(0.0, dot(vNormal, -dirLightDir));
+	float fMult = clamp(dirLightAmbient + dirLightDiff, 0.0, 1.0);
+	return vec4(dirLightCol * fMult, 1.0);
+}
+
+void main()
+{
+	float fAlphaMultiplier = 1.5;
+	float fAlphaTest = 0.25;
+	
+	vec4 vTexColor = texture2D(u_TextureMap, geom_texcoord); 
+	float fNewAlpha = vTexColor.a * fAlphaMultiplier;                
+	if(fNewAlpha < fAlphaTest) 
+		discard; 
+    
+	if(fNewAlpha > 1.0f) 
+		fNewAlpha = 1.0f;    
+       
+	frag_colour = vec4(vTexColor.xyz, fNewAlpha) * GetDirectionalLightColor(normalize(geom_normal));       
 }

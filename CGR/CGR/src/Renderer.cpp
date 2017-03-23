@@ -18,7 +18,6 @@
 #include "GBuffer.h"
 
 // Utils
-#include "Time.h"
 #include "LogFile.h"
 #include "utils.h"
 #include "math_utils.h"
@@ -31,6 +30,9 @@
 #include "Camera.h"
 #include "MeshRenderer.h"
 
+#include "Input.h"
+#include "ResId.h"
+
 // Transforms -- for now
 const Mat4 MALE_XFORM =  glm::translate(Mat4(1.0f), Vec3(-0.5f, -1.5f, -10.0f))  *  glm::scale(Mat4(1.0f), Vec3(1.0f));
 const Mat4 DINO_XFORM =  glm::translate(Mat4(1.0f), Vec3(1.8f, -1.5f, -10.0f))   *  glm::scale(Mat4(1.0f), Vec3(0.05f));
@@ -39,35 +41,6 @@ const Mat4 CUBE2_XFORM = glm::translate(Mat4(1.0f), Vec3(-2.0f, 0.0f, 0.0f))   *
 const Mat4 FLOOR_XFORM = glm::translate(Mat4(1.0f), Vec3(0.0f, -2.0f, -3.0f))  *  glm::scale(Mat4(1.0f), Vec3(30.0f, 0.5f, 30.0f));
 const Mat4 LAVA_XFORM = glm::translate(Mat4(1.0f),  Vec3(0.0f, 4.0f, 0.0f)) *  glm::scale(Mat4(1.0f), Vec3(400.0f, 2.0f, 400.0f));
 
-// Mesh ID's -- for now
-const size_t CUBE_MESH = 0;
-const size_t SPHERE_MESH = 1;
-const size_t QUAD_MESH = 2;
-const size_t MALE_MESH = 3;
-const size_t DINO_MESH = 4;
-
-// Texture ID's -- for now
-const size_t MALE_TEX1 = 0;
-const size_t MALE_TEX2 = 1;
-const size_t DINO_TEX = 2;
-const size_t WALL_TEX = 3;
-const size_t SKYBOX_TEX = 4;
-const size_t BRICK_TEX = 5;
-const size_t BRICK_NORM_TEX = 6;
-const size_t FAKE_NORMAL_TEX = 7;
-const size_t TREE_BILLBOARD_TEX = 8;
-const size_t TERRAIN1_TEX = 9;//-->
-const size_t TERRAIN2_TEX = 10;
-const size_t TERRAIN3_TEX = 11;
-const size_t TERRAIN4_TEX = 12;
-const size_t TERRAIN5_TEX = 13;//--<
-const size_t LAVA_NOISE_TEX = 14;
-
-// Shader ID's -- for now
-const size_t FONT_SHADER = 0;
-const size_t SKYBOX_SHADER = 1;
-const size_t BILLBOARD_SHADER = 2;
-const size_t TERRAIN_SHADER = 3;
 
 // ---- Globals ----
 const Mat4 IDENTITY(1.0f);
@@ -78,48 +51,48 @@ const ShaderAttrib NORM_ATTR{ 1, "vertex_normal" };
 const ShaderAttrib TEX_ATTR{  2, "vertex_texcoord" };
 const ShaderAttrib TAN_ATTR{  3, "vertex_tangent" };
 
+// Temp Light stuff 
+const Vec3 AMBIENT_LIGHT(0.1f);
+float DIRECTION_ANGLE = 45.0f;
+float ATTEN_CONST = 0.3f;
+float ATTEN_LIN = 0.0174f;
+float ATTEN_QUAD = 0.000080;
 
 float CalcPointLightBSphere(const PointLight& Light)
 {
-	float MaxChannel = fmax(fmax(Light.Color.x, Light.Color.y), Light.Color.z);
+	float MaxChannel = fmax(fmax(Light.intensity.x, Light.intensity.y), Light.intensity.z);
 
-	float ret = (-Light.Attenuation.Linear + sqrtf(Light.Attenuation.Linear * Light.Attenuation.Linear -
-		4 * Light.Attenuation.Exp * (Light.Attenuation.Exp - 256 * MaxChannel * Light.DiffuseIntensity)))
+	float ret = (-Light.aLinear + sqrtf(Light.aLinear * Light.aLinear -
+		4 * Light.aQuadratic* (Light.aQuadratic - 256 * MaxChannel * Light.ambient_intensity)))
 		/
-		(2 * Light.Attenuation.Exp);
+		(2 * Light.aQuadratic);
 	return ret;
 }
 
 Renderer::Renderer() :
 	m_Textures(),
 	m_Font(nullptr),
-	m_Camera(nullptr),
 	m_Gbuffer(nullptr),
+	m_CameraPtr(nullptr),
 
 	m_TreeBillboardList(nullptr),
-	m_Terrain(nullptr),
-
-	m_GeomPassMaterial(nullptr),
-	m_PointLightPassMaterial(nullptr),
-	m_DirLightPassMaterial(nullptr),
-	m_NullTech(nullptr)
+	m_Terrain(nullptr)
 {
 }
-
 
 bool Renderer::Init()
 {	
 	bool success = true;
 
+	m_Query.Init(GL_TIME_ELAPSED);
+
 	success &= setRenderStates();
 	success &= setFrameBuffers();
 	success &= setLights();
-	success &= setCamera();
 	success &= loadFonts();
 	success &= loadTetxures();
 	success &= loadMeshes();
 	success &= createMaterials();
-
 
 	// Create Terrain
 	std::vector<Vec3> billboardPositions;
@@ -138,8 +111,7 @@ bool Renderer::Init()
 	// Need material and textures for bill board creation, which again I am not too happy with
 	m_TreeBillboardList = new BillboardList();
 	success &= m_TreeBillboardList->InitWithPositions(m_Shaders[BILLBOARD_SHADER], TREE_BILLBOARD_TEX, 0.5f, billboardPositions);
-	
-	/*
+
 	m_TreeBillboardList->Init(m_Shaders[BILLBOARD_SHADER], TREE_BILLBOARD_TEX, 
 		0.5f,	// scale
 		10,		// numX
@@ -148,7 +120,6 @@ bool Renderer::Init()
 		14.0f,	// offset pos
 		-1.4f	// ypos
 	);
-	*/
 	
 	return success;
 }
@@ -184,7 +155,7 @@ bool Renderer::setFrameBuffers()
 
 void Renderer::WindowSizeChanged(int w, int h)
 {
-	m_Camera->SetAspect(static_cast<float>(w / h));
+	m_CameraPtr->SetAspect(static_cast<float>(w / h));
 
 	if (m_Gbuffer)
 	{
@@ -195,56 +166,45 @@ void Renderer::WindowSizeChanged(int w, int h)
 bool Renderer::setLights()
 {
 	// Dir Light
-	m_DirectionalLight.Color = Vec3(1.0f, 1.0f, 1.0f);
-	m_DirectionalLight.AmbientIntensity = 0.1f;
-	m_DirectionalLight.DiffuseIntensity = 0.1f;
-	m_DirectionalLight.Direction = Vec3(1.0f, -1.0f, 0.0f);
+	m_DirLight.direction = Vec3(0, -1, 0);
+	m_DirLight.intensity = Vec3(0.5f);
+	m_DirLight.ambient_intensity = 0.1f;
 
-	// Point Lights
-	m_PointLights[0].Position = Vec3(0.0f, 20.0f, 0.0f);
-	m_PointLights[1].Position = Vec3(-5.0f, 20.0f, 5.0f);
-	m_PointLights[2].Position = Vec3(5.0f, 20.0f, -5.0f);
+	// Point Light
+	m_PointLights.resize(3);
 
-	m_PointLights[0].Color = Vec3(0, 1, 0);
-	m_PointLights[1].Color = Vec3(1, 0, 0);
-	m_PointLights[2].Color = Vec3(0, 0, 1);
+	m_PointLights[0].position = Vec3(2.0f, 3.0f, -2.0f);
+	m_PointLights[1].position = Vec3(-2.0f, 3.0f, 2.0f);
+	m_PointLights[2].position = Vec3(4.0f, 3.0f, 4.0f);
+	m_PointLights[0].intensity = Vec3(1.0f, 0.0f, 0.0f);
+	m_PointLights[1].intensity = Vec3(0.0f, 1.0f, 0.0f);
+	m_PointLights[2].intensity = Vec3(0.0f, 0.0f, 1.0f);
 
-	for (int i = 0; i < ARRAY_SIZE_IN_ELEMENTS(m_PointLights); ++i)
+	for (size_t i = 0; i < m_PointLights.size(); ++i)
 	{
-		//m_PointLights[i].DiffuseIntensity = random::RandFloat(0.3f, 0.9f);
-		m_PointLights[i].DiffuseIntensity = 0.2f;// random::RandFloat(0.3f, 0.9f);
-
-		//m_PointLights[i].Color = Vec3(random::RandFloat(0.1f, 1.0f), random::RandFloat(0.1f, 1.0f), random::RandFloat(0.1f, 1.0f));
-
-		m_PointLights[i].Attenuation.Constant = 0.0f;
-		m_PointLights[i].Attenuation.Linear = 0.0f;
-		m_PointLights[i].Attenuation.Exp = 0.3f;
+		//m_PointLights[i].intensity = Vec3(0.75f);
+		m_PointLights[i].ambient_intensity = 0.2f;
+		m_PointLights[i].aConstant = ATTEN_CONST;
+		m_PointLights[i].aLinear = ATTEN_LIN;
+		m_PointLights[i].aQuadratic = ATTEN_QUAD;
 	}
+
+	// Spot Light(s)
+	m_SpotLight.position = Vec3(0.0f);
+	m_SpotLight.direction = Vec3(0.0f, 0.0f, -1.0f);
+	m_SpotLight.switched_on = 1;
+	m_SpotLight.intensity = Vec3(0.2f, 0.2f, 0.6f);
+	m_SpotLight.aConstant = ATTEN_CONST;
+	m_SpotLight.aLinear = 0.0174;
+	m_SpotLight.aQuadratic = ATTEN_QUAD;
+	m_SpotLight.SetAngle(15.0f);
 
 	return true;
 }
 
-bool Renderer::setCamera()
+bool Renderer::SetCamera(BaseCamera* camera)
 {
-	m_CameraObj = new GameObject();
-	m_Camera = m_CameraObj->AddComponent<FlyCamera>();
-	
-	m_CameraObj->Start();
-
-	m_Camera->Init(
-		CamType::Perspective,
-		Vec3(0.0f, 1.0f, 1.0f),																				// Pos
-		Vec3(0.0f, 1.0f, 0.0f),																				// Up
-		Vec3(1.0f, 0.0f, 0.0f),																				// Right
-		Vec3(0.0f, 0.0f, -1.0f),																			// Fwd
-		45.0f,																								// FOV
-		static_cast<float>(Screen::Instance()->ScreenWidth() / Screen::Instance()->ScreenHeight()),			// Aspect
-		0.1f,																								// Near
-		300.0f																								// Far
-	);
-
-	m_Camera->AddSkybox(30.0f, SKYBOX_TEX);
-
+	m_CameraPtr = camera;
 	return true;
 }
 
@@ -263,7 +223,7 @@ bool Renderer::loadFonts()
 bool Renderer::loadTexture(const std::string& path, size_t key_store, int glTextureIndex)
 {
 	Image i;
-	std::string full_path = "../resources/textures/" + path;
+	std::string full_path =  path;
 	if (!i.LoadImg(full_path.c_str()))
 	{
 		WRITE_LOG("Failed to load texture: " + path, "error");
@@ -288,7 +248,7 @@ bool Renderer::loadTexture(const std::string& path, size_t key_store, int glText
 	return true;
 }
 
-bool Renderer::loadMesh(const std::string& path, size_t key_store, bool tangents)
+bool Renderer::loadMesh(const std::string& path, size_t key_store, bool tangents, bool withTextures)
 {
 	if (m_Meshes.find(key_store) != m_Meshes.end())
 	{
@@ -298,7 +258,7 @@ bool Renderer::loadMesh(const std::string& path, size_t key_store, bool tangents
 
 	Mesh* mesh = new Mesh();
 	m_Meshes[key_store] = mesh;
-	if (!mesh->Load(path, tangents))
+	if (!mesh->Load(path, tangents, withTextures))
 	{
 		WRITE_LOG("Failed to load mesh: " + path, "error");
 		return false;
@@ -311,22 +271,22 @@ bool Renderer::loadTetxures()
 {
 	bool success = true;
 
-	success &= this->loadTexture("male_body_low_albedo.tga", MALE_TEX1, GL_TEXTURE0);
-	success &= this->loadTexture("male_body_high_albedo.tga", MALE_TEX2, GL_TEXTURE0);
-	success &= this->loadTexture("dino_diffuse.tga", DINO_TEX, GL_TEXTURE0);
-	success &= this->loadTexture("terrain.tga", WALL_TEX, GL_TEXTURE0);
-	success &= this->loadTexture("bricks/bricks.tga", BRICK_TEX, GL_TEXTURE0);
-	success &= this->loadTexture("bricks/bricks_normal.tga", BRICK_NORM_TEX, GL_TEXTURE2);
-	success &= this->loadTexture("default_normal_map.tga", FAKE_NORMAL_TEX, GL_TEXTURE2);
-	success &= this->loadTexture("billboards/grass.tga", TREE_BILLBOARD_TEX, GL_TEXTURE0);
+	success &= this->loadTexture("../resources/textures/male_body_low_albedo.tga", MALE_TEX1, GL_TEXTURE0);
+	success &= this->loadTexture("../resources/textures/male_body_high_albedo.tga", MALE_TEX2, GL_TEXTURE0);
+	success &= this->loadTexture("../resources/textures/dino_diffuse.tga", DINO_TEX, GL_TEXTURE0);
+	success &= this->loadTexture("../resources/textures/terrain.tga", WALL_TEX, GL_TEXTURE0);
+	success &= this->loadTexture("../resources/textures/bricks/bricks.tga", BRICK_TEX, GL_TEXTURE0);
+	success &= this->loadTexture("../resources/textures/bricks/bricks_normal.tga", BRICK_NORM_TEX, GL_TEXTURE2);
+	success &= this->loadTexture("../resources/textures/default_normal_map.tga", FAKE_NORMAL_TEX, GL_TEXTURE2);
+	success &= this->loadTexture("../resources/textures/billboards/grass.tga", TREE_BILLBOARD_TEX, GL_TEXTURE0);
 
-	success &= this->loadTexture("terrain/fungus.tga", TERRAIN1_TEX, GL_TEXTURE0);
-	success &= this->loadTexture("terrain/sand_grass.tga", TERRAIN2_TEX, GL_TEXTURE1);
-	success &= this->loadTexture("terrain/rock.tga", TERRAIN3_TEX, GL_TEXTURE2);
-	success &= this->loadTexture("terrain/sand.tga", TERRAIN4_TEX, GL_TEXTURE3);
-	success &= this->loadTexture("terrain/path.tga", TERRAIN5_TEX, GL_TEXTURE4);
+	success &= this->loadTexture("../resources/textures/terrain/fungus.tga", TERRAIN1_TEX, GL_TEXTURE0);
+	success &= this->loadTexture("../resources/textures/terrain/sand_grass.tga", TERRAIN2_TEX, GL_TEXTURE1);
+	success &= this->loadTexture("../resources/textures/terrain/rock.tga", TERRAIN3_TEX, GL_TEXTURE2);
+	success &= this->loadTexture("../resources/textures/terrain/sand.tga", TERRAIN4_TEX, GL_TEXTURE3);
+	success &= this->loadTexture("../resources/textures/terrain/path.tga", TERRAIN5_TEX, GL_TEXTURE4);
 
-	success &= this->loadTexture("noise.tga", LAVA_NOISE_TEX, GL_TEXTURE0);
+	success &= this->loadTexture("../resources/textures/noise.tga", LAVA_NOISE_TEX, GL_TEXTURE0);
 
 	// Load Images for skybox
 	Image* images[6];
@@ -368,71 +328,22 @@ bool Renderer::loadMeshes()
 	// ---- Load Meshes ----
 	bool success = true;
 
-	success &= loadMesh("cube.obj", CUBE_MESH, false);
-	success &= loadMesh("quad.obj", QUAD_MESH, false);
-	success &= loadMesh("sphere.obj", SPHERE_MESH, false);
-	success &= loadMesh("male.obj", MALE_MESH, !false);
-	success &= loadMesh("dino.obj", DINO_MESH, !false);
-
-	// This will be moved
-	GameObject* male = new GameObject();
-	Transform* maleT = male->AddComponent<Transform>();
-	maleT->SetPosition(Vec3(-0.5f, -1.5f, -1.0f));
-	maleT->SetScale(Vec3(1.0f));
-	MeshRenderer* maleMr = male->AddComponent<MeshRenderer>();
-	maleMr->SetMesh(MALE_MESH, m_Meshes[MALE_MESH]->m_SubMeshes.size());
-	maleMr->AddTexture(MALE_TEX2, 0);
-	maleMr->AddTexture(FAKE_NORMAL_TEX, 0);
-	maleMr->AddTexture(MALE_TEX1, 1);
-	maleMr->AddTexture(FAKE_NORMAL_TEX, 1);
-	m_GameObjects.push_back(male);
-
-	GameObject* dino = new GameObject();
-	Transform* dinoT = dino->AddComponent<Transform>();
-	dinoT->SetPosition(Vec3(1.8f, -1.5f, -1.0f));
-	dinoT->SetScale(Vec3(0.05f));
-	MeshRenderer* dinoMr = dino->AddComponent<MeshRenderer>();
-	dinoMr->SetMesh(DINO_MESH, m_Meshes[DINO_MESH]->m_SubMeshes.size());
-	dinoMr->AddTexture(DINO_TEX);
-	dinoMr->AddTexture(FAKE_NORMAL_TEX);
-	m_GameObjects.push_back(dino);
-
-	GameObject* cube1 = new GameObject();
-	Transform* cubet = cube1->AddComponent<Transform>();
-	cubet->SetPosition(Vec3(0.0f, 1.0f, -10.0f));
-	cubet->SetScale(Vec3(1.0f));
-	MeshRenderer* cube1Mr = cube1->AddComponent<MeshRenderer>();
-	cube1Mr->SetMesh(CUBE_MESH, m_Meshes[CUBE_MESH]->m_SubMeshes.size());
-	cube1Mr->AddTexture(BRICK_TEX);
-	cube1Mr->AddTexture(BRICK_NORM_TEX);
-	m_GameObjects.push_back(cube1);
-
-	GameObject* cube2 = new GameObject();
-	Transform* cube2t = cube2->AddComponent<Transform>();
-	cube2t->SetPosition(Vec3(-2.0f, 0.0f, 0.0f));
-	cube2t->SetScale(Vec3(1.0f));
-	MeshRenderer* cube2Mr = cube2->AddComponent<MeshRenderer>();
-	cube2Mr->SetMesh(CUBE_MESH, m_Meshes[CUBE_MESH]->m_SubMeshes.size());
-	cube2Mr->AddTexture(BRICK_TEX);
-	cube2Mr->AddTexture(FAKE_NORMAL_TEX);
-	m_GameObjects.push_back(cube2);
-
-	GameObject* floor = new GameObject();
-	Transform* ft = floor->AddComponent<Transform>();
-	ft->SetPosition(Vec3(0, -2.0f, -3.0f));
-	ft->SetScale(Vec3(30, 0.5f, 30.0f));
-	MeshRenderer* fmr = floor->AddComponent<MeshRenderer>();
-	fmr->SetMesh(CUBE_MESH, m_Meshes[CUBE_MESH]->m_SubMeshes.size());
-	fmr->AddTexture(WALL_TEX);
-	fmr->AddTexture(FAKE_NORMAL_TEX);
-	m_GameObjects.push_back(floor);
+	success &= loadMesh("cube.obj", CUBE_MESH, false, false);
+	success &= loadMesh("quad.obj", QUAD_MESH, false, false);
+	success &= loadMesh("sphere.obj", SPHERE_MESH, false, false);
+	success &= loadMesh("sponza/sponza.obj", SPONZA_MESH, false, true);
+	//success &= loadMesh("male.obj", MALE_MESH, !false);
+	//success &= loadMesh("dino.obj", DINO_MESH, !false);
 
 	return success;
 }
 
 bool Renderer::createMaterials()
 {
-	// ---- Font material -----
+	// TODO : change this on window size callback
+	Vec2 screenSize((float)Screen::Instance()->FrameBufferWidth(), (float)Screen::Instance()->FrameBufferHeight());
+
+	// ---- Font material (Fwd) ----
 	{
 		Shader font_vert(GL_VERTEX_SHADER);
 		Shader font_frag(GL_FRAGMENT_SHADER);
@@ -450,17 +361,7 @@ bool Renderer::createMaterials()
 		font_frag.Close();
 	}
 
-
-	/*
-	m_FontMaterial = new FontTechnique();
-	if (!m_FontMaterial->Init())
-	{
-		WRITE_LOG("Failed to create font mat", "error");
-		return false;
-	}
-	*/
-
-	// Skybox
+	// ---- Skybox (Fwd) ----
 	{
 		Shader vert(GL_VERTEX_SHADER);
 		Shader frag(GL_FRAGMENT_SHADER);
@@ -483,7 +384,7 @@ bool Renderer::createMaterials()
 		m_Shaders[SKYBOX_SHADER]->SetUniformValue<int>("cube_sampler", &texUnit);
 	}
 
-	// Bill board
+	// ---- Bill board (Fwd) ----
 	{
 		Shader vert(GL_VERTEX_SHADER);
 		Shader geom(GL_GEOMETRY_SHADER);
@@ -492,6 +393,7 @@ bool Renderer::createMaterials()
 		if (!geom.LoadShader("../resources/shaders/billboard_gs.glsl")) { return false; }
 		if (!frag.LoadShader("../resources/shaders/billboard_fs.glsl")) { return false; }
 		vert.AddAttribute(POS_ATTR);
+
 		std::vector<Shader> shaders;
 		shaders.push_back(vert);
 		shaders.push_back(geom);
@@ -505,7 +407,7 @@ bool Renderer::createMaterials()
 		frag.Close();
 	}
 
-	// -- Terrain --
+	// ---- Terrain (Def) ----
 	{
 		Shader vert(GL_VERTEX_SHADER);
 		Shader frag(GL_FRAGMENT_SHADER);
@@ -530,77 +432,287 @@ bool Renderer::createMaterials()
 		{
 			m_Shaders[TERRAIN_SHADER]->SetUniformValue<int>("u_Sampler" + std::to_string(i), &i);
 		}
+	}
+
+	// ---- Lava Shader (Def) ----
+	{
+		Shader vert(GL_VERTEX_SHADER);
+		Shader frag(GL_FRAGMENT_SHADER);
+		if (!vert.LoadShader("../resources/shaders/deferred/geometry_pass_vs.glsl")) { return false; }
+		if (!frag.LoadShader("../resources/shaders/lava_fs.glsl")) { return false; }
+		vert.AddAttribute(POS_ATTR);
+		vert.AddAttribute(NORM_ATTR);
+		vert.AddAttribute(TEX_ATTR);
+
+		std::vector<Shader> shaders;
+		shaders.push_back(vert);
+		shaders.push_back(frag);
+
+		ShaderProgram* shaderProg = new ShaderProgram();
+		m_Shaders[LAVA_SHADER] = shaderProg;
+		if (!shaderProg->CreateProgram(shaders, "frag_colour", 0)) return false;
+		vert.Close();
+		frag.Close();
+
+		m_Shaders[LAVA_SHADER]->Use();
+		int sampler = 0;
+		m_Shaders[LAVA_SHADER]->SetUniformValue<int>("u_Sampler", &sampler);
+		m_Shaders[LAVA_SHADER]->SetUniformValue<Vec2>("u_Resolution", &screenSize);
+	}
+
+	// ---- Std Geom Shader (Def) ----
+	{
+		Shader vert(GL_VERTEX_SHADER);
+		Shader frag(GL_FRAGMENT_SHADER);
+		if (!vert.LoadShader("../resources/shaders/deferred/geometry_pass_vs.glsl")) { return false; }
+		if (!frag.LoadShader("../resources/shaders/deferred/geometry_pass_fs.glsl")) { return false; }
+		vert.AddAttribute(POS_ATTR);
+		vert.AddAttribute(NORM_ATTR);
+		vert.AddAttribute(TEX_ATTR);
+
+		std::vector<Shader> shaders;
+		shaders.push_back(vert);
+		shaders.push_back(frag);
+
+		ShaderProgram* shaderProg = new ShaderProgram();
+		m_Shaders[STD_DEF_GEOM_SHADER] = shaderProg;
+		if (!shaderProg->CreateProgram(shaders, "frag_colour", 0)) return false;
+		vert.Close();
+		frag.Close();
+
+		m_Shaders[STD_DEF_GEOM_SHADER]->Use();
+		int sampler = 0;
+		m_Shaders[STD_DEF_GEOM_SHADER]->SetUniformValue<int>("u_ColourMap", &sampler);
+	}
+
+	// ---- Std Stencil Shader (Def) ----
+	{
+		Shader vert(GL_VERTEX_SHADER);
+		Shader frag(GL_FRAGMENT_SHADER);
+		if (!vert.LoadShader("../resources/shaders/deferred/stencil_pass_vs.glsl")) { return false; }
+		if (!frag.LoadShader("../resources/shaders/deferred/stencil_pass_fs.glsl")) { return false; }
+		vert.AddAttribute(POS_ATTR);
+
+		std::vector<Shader> shaders;
+		shaders.push_back(vert);
+		shaders.push_back(frag);
+
+		ShaderProgram* shaderProg = new ShaderProgram();
+		m_Shaders[STD_DEF_STENCIL_SHADER] = shaderProg;
+		if (!shaderProg->CreateProgram(shaders, "frag_colour", 0)) return false;
+		vert.Close();
+		frag.Close();
+	}
+
+	// ---- Std Point Light Shader (Def) ----
+	{
+		Shader vert(GL_VERTEX_SHADER);
+		Shader frag(GL_FRAGMENT_SHADER);
+		if (!vert.LoadShader("../resources/shaders/deferred/light_pass_vs.glsl")) { return false; }
+		if (!frag.LoadShader("../resources/shaders/deferred/point_light_pass_fs.glsl")) { return false; }
+		vert.AddAttribute(POS_ATTR);
+		vert.AddAttribute(NORM_ATTR);
+		vert.AddAttribute(TEX_ATTR);
+
+		std::vector<Shader> shaders;
+		shaders.push_back(vert);
+		shaders.push_back(frag);
+
+		ShaderProgram* shaderProg = new ShaderProgram();
+		m_Shaders[STD_DEF_PNT_LIGHT_SHADER] = shaderProg;
+		if (!shaderProg->CreateProgram(shaders, "frag_colour", 0)) return false;
+		vert.Close();
+		frag.Close();
+
+		int p = (int)GBuffer::TexTypes::Position;
+		int d = (int)GBuffer::TexTypes::Diffuse;
+		int n = (int)GBuffer::TexTypes::Normal;
+		float matSpec = 0.1f;
+
+		m_Shaders[STD_DEF_PNT_LIGHT_SHADER]->Use();
+		m_Shaders[STD_DEF_PNT_LIGHT_SHADER]->SetUniformValue<int>("u_PositionMap", &p);
+		m_Shaders[STD_DEF_PNT_LIGHT_SHADER]->SetUniformValue<int>("u_ColourMap", &d);
+		m_Shaders[STD_DEF_PNT_LIGHT_SHADER]->SetUniformValue<int>("u_NormalMap", &n);
+		m_Shaders[STD_DEF_PNT_LIGHT_SHADER]->SetUniformValue<Vec2>("u_ScreenSize", &screenSize);
+		m_Shaders[STD_DEF_PNT_LIGHT_SHADER]->SetUniformValue<float>("u_MatSpecularIntensity", &matSpec);
+		m_Shaders[STD_DEF_PNT_LIGHT_SHADER]->SetUniformValue<float>("u_SpecularPower", &matSpec);
+	}
+
+	// ---- Std Dir Light Shader (Def) ----
+	{
+		Shader vert(GL_VERTEX_SHADER);
+		Shader frag(GL_FRAGMENT_SHADER);
+		if (!vert.LoadShader("../resources/shaders/deferred/light_pass_vs.glsl")) { return false; }
+		if (!frag.LoadShader("../resources/shaders/deferred/dir_light_pass_fs.glsl")) { return false; }
+		vert.AddAttribute(POS_ATTR);
+		vert.AddAttribute(NORM_ATTR);
+		vert.AddAttribute(TEX_ATTR);
+
+		std::vector<Shader> shaders;
+		shaders.push_back(vert);
+		shaders.push_back(frag);
+
+		ShaderProgram* shaderProg = new ShaderProgram();
+		m_Shaders[STD_DEF_DIR_LIGHT_SHADER] = shaderProg;
+		if (!shaderProg->CreateProgram(shaders, "frag_colour", 0)) return false;
+		vert.Close();
+		frag.Close();
+
+		int p = (int)GBuffer::TexTypes::Position;
+		int d = (int)GBuffer::TexTypes::Diffuse;
+		int n = (int)GBuffer::TexTypes::Normal;
+		float matSpec = 0.2f;
+
+		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->Use();
+		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<Vec3>("u_DirectionalLight.Base.Color", &m_DirLight.intensity);
+		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<Vec3>("u_DirectionalLight.Direction", &m_DirLight.direction);
+		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<float>("u_DirectionalLight.Base.AmbientIntensity", &m_DirLight.ambient_intensity);
+		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<float>("u_DirectionalLight.Base.DiffuseIntensity", &m_DirLight.ambient_intensity);
+
+
+		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<int>("u_PositionMap", &p);
+		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<int>("u_ColourMap", &d);
+		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<int>("u_NormalMap", &n);
+		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<Vec2>("u_ScreenSize", &screenSize);
+		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<float>("u_MatSpecularIntensity", &matSpec);
+		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<float>("u_SpecularPower", &matSpec);
+	}
+
+	// New fwd lighting stuff
+	{
+		Shader geom_vs(GL_VERTEX_SHADER);
+		Shader fwd_fs(GL_FRAGMENT_SHADER);
+		//Shader lights_fs(GL_FRAGMENT_SHADER);
+		//Shader refl_fs(GL_FRAGMENT_SHADER);
+
+		if (!geom_vs.LoadShader("../resources/shaders/new_lights/geom_vs.glsl"))
+		{
+			WRITE_LOG("Geom shader failed compile", "error");
+			return false;
+		}
+
+		if (!fwd_fs.LoadShader("../resources/shaders/new_lights/forward_render_fs.glsl"))
+		{
+			WRITE_LOG("Forward render failed compile", "error");
+			return false;
+		}
+
+		geom_vs.AddAttribute(POS_ATTR);
+		geom_vs.AddAttribute(NORM_ATTR);
+		geom_vs.AddAttribute(TEX_ATTR);
+
+		std::vector<Shader> shaders;
+		shaders.push_back(geom_vs);
+		shaders.push_back(fwd_fs);
+
+		ShaderProgram* shaderProg = new ShaderProgram();
+		m_Shaders[STD_FWD_LIGHTING] = shaderProg;
+		if (!shaderProg->CreateProgram(shaders, "frag_colour", 0)) return false;
+		geom_vs.Close();
+		fwd_fs.Close();
+
+		m_Shaders[STD_FWD_LIGHTING]->Use();
+
+		int sampler = 0;
+
+		// Set constants
+		m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<int>("u_sampler", &sampler);
+		m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<Vec3>("u_ambience", &AMBIENT_LIGHT);
 
 		// Dir light
-		m_Shaders[TERRAIN_SHADER]->SetUniformValue<Vec3>("u_DirectionalLight.color", &m_DirectionalLight.Color);
-		m_Shaders[TERRAIN_SHADER]->SetUniformValue<Vec3>("u_DirectionalLight.dir", &m_DirectionalLight.Direction);
-		m_Shaders[TERRAIN_SHADER]->SetUniformValue<float>("u_DirectionalLight.ambientIntensity", &m_DirectionalLight.AmbientIntensity);
+		m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<Vec3>("u_dir_light.intensity", &m_DirLight.intensity);
+		m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<Vec3>("u_dir_light.direction", &m_DirLight.direction);
+		m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<float>("u_dir_light.ambient_intensity", &m_DirLight.ambient_intensity);
+
+		// Spot Light
+		m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<Vec3>("u_spot_light.position", &m_SpotLight.position);
+		m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<Vec3>("u_spot_light.direction", &m_SpotLight.direction);
+		m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<Vec3>("u_spot_light.intensity", &m_SpotLight.intensity);
+		m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<float>("u_spot_light.coneAngle",&m_SpotLight.GetAngle());
+		m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<float>("u_spot_light.aConstant", &m_SpotLight.aConstant);
+		m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<float>("u_spot_light.aLinear", &m_SpotLight.aLinear);
+		m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<float>("u_spot_light.aQuadratic", &m_SpotLight.aQuadratic);
+		m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<int>("u_spot_light.switched_on", &m_SpotLight.switched_on);
+
+		// Point Light
+		int num_points = static_cast<int>(m_PointLights.size());
+		m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<int>("u_num_point_lights", &num_points);
+		for (int i = 0; i < num_points; ++i)
+		{
+			m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<Vec3>("u_point_light[" + std::to_string(i) +  "].position", &m_PointLights[i].position);
+			m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<Vec3>("u_point_light[" + std::to_string(i) +  "].intensity", &m_PointLights[i].intensity);
+			m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<float>("u_point_light[" + std::to_string(i) + "].ambient_intensity", &m_PointLights[i].ambient_intensity);
+			m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<float>("u_point_light[" + std::to_string(i) + "].aConstant", &m_PointLights[i].aConstant);
+			m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<float>("u_point_light[" + std::to_string(i) + "].aLinear", &m_PointLights[i].aLinear);
+			m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<float>("u_point_light[" + std::to_string(i) + "].aQuadratic", &m_PointLights[i].aQuadratic);
+		}
+
+		/*
+		if (!lights_fs.LoadShader("../resources/shaders/new_lights/lights_fs.glsl"))
+		{
+			WRITE_LOG("lights shader failed compile", "error");
+			return false;
+		}
+
+		if (!refl_fs.LoadShader("../resources/shaders/new_lights/reflection_model_fs.glsl"))
+		{
+			WRITE_LOG("Reflection shader failed compile", "error");
+			return false;
+		}
+		*/
 	}
 
-	//m_SkyBoxMaterial = new SkyboxTechnique();
-	//if (!m_SkyBoxMaterial->Init())
-	//{
-	//	WRITE_LOG("Failed to create skybox mat", "error");
-	//	return false;
-	//}
-
-	// --  DEFERRED --
-	m_GeomPassMaterial = new GeometryPassTechnique();
-	if (!m_GeomPassMaterial->Init())
-	{
-		WRITE_LOG("Failed to create geom pass mat", "error");
-		return false;
-	}
-	m_GeomPassMaterial->Use();
-	m_GeomPassMaterial->setColourSampler(0);
-
-
-	// TODO : change this on window size callback
-	Vec2 screenSize((float)Screen::Instance()->FrameBufferWidth(), (float)Screen::Instance()->FrameBufferHeight());
-
-	m_PointLightPassMaterial = new DSPointLightPassTech();
-	if (!m_PointLightPassMaterial->Init())
-	{
-		WRITE_LOG("Failed to create point light pass mat", "error");
-		return false;
-	}
-	m_PointLightPassMaterial->Use();
-	m_PointLightPassMaterial->setColorTextureUnit(GBuffer::TexTypes::Diffuse);
-	m_PointLightPassMaterial->setNormalTextureUnit(GBuffer::TexTypes::Normal);
-	m_PointLightPassMaterial->setPositionTextureUnit(GBuffer::TexTypes::Position);
-	m_PointLightPassMaterial->setScreenSize(screenSize);
-	m_PointLightPassMaterial->setMatSpecularIntensity(2.2f);
-	m_PointLightPassMaterial->setMatSpecularPower(2.2f);
-
-
-	m_DirLightPassMaterial = new DSDirLightPassTech();
-	if (!m_DirLightPassMaterial->Init())
-	{
-		WRITE_LOG("Failed to create dir light pass mat", "error");
-		return false;
-	}
-	m_DirLightPassMaterial->Use();
-	m_DirLightPassMaterial->setColorTextureUnit(GBuffer::TexTypes::Diffuse);
-	m_DirLightPassMaterial->setNormalTextureUnit(GBuffer::TexTypes::Normal);
-	m_DirLightPassMaterial->setPositionTextureUnit(GBuffer::TexTypes::Position);
-	m_DirLightPassMaterial->setScreenSize(screenSize);
-	m_DirLightPassMaterial->setDirectionalLight(m_DirectionalLight);
-	//m_DirLightPassMaterial->setMatSpecularIntensity(0.2f);
-	//m_DirLightPassMaterial->setMatSpecularPower(0.2f);
-
-
-	m_NullTech = new NullTechnique();
-	if (!m_NullTech->Init())
-	{
-		WRITE_LOG("Failed to create null tech mat", "error");
-		return false;
-	}
 	return true;
+}
+
+bool Renderer::CreateTexture(size_t& out, const std::string& path, int glTexId)
+{
+	size_t key = m_Textures.size();
+	bool found_empty = false;
+
+	while (!found_empty)
+	{
+		if (m_Textures.find(key) != m_Textures.end())
+		{
+			++key;
+		}
+		else
+		{
+			found_empty = true;
+		}
+	}
+
+	if (this->loadTexture(path, key, glTexId))
+	{
+		out = key;
+		return true;
+	}
+
+	return false;
 }
 
 Texture* Renderer::GetTexture(size_t index)
 {
 	return index < m_Textures.size() ? m_Textures[index] : nullptr;
+}
+
+size_t Renderer::GetNumTextures() const
+{
+	return m_Textures.size();
+}
+
+size_t Renderer::GetNumSubMeshesInMesh(size_t meshIndex)
+{
+	auto r = m_Meshes.find(meshIndex);
+	if (r != m_Meshes.end())
+	{
+		return r->second->m_SubMeshes.size();
+	}
+	else
+	{
+		WRITE_LOG("error invalid mesh", "error");
+		return 0;
+	}
 }
 
 void Renderer::RenderMesh(Mesh* thisMesh)
@@ -642,11 +754,22 @@ void Renderer::RenderMesh(MeshRenderer* meshInstance)
 	{
 		SubMesh subMesh = (*j);
 
-		// Bind the textures for this mesh instance
-		for (auto tex = meshInstance->m_SubMeshTextures[meshIndex].begin();
-			tex != meshInstance->m_SubMeshTextures[meshIndex].end(); ++tex)
+		if (thisMesh->HasTextures())
 		{
-			m_Textures[meshInstance->m_TextureHandles[(*tex)]]->Bind();
+			const unsigned int MaterialIndex = subMesh.MaterialIndex;
+			if(thisMesh->m_Textures[MaterialIndex])
+			{
+				thisMesh->m_Textures[MaterialIndex]->Bind();
+			}
+		}
+		else
+		{
+			// Bind the textures for this mesh instance
+			for (auto tex = meshInstance->m_SubMeshTextures[meshIndex].begin();
+				tex != meshInstance->m_SubMeshTextures[meshIndex].end(); ++tex)
+			{
+				m_Textures[meshInstance->m_TextureHandles[(*tex)]]->Bind();
+			}
 		}
 
 		if (subMesh.NumIndices > 0)
@@ -670,7 +793,8 @@ void Renderer::RenderMesh(MeshRenderer* meshInstance)
 
 void Renderer::RenderSkybox(BaseCamera* cam)
 {
-	glEnable(GL_DEPTH_TEST);
+	if(m_DeferredRender)
+		glEnable(GL_DEPTH_TEST);
 	
 	// Use skybox material
 	m_Shaders[SKYBOX_SHADER]->Use();
@@ -719,97 +843,100 @@ void Renderer::RenderSkybox(BaseCamera* cam)
 
 	glCullFace(oldCullMode);
 	glDepthFunc(oldDepthFunc);
-	glDisable(GL_DEPTH_TEST);
+
+	if(m_DeferredRender)
+		glDisable(GL_DEPTH_TEST);
 }
 
-void Renderer::Render()
+void Renderer::Render(std::vector<GameObject*>& gameObjects)
 {
-	// Move this
-	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
-		(*i)->Update();
-	// This would be game object in scene and updated there
-	m_CameraObj->Update();
-
-	m_Gbuffer->StartFrame();
-	GeomPass();
-
-	glEnable(GL_STENCIL_TEST);
-	for (int i = 0; i < ARRAY_SIZE_IN_ELEMENTS(m_PointLights); ++i)
+	// Temp
+	if (Mouse::Instance()->LMB)
+		DIRECTION_ANGLE += 1.0f;
+	if (Mouse::Instance()->RMB)
 	{
-		StencilPass(i);
-		PointLightPass(i);
+		m_SpotLight.ToggleLight();
+
+		m_Shaders[STD_FWD_LIGHTING]->Use();
+		m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<int>("u_spot_light.switched_on", &m_SpotLight.switched_on);
 	}
-	glDisable(GL_STENCIL_TEST);
 
-	DirLightPass();
 
-	FinalPass();
+	m_Query.Start();
+
+	if (m_DeferredRender)
+		DeferredRender(gameObjects);
+	else
+		ForwardRender(gameObjects);
+
+	m_Query.End();
+
+	if (++m_Frames > 2)
+	{
+		m_QueryTime = m_Query.Result(false);
+		m_Frames = 0;
+	}
 
 	// -- Render Text ----
-	RenderText("Cam Pos: " + util::vec3_to_str(m_Camera->Position()), 8, 16);
-	RenderText("Cam Fwd: " + util::vec3_to_str(m_Camera->Forward()), 8, 32);
-	RenderText("Cam Up: "  + util::vec3_to_str(m_Camera->Up()), 8, 48);
+	RenderText("Frm Time: " + util::to_str(GetFrameTime(TimeMeasure::Seconds)), 8, Screen::Instance()->FrameBufferHeight() - 16.0f, FontAlign::Left, Colour::Red());
+
 }
 
-/*
-void Renderer::StartRenderFrame()
+void Renderer::ForwardRender(std::vector<GameObject*>& gameObjects)
 {
-	m_Gbuffer->StartFrame();
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-	// Skybox
-	if (m_Camera->HasSkybox())
-		RenderSkybox(m_Camera);
-
-	m_Gbuffer->BindForGeomPass();
-	glDepthMask(GL_TRUE);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
-}
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-// Scene would now loop it's MeshRenderers, call their and set shader uniforms
-// Then call Render Mesh or whatever
+	if (!m_CameraPtr)
+		// Should log if that hasn't been set
+		return;
 
-void Renderer::EndFrame()
-{
-	glDepthMask(GL_FALSE);
-
-	glEnable(GL_STENCIL_TEST);
-	for (int i = 0; i < ARRAY_SIZE_IN_ELEMENTS(m_PointLights); ++i)
+	if (m_CameraPtr->HasSkybox())
 	{
-		StencilPass(i);
-		PointLightPass(i);
+		this->RenderSkybox(m_CameraPtr);
 	}
-	glDisable(GL_STENCIL_TEST);
 
-	DirLightPass();
+	Mat4 proj_xform = m_CameraPtr->Projection();
+	Mat4 view_xform = m_CameraPtr->View();
 
-	FinalPass();
-}
+	ShaderProgram* sp = m_Shaders[STD_FWD_LIGHTING]; //m_Shaders[mr->m_ShaderIndex];
+	if (sp)
+	{
+		sp->Use();
 
-// Then they would render any text
+		// Set Matrices
+		sp->SetUniformValue<Mat4>("u_proj_xform", &(proj_xform));
+		sp->SetUniformValue<Mat4>("u_view_xform", &(view_xform));
 
+		// Update Cam spot light
+		Vec3 spot_dir = m_CameraPtr->Forward();
+		Vec3 spot_pos = m_CameraPtr->Position();
+		sp->SetUniformValue<Vec3>("u_spot_light.direction", &spot_dir);
+		sp->SetUniformValue<Vec3>("u_spot_light.position", &spot_pos);
 
-*/
+		// Update Point Light
+		float light_val_x = sinf(Time::ElapsedTime()) * 8.0f;
+		float light_val_z = cosf(Time::ElapsedTime()) * 8.0f;
+		for (int i = 0; i < 1; ++i)
+		{
+			m_PointLights[i].position = 
+				Vec3(light_val_x, 
+					m_PointLights[i].position.y, 
+					light_val_z);
 
-void Renderer::GeomPass()
-{
-	// Skybox
-	//if (m_Camera->HasSkybox())
-	//		RenderSkybox(m_Camera);
+			sp->SetUniformValue<Vec3>("u_point_light["+std::to_string(i)+"].position", 
+				&m_PointLights[i].position);
+		}
+		
+		// Update Dir Light
+		m_DirLight.direction = Vec3(cos(DIRECTION_ANGLE * 3.1415 / 180.0) * 70, sin(DIRECTION_ANGLE * 3.1415 / 180.0) * 70, 0.0);
+		sp->SetUniformValue<Vec3>("u_dir_light.direction", &-glm::normalize(m_DirLight.direction));
+	}
 
-	// -- Deferred Geom pass ---
-	m_Gbuffer->BindForGeomPass();
-
-	glDepthMask(GL_TRUE);
-	glEnable(GL_DEPTH_TEST);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	m_Terrain->Render(this, m_Camera, Vec3(1.0f));
-	//m_TreeBillboardList->Render(this, m_Camera->Projection() * m_Camera->View(), m_Camera->Position(), m_Camera->Right());
-
-	m_GeomPassMaterial->Use();
-	glEnable(GL_DEPTH_TEST);
-
-	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
+	// Render Mesh Renderers
+	for (auto i = gameObjects.begin(); i != gameObjects.end(); ++i)
 	{
 		Transform* t = (*i)->GetComponent<Transform>();
 		MeshRenderer* mr = (*i)->GetComponent<MeshRenderer>();
@@ -817,96 +944,166 @@ void Renderer::GeomPass()
 		if (!t || !mr)
 			continue;
 
-		m_GeomPassMaterial->setWVP(m_Camera->Projection() * m_Camera->View() * t->GetModelXform());
-		m_GeomPassMaterial->setWorld(t->GetModelXform());
+		if (sp)
+		{
+			sp->SetUniformValue<Mat4>("u_world_xform", &(t->GetModelXform()));
 
-		// Render Mesh here
-		this->RenderMesh(mr);
+			// Render Mesh here
+			this->RenderMesh(mr);
+		}
+	}
+}
+
+void Renderer::DeferredRender(std::vector<GameObject*>& gameObjects)
+{
+	m_Gbuffer->StartFrame();
+
+	// Geom Pass
+	{
+		// Skybox
+		if (m_CameraPtr->HasSkybox())
+			RenderSkybox(m_CameraPtr);
+
+		// Terrain
+		//m_TreeBillboardList->Render(this, m_Camera->Projection() * m_Camera->View(), m_Camera->Position(), m_Camera->Right());
+
+		// -- Deferred Geom pass ---
+		m_Gbuffer->BindForGeomPass();
+
+		// Set GL States
+		glDepthMask(GL_TRUE);
+		glEnable(GL_DEPTH_TEST);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// RenderTerrain and Billboards
+		m_Terrain->Render(this, m_CameraPtr, Vec3(1.0f));
+
+		Mat4 ProjViewXform = m_CameraPtr->Projection() * m_CameraPtr->View();
+
+		// Render Mesh Renderers
+		for (auto i = gameObjects.begin(); i != gameObjects.end(); ++i)
+		{
+			Transform* t = (*i)->GetComponent<Transform>();
+			MeshRenderer* mr = (*i)->GetComponent<MeshRenderer>();
+
+			if (!t || !mr)
+				continue;
+
+			ShaderProgram* sp = m_Shaders[mr->m_ShaderIndex];
+			if (sp)
+			{
+				sp->Use();
+				sp->SetUniformValue<Mat4>("u_WVP", &(ProjViewXform * t->GetModelXform()));
+				sp->SetUniformValue<Mat4>("u_World", &(t->GetModelXform()));
+
+				// This is shit
+				float elapsed = Time::ElapsedTime();
+				sp->SetUniformValue<float>("u_GlobalTime", &elapsed);
+
+				// Render Mesh here
+				this->RenderMesh(mr);
+			}
+		}
+
+		glDepthMask(GL_FALSE);
 	}
 
-	glDepthMask(GL_FALSE);
-	//glDisable(GL_DEPTH_TEST);
-}
+	// Stencil and Point Lights
+	{
+		glEnable(GL_STENCIL_TEST);
+		
+		for (int i = 0; i < m_PointLights.size(); ++i)
+		{
+			// Stencil
+			{
+				m_Shaders[STD_DEF_STENCIL_SHADER]->Use();
 
-void Renderer::StencilPass(int lightIndex)
-{
-	m_NullTech->Use();
+				// Disable color/depth write and enable stencil
+				m_Gbuffer->BindForStencilPass();
+				glEnable(GL_DEPTH_TEST);
 
-	// Disable color/depth write and enable stencil
-	m_Gbuffer->BindForStencilPass();
-	glEnable(GL_DEPTH_TEST);
+				glDisable(GL_CULL_FACE);
 
-	glDisable(GL_CULL_FACE);
+				glClear(GL_STENCIL_BUFFER_BIT);
 
-	glClear(GL_STENCIL_BUFFER_BIT);
+				// We need the stencil test to be enabled but we want it to succeed always. Only the depth test matters.
+				glStencilFunc(GL_ALWAYS, 0, 0);
 
-	// We need the stencil test to be enabled but we want it
-	// to succeed always. Only the depth test matters.
-	glStencilFunc(GL_ALWAYS, 0, 0);
+				glStencilOpSeparate(GL_BACK, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
+				glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
 
-	glStencilOpSeparate(GL_BACK, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
-	glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
+				Mat4 LIGHT_TRANS = glm::translate(Mat4(1.0f), m_PointLights[i].position) * glm::scale(Mat4(1.0f), Vec3(CalcPointLightBSphere(m_PointLights[i])));
+				m_Shaders[STD_DEF_STENCIL_SHADER]->SetUniformValue<Mat4>("u_WVP", &(m_CameraPtr->Projection() * m_CameraPtr->View() * LIGHT_TRANS));
+				this->RenderMesh(m_Meshes[SPHERE_MESH]);
+			}
 
-	Mat4 LIGHT_TRANS = glm::translate(Mat4(1.0f), m_PointLights[lightIndex].Position) * glm::scale(Mat4(1.0f), Vec3(CalcPointLightBSphere(m_PointLights[lightIndex])));
-	m_NullTech->setWVP(m_Camera->Projection() * m_Camera->View() * LIGHT_TRANS);
-	this->RenderMesh(m_Meshes[SPHERE_MESH]);
-}
+			// Point Light
+			{
+				m_Gbuffer->BindForLightPass();
 
-void Renderer::PointLightPass(int lightIndex)
-{
-	m_Gbuffer->BindForLightPass();
-	m_PointLightPassMaterial->Use();
-	m_PointLightPassMaterial->setEyeWorldPos(m_Camera->Position());
+				ShaderProgram* sp = m_Shaders[STD_DEF_PNT_LIGHT_SHADER];
+				sp->Use();
+				sp->SetUniformValue<Vec3>("u_EyeWorldPos", &m_CameraPtr->Position());
 
-	glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
+				glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
 
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_BLEND);
-	glBlendEquation(GL_FUNC_ADD);
-	glBlendFunc(GL_ONE, GL_ONE);
+				glDisable(GL_DEPTH_TEST);
+				glEnable(GL_BLEND);
+				glBlendEquation(GL_FUNC_ADD);
+				glBlendFunc(GL_ONE, GL_ONE);
 
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_FRONT);
+				glEnable(GL_CULL_FACE);
+				glCullFace(GL_FRONT);
 
-	m_PointLightPassMaterial->setPointLight(m_PointLights[lightIndex]);
-	Mat4 LIGHT_TRANS = glm::translate(Mat4(1.0f), m_PointLights[lightIndex].Position) * glm::scale(Mat4(1.0f), Vec3((CalcPointLightBSphere(m_PointLights[lightIndex]))));
-	m_PointLightPassMaterial->setWVP(m_Camera->Projection() * m_Camera->View() * LIGHT_TRANS);
-	this->RenderMesh(m_Meshes[SPHERE_MESH]);
+				Mat4 LIGHT_TRANS = glm::translate(Mat4(1.0f), m_PointLights[i].position) * glm::scale(Mat4(1.0f), Vec3((CalcPointLightBSphere(m_PointLights[i]))));
 
-	glCullFace(GL_BACK);
+				// Set PointLight
+				sp->SetUniformValue<Vec3>("u_PointLight.Base.Color", &m_PointLights[i].intensity);
+				sp->SetUniformValue<Vec3>("u_PointLight.Position", &m_PointLights[i].position);
+				sp->SetUniformValue<float>("u_PointLight.Base.AmbientIntensity", &m_PointLights[i].ambient_intensity);
+				sp->SetUniformValue<float>("u_PointLight.Atten.Constant", &m_PointLights[i].aConstant);
+				sp->SetUniformValue<float>("u_PointLight.Atten.Linear", &m_PointLights[i].aLinear);
+				sp->SetUniformValue<float>("u_PointLight.Atten.Exp", &m_PointLights[i].aQuadratic);
+				sp->SetUniformValue<Mat4>("u_WVP", &(m_CameraPtr->Projection() * m_CameraPtr->View() * LIGHT_TRANS));
 
-	glDisable(GL_BLEND);
-}
+				this->RenderMesh(m_Meshes[SPHERE_MESH]);
 
-void Renderer::DirLightPass()
-{
-	glDisable(GL_CULL_FACE);
-	m_Gbuffer->BindForLightPass();
-	m_DirLightPassMaterial->Use();
-	m_DirLightPassMaterial->setEyeWorldPos(m_Camera->Position());
-	
-	// Should only set once
-	m_DirLightPassMaterial->setWVP(Mat4(1.0f));
-	
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_BLEND);
-	glBlendEquation(GL_FUNC_ADD);
-	glBlendFunc(GL_ONE, GL_ONE);
+				glCullFace(GL_BACK);
+				glDisable(GL_BLEND);
+			}
+		}
+		
+		glDisable(GL_STENCIL_TEST);
+	}
 
-	this->RenderMesh(m_Meshes[QUAD_MESH]);
+	// Dir Light Pass
+	{
+		glDisable(GL_CULL_FACE);
+		m_Gbuffer->BindForLightPass();
+		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->Use();
+		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<Vec3>("u_EyeWorldPos", &m_CameraPtr->Position());
+		// Should only set once
+		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<Mat4>("u_WVP", &(Mat4(1.0f)));
 
-	glDisable(GL_BLEND);
-}
+		glDisable(GL_DEPTH_TEST);
+		glEnable(GL_BLEND);
+		glBlendEquation(GL_FUNC_ADD);
+		glBlendFunc(GL_ONE, GL_ONE);
 
-void Renderer::FinalPass()
-{
-	int width  = Screen::Instance()->FrameBufferWidth();
-	int height = Screen::Instance()->FrameBufferHeight();
+		this->RenderMesh(m_Meshes[QUAD_MESH]);
+		glDisable(GL_BLEND);
+	}
 
-	m_Gbuffer->BindForFinalPass();
+	// Final Pass
+	{
+		int width = Screen::Instance()->FrameBufferWidth();
+		int height = Screen::Instance()->FrameBufferHeight();
 
-	glBlitFramebuffer(0, 0, width, height,
-		0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+		m_Gbuffer->BindForFinalPass();
+
+		glBlitFramebuffer(0, 0, width, height,
+			0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+	}
 }
 
 void Renderer::RenderText(const std::string& txt, float x, float y, FontAlign fa, const Colour& colour)
@@ -994,8 +1191,25 @@ void Renderer::RenderText(const std::string& txt, float x, float y, FontAlign fa
 	glDisable(GL_BLEND);
 }
 
+float Renderer::GetFrameTime(TimeMeasure tm)
+{
+	switch (tm)
+	{
+	case TimeMeasure::NanoSeconds:
+		return m_QueryTime;
+	case TimeMeasure::MilliSeconds:
+		return m_QueryTime / 1000000.f;
+	case TimeMeasure::Seconds:
+		return m_QueryTime / 100'000'000'0.f;
+	}
+
+	return 0.0f;
+}
+
 void Renderer::Close()
 {
+	m_Query.Clean();
+
 	// Clear meshes
 	for (size_t i = 0; i < m_Meshes.size(); ++i)
 	{
@@ -1009,12 +1223,6 @@ void Renderer::Close()
 	}
 	m_Shaders.clear();
 
-	for (size_t i = 0; i < m_GameObjects.size(); ++i)
-	{
-		SAFE_CLOSE(m_GameObjects[i]);
-	}
-	m_GameObjects.clear();
-
 	// Clear Textures
 	for (size_t i = 0; i < m_Textures.size(); ++i)
 	{
@@ -1022,18 +1230,11 @@ void Renderer::Close()
 	}
 	m_Textures.clear();
 
-	// Clean materials
-	SAFE_CLOSE(m_GeomPassMaterial);
-	SAFE_CLOSE(m_PointLightPassMaterial);
-	SAFE_CLOSE(m_DirLightPassMaterial);
-	SAFE_CLOSE(m_NullTech);
-
 	SAFE_DELETE(m_TreeBillboardList);
 	SAFE_DELETE(m_Terrain);
 
 	// Other objects
 	SAFE_CLOSE(m_Font);
-	SAFE_CLOSE(m_CameraObj);
 	SAFE_DELETE(m_Gbuffer);
 }
 

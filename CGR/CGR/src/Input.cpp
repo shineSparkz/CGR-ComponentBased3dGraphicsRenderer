@@ -95,10 +95,19 @@ void Input::mouse_enter_callback(GLFWwindow* window, int entered)
 
 void Input::mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
-	if ( button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS )
+	if ( button == GLFW_MOUSE_BUTTON_RIGHT)
 	{
-		//popup_menu();
-		WRITE_LOG("mouse right pressed", "normal");
+		if (action == GLFW_PRESS )//|| action == GLFW_REPEAT)
+			Mouse::Instance()->RMB = true;
+		else
+			Mouse::Instance()->RMB = false;
+	}
+	else if (button == GLFW_MOUSE_BUTTON_LEFT)
+	{
+		if (action == GLFW_PRESS )//|| action == GLFW_REPEAT)
+			Mouse::Instance()->LMB = true;
+		else
+			Mouse::Instance()->LMB = false;
 	}
 }
 

@@ -18,6 +18,12 @@ Application::Application() :
 	m_Input(nullptr),
 	m_ShouldClose(GE_FALSE)
 {
+	// Create Logger first
+	if (!DebugLogFile::Instance())
+	{
+		new DebugLogFile();
+		DebugLogFile::Instance()->CreateLogFile("../resources/log/", "logfile.html");
+	}
 }
 
 bool Application::Init(int width, int height, bool windowed, const char* title, int vsync, int aspX, int aspY, int major, int minor)
@@ -28,9 +34,8 @@ bool Application::Init(int width, int height, bool windowed, const char* title, 
 	// Check memory leaks
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 
-	// Create Logger first
-	new DebugLogFile();
-	DebugLogFile::Instance()->CreateLogFile("../resources/log/", "logfile.html");
+	if (!m_SceneGraph)
+		m_SceneGraph = new SceneGraph();
 
 	// Init Hardware, window and input backend
 	if (!glfwInit())
@@ -42,6 +47,8 @@ bool Application::Init(int width, int height, bool windowed, const char* title, 
 	// Log API version
 	std::string glfwVersion = glfwGetVersionString();
 	WRITE_LOG("Using GLFW version: " + glfwVersion, "none");
+
+	glfwSetErrorCallback(Application::glfw_error_callback);
 
 	// Open a window
 	if (!m_RenderWindow)
@@ -132,6 +139,8 @@ bool Application::Init(int width, int height, bool windowed, const char* title, 
 		return false;
 	}
 
+	// Call On Scene Create
+
 	return true;
 }
 
@@ -200,13 +209,13 @@ void Application::Run()
 
 		while (time_now > next_tick && frame_count < MAX_FRAME_SKIP)
 		{
-			//m_SceneGraph->UpdateActiveScene(Time::deltaTime);
+			m_SceneGraph->UpdateActiveScene(Time::deltaTime);
 			next_tick += DELTA_TICK;
 			frame_count++;
 		}
 
-		//m_SceneGraph->RenderActiveScene(m_Renderer);
-		m_Renderer->Render();
+		m_SceneGraph->RenderActiveScene(m_Renderer);
+		//m_Renderer->Render();
 		m_RenderWindow->SwapBuffers();
 		glfwPollEvents();
 	}
@@ -216,8 +225,13 @@ void Application::Run()
 
 void Application::glfw_error_callback(int error, const char* description)
 {
-	std::string s = description;
-	WRITE_LOG(s, "error");
+	std::stringstream ss;
+	ss << "GLFW error call back: Errorcode[";
+	ss << error;
+	ss << "] , Description: ";
+	ss << description;
+
+	WRITE_LOG(ss.str(), "error");
 }
 
 void Application::HandleEvent(Event* e)

@@ -13,6 +13,8 @@
 #include "OpenGlLayer.h"
 #include "Texture.h"
 
+#include "Image.h"
+
 // This is no good having these global but doesn't seem to work otherwise!!
 const struct aiScene* scene = NULL;
 Assimp::Importer importer;
@@ -34,8 +36,11 @@ bool Import3DFromFile(const std::string& pFile)
 	scene = importer.ReadFile(pFile,
 		aiProcess_Triangulate |
 		aiProcess_GenSmoothNormals |
-		aiProcess_CalcTangentSpace);
+		aiProcess_CalcTangentSpace
+		);
 		//aiProcess_JoinIdenticalVertices);
+
+	
 
 	// If the import failed, report it
 	if (!scene)
@@ -142,9 +147,16 @@ Mesh::~Mesh()
 	OpenGLLayer::clean_GL_vao(&this->m_VAO, 1);
 	OpenGLLayer::clean_GL_buffer(&this->m_VertexVBO, 1);
 	OpenGLLayer::clean_GL_buffer(&this->m_IndexVBO, 1);
+
+	for (size_t i = 0; i < m_Textures.size(); ++i)
+	{
+		SAFE_DELETE(m_Textures[i]);
+	}
+
+	m_Textures.clear();
 }
 
-bool Mesh::Load(const std::string& mesh, bool withTangents)
+bool Mesh::Load(const std::string& mesh, bool withTangents, bool loadTextures)
 {
 	// Will pass path here and have scene local
 	if (!Import3DFromFile("../resources/meshes/" + mesh))
@@ -171,7 +183,11 @@ bool Mesh::Load(const std::string& mesh, bool withTangents)
 	// For one VAO for each mesh group, this all needs moving to the mesh class itself
 	for (unsigned int i = 0; i < m_SubMeshes.size(); i++)
 	{
-		//mesh.m_MeshLayouts[i].MaterialIndex = pScene->mMeshes[i]->mMaterialIndex;
+		if (loadTextures)
+		{
+			m_SubMeshes[i].MaterialIndex = scene->mMeshes[i]->mMaterialIndex;
+		}
+		
 		m_SubMeshes[i].NumIndices = scene->mMeshes[i]->mNumFaces * 3;
 		m_SubMeshes[i].BaseVertex = num_vertices;
 		m_SubMeshes[i].BaseIndex = num_indices;
@@ -240,7 +256,90 @@ bool Mesh::Load(const std::string& mesh, bool withTangents)
 	// End
 	glBindVertexArray(0);
 
-	//InitMaterials();
+	if (loadTextures)
+	{
+		m_Textures.resize(scene->mNumMaterials);
+		return InitMaterials(scene, mesh);
+	}
+
+	return true;
+}
+
+bool Mesh::InitMaterials(const aiScene* pScene, const std::string& filename)
+{
+	// Extract the directory part from the file name
+	std::string::size_type slashIndex = filename.find_last_of("/");
+	std::string dir;
+
+	if (slashIndex == std::string::npos)
+	{
+		dir = ".";
+	}
+	else if (slashIndex == 0)
+	{
+		dir = "/";
+	}
+	else
+	{
+		dir = filename.substr(0, slashIndex);
+	}
+
+	// Initialize the materials
+	for (unsigned int i = 0; i < pScene->mNumMaterials; i++)
+	{
+		const aiMaterial* pMaterial = pScene->mMaterials[i];
+
+		m_Textures[i] = nullptr;
+
+		if (pMaterial->GetTextureCount(aiTextureType_DIFFUSE) > 0)
+		{
+			aiString path;
+
+			if (pMaterial->GetTexture(aiTextureType_DIFFUSE, 0, &path, NULL, NULL, NULL, NULL, NULL) == AI_SUCCESS)
+			{
+				std::string p(path.data);
+
+				if (p.substr(0, 2) == ".\\")
+				{
+					p = p.substr(2, p.size() - 2);
+				}
+
+				std::string fullPath = "../resources/meshes/" + dir + "/" + p;
+
+				Image img;
+				if (!img.LoadImg(fullPath.c_str()))
+				{
+					return false;
+				}
+
+				m_Textures[i] = new Texture(fullPath, GL_TEXTURE_2D, GL_TEXTURE0);			
+				
+				if (!m_Textures[i]->Create(&img))
+				{
+					return false;
+				}
+			}
+		}
+		else
+		{
+			// Use Error texture
+			std::string fullPath = "../resources/textures/error.tga";
+
+			Image img;
+			if (!img.LoadImg(fullPath.c_str()))
+			{
+				return false;
+			}
+
+			m_Textures[i] = new Texture(fullPath, GL_TEXTURE_2D, GL_TEXTURE0);
+			if (!m_Textures[i]->Create(&img))
+			{
+				return false;
+			}
+
+		}
+	}
+
 	return true;
 }
 

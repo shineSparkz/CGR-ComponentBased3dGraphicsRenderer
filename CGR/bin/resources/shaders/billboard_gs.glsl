@@ -8,7 +8,9 @@ uniform mat4 u_ViewProjXform;
 uniform vec3 u_CamPos;
 uniform float u_Scale = 1.0;
 
-out vec2 varying_texcoord;
+out vec2 geom_texcoord;
+out vec3 geom_normal;
+out vec3 geom_position;
 
 void main()
 {
@@ -17,25 +19,35 @@ void main()
 	vec3 up = vec3(0.0, 1.0, 0.0);
 	vec3 right = cross(up, toCam);
 	
+	//---------------------------------------
+	
 	pos -= (right * 0.5) * u_Scale;
 	gl_Position = u_ViewProjXform * vec4(pos, 1.0);
-	varying_texcoord = vec2(0.0, 0.0);
+	geom_texcoord = vec2(0.0, 0.0);
+	geom_normal = toCam;
+	geom_position = gl_Position.xyz;
 	EmitVertex();
 	
 	pos.y += u_Scale;
 	gl_Position = u_ViewProjXform * vec4(pos, 1.0);
-	varying_texcoord = vec2(0.0, 1.0);
+	geom_texcoord = vec2(0.0, 1.0);
+	geom_normal = toCam;
+	geom_position = gl_Position.xyz;
 	EmitVertex();
 	
 	pos.y -= u_Scale;
 	pos += right * u_Scale;
 	gl_Position = u_ViewProjXform * vec4(pos, 1.0);
-	varying_texcoord = vec2(1.0, 0.0);
+	geom_texcoord = vec2(1.0, 0.0);
+	geom_normal = toCam;
+	geom_position = gl_Position.xyz;
 	EmitVertex();
 	
 	pos.y += u_Scale;
 	gl_Position = u_ViewProjXform * vec4(pos, 1.0);
-	varying_texcoord = vec2(1.0, 1.0);
+	geom_texcoord = vec2(1.0, 1.0);
+	geom_normal = toCam;
+	geom_position = gl_Position.xyz;
 	EmitVertex();
 	
 	EndPrimitive();

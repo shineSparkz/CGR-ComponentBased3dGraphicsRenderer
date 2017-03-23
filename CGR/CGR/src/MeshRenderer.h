@@ -21,6 +21,8 @@ public:
 	bool AddTexture(size_t texHandle, size_t meshIndex);
 	bool AddTexture(size_t texHandle);
 
+	size_t m_ShaderIndex = 0;
+
 private:
 	friend class Renderer;
 	static int m_Id;

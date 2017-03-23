@@ -4,7 +4,7 @@
 #include "types.h"
 #include <string>
 
-class Camera;
+class BaseCamera;
 class Renderer;
 
 class IScene
@@ -31,15 +31,15 @@ public:
 	virtual void Update(float dt) = 0;
 	virtual void Render(Renderer* renderer) = 0;
 
-	Camera* GetActiveCamera();
+	BaseCamera* GetActiveCamera();
 	const std::string& GetName() const;
 
 protected:
-	Camera* m_Camera;
+	BaseCamera* m_Camera;
 	std::string m_Name;
 };
 
-INLINE Camera* IScene::GetActiveCamera()
+INLINE BaseCamera* IScene::GetActiveCamera()
 {
 	return m_Camera;
 }

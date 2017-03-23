@@ -8,7 +8,10 @@
 #include "types.h"
 #include "Vertex.h"
 
+#include "Texture.h"
+
 struct aiMesh;
+struct aiScene;
 
 struct SubMesh
 {
@@ -20,6 +23,7 @@ struct SubMesh
 
 	unsigned int NumIndices;
 	unsigned int NumVertices;
+	unsigned int MaterialIndex;	// Should be an array for multiple textures (later)
 	int BaseVertex;
 	int BaseIndex;
 };
@@ -30,12 +34,31 @@ public:
 	Mesh();
 	~Mesh();
 
-	bool Load(const std::string& mesh, bool withTangents);
+	/*
+		@param: mesh -- Full Path of mesh resource you wish to load
+		@param: withTangents -- If you specify true, then this data will be sent to the GPU, it is epected that this is handled in the
+								shader used to render the mesh, such as bump mapping
+		@param: loadTextures -- Set to true if you only plan to use one of this mesh, and you know the mesh file contains valid materuial info.
+								If this is false, then it is expected that you set the texture(s) on the MeshRenderer component, if true
+								then the file must contain material information, currently only supports one texture per sub-mesh, that is
+								diffuse. If the texture does not exist then a pink error texture will be used from the engine
+	*/
+	bool Load(const std::string& mesh, bool withTangents, bool loadTextures);
+
+	bool InitMaterials(const aiScene* pScene, const std::string& filename);
+
+	bool HasTextures() const
+	{
+		return m_Textures.size() > 0;
+	}
 	
-	//private:
+private:
+	friend class Renderer;
 	std::vector<SubMesh> m_SubMeshes;
 	GLuint m_VAO;
 	GLuint m_VertexVBO;
 	GLuint m_IndexVBO;
+
+	std::vector<Texture*> m_Textures;
 };
 #endif

@@ -147,6 +147,18 @@
     <ClInclude Include="src\MeshRenderer.h">
       <Filter>Application\Component</Filter>
     </ClInclude>
+    <ClInclude Include="src\Queery.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\SponzaScene.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\OutdoorScene.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ResId.h">
+      <Filter>Game</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -233,6 +245,15 @@
     </ClCompile>
     <ClCompile Include="src\MeshRenderer.cpp">
       <Filter>Application\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Queery.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\SponzaScene.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OutdoorScene.cpp">
+      <Filter>Game</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

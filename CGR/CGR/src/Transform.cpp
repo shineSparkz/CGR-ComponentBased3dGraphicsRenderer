@@ -33,7 +33,6 @@ void Transform::Update()
 	this->model_xform =
 		glm::translate(IDENTITY, this->position) *
 		glm::yawPitchRoll(euler.y, euler.x, euler.z) *
-		//(Maths::RotateX(euler.x) * Maths::RotateY(euler.y) * Maths::RotateZ(euler.z)) *
 		glm::scale(IDENTITY, this->scale);
 }
 

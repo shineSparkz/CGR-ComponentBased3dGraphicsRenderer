@@ -3,11 +3,14 @@
 
 #include "gl_headers.h"
 #include "types.h"
+#include "LogFile.h"
 
 #include <string>
 #include <vector>
 #include <map>
 #include <functional>
+
+//#define LOG_SHADER_ERRORS
 
 dword hash(const char *str);
 
@@ -119,6 +122,12 @@ void ShaderProgram::SetUniformValue(const std::string& name, const T* v)
 	auto i = m_Uniforms.find(name);
 	if (i != m_Uniforms.end())
 		i->second->SetValue<T>(v);
+#ifdef LOG_SHADER_ERRORS
+	else
+	{
+		WRITE_LOG("Shader error: " + name, "error");
+	}
+#endif
 }
 
 #endif

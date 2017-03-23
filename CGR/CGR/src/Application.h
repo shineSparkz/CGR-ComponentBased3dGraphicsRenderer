@@ -50,12 +50,12 @@ inline RenderWindow* Application::GetRenderWindow()
 template<typename T>
 int Application::AddScene(T* state)
 {
-	if (m_SceneGraph)
+	if (!m_SceneGraph)
 	{
-		return m_SceneGraph->AddScene(state);
+		return GE_MAJOR_ERROR;
 	}
 
-	return GE_MAJOR_ERROR;
+	return m_SceneGraph->AddScene(state);
 }
 
 #endif

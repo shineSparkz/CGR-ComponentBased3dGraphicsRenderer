@@ -82,7 +82,6 @@ public:
 protected:
 	static int m_Id;
 	Transform* m_Transform;
-	//Vec3 position;
 	Vec3 up;
 	Vec3 forward;
 	Vec3 right;
@@ -114,9 +113,7 @@ private:
 
 	Vec3 velocity;
 	bool fk, bk, lk, rk;
-	//float yaw = 0.0f;
-	//float pitch = 0.0f;
-	float speed = 30.0f;
+	float speed = 15.0f;
 	float mouseSpeed = 1.4f;
 };
 

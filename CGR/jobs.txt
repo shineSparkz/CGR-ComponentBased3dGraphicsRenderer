@@ -1,0 +1,45 @@
+
+Report
+- Do a write up on new shader system and where it was insired from, what I like about it and what I dont
+- Talk about converting everything to deferred system
+- Problems with billboards and skybox in deferred, talk about pipeline
+- Talk about how user can now add custom frag shaders, the system is in place esp for deferred pipeline
+- Talk about the queey counter we added
+
+- Added first scene and started to separate data, focusing on forward rendering at the moment
+	*Scene has camera, scene sets the cam and then gives a pointer to renderer, should I do this, or pass it to the render
+	function, or maybe the renderer should just fetch the "active camera" itself.
+	*Scene will set lights, need to make them components for game objects, need a nice way to send all of the lights in the scene
+	to the renderer, chances are they will be static (but not always)
+	*Scene has a list of game objects that have mesh renders and transforms, currenty sending the renderer this list every frame
+	not particularly nice, but working on a design for a better solution
+	
+- Next, I really need to make an asset/resource loader, this should, ideally be done once at the beginning. This is currently all in the
+  renderer and it shouldnt be.
+
+- Ive made it so that the mesgh loading also handles asigning materials but its not finished. Now, this is very useful if the material info is there
+  sponza is a great example of this, and it becomes truly effortless to load a huge scene with many sub-meshes like this. But I have had to give the Mesh
+  resource an array of textures which I am not happy with, I did come up with a solution for adding the texture resources to the one off texture array 
+  in the renderer (currently) but this was too error prone. The indices would become mixed up if some textures were missing and it did not correlate
+  how the other texture rrsources were being loaded and used. This also clashes with the MeshRenderer component (as it has an arrays of integers,
+  which refers to the renderers internal texture holder), I've had to put a dirty flag in. The reason i wanted the indexes in the MeshRenderer component
+  was so that I could have the same mesh resource with different textures if desirted. e.g. I might want cubes for walls and use different textures.
+  It doesn't matter when for big one-off scenes like sponza but I need this to be dynamic as possible and this is the only work-around I can come up with
+  currently.
+
+ I have a nice system going now, but I need to decide how to control the pipeline better.
+ - I need to figure out how to set materials to a mesh and then how to set the uniforms on it (NIGHTMARE)
+ - I needs to figure out how to instance duplicate meshes. Especially in sponza. And what about the shaders -_- I dont want to write new shaders that
+   do the same thing.
+ - need to optimize shaders with uniform blocks
+ - Need to bring back shadows and bump mapping with all the new stuff
+ - Do a deferred scene (without shadows)
+ - Do an indoor doom like level with some game logic
+ - uniform buffers
+ - Rebuild Framebuffer objects on window size change
+ - Outdoor terrain scene (forward rendererd)
+ - Refactor all shaders and tidy up
+- Octree
+- Frustum culling
+- Some better debugging stuff
+- Collsions for examples

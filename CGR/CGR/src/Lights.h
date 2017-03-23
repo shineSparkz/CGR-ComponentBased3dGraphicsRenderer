@@ -4,76 +4,111 @@
 #include "types.h"
 #include <string>
 
-class BaseLight
+struct DirectionalLight
 {
-public:
-	std::string Name;
-	Vec3 Color;
-	float AmbientIntensity;
-	float DiffuseIntensity;
+	Vec3 direction;
+	Vec3 intensity;
+	float ambient_intensity;
 
-	BaseLight()
+	DirectionalLight() :
+		direction(0.0f),
+		intensity(0.0f),
+		ambient_intensity(0.0f)
 	{
-		Color = Vec3(0.0f, 0.0f, 0.0f);
-		AmbientIntensity = 0.0f;
-		DiffuseIntensity = 0.0f;
+	}
+
+	DirectionalLight(const Vec3& direction_ , const Vec3& intensity_, float ambient_intensity_) :
+		direction(direction_),
+		intensity(intensity_),
+		ambient_intensity(ambient_intensity_)
+	{
 	}
 };
 
-class DirectionalLight : public BaseLight
+struct PointLight
 {
-public:
-	Vec3 Direction;
-
-	DirectionalLight()
-	{
-		Direction = Vec3(0.0f, 0.0f, 0.0f);
-	}
-};
-
-struct LightAttenuation
-{
-	float Constant;
-	float Linear;
-	float Exp;
-
-	LightAttenuation()
-	{
-		Constant = 1.0f;
-		Linear = 0.0f;
-		Exp = 0.0f;
-	}
-};
-
-class PointLight : public BaseLight
-{
-public:
-	Vec3 Position;
-	LightAttenuation Attenuation;
+	Vec3    position;   
+	Vec3    intensity;  //!< The colour and brightness of the light.
+	float   ambient_intensity;
+	float   aConstant;  //!< The constant co-efficient for the attenuation formula.
+	float   aLinear;    //!< The linear co-efficient for the attenuation formula.
+	float   aQuadratic; //!< The quadratic co-efficient for the attenuation formula.
 
 	PointLight()
 	{
-		Position = Vec3(0.0f, 0.0f, 0.0f);
+		position = Vec3(0.0f);
+		intensity = Vec3(0.0f);
+		ambient_intensity = 0.0f;
+		aConstant = 0.0f;
+		aLinear = 0.0f;
+		aQuadratic = 0.0f;
+	}
+
+	PointLight(const Vec3& pos, const Vec3& col, float ambient, float aCon, float aLin, float aQuad) :
+		position(pos),
+		intensity(col),
+		ambient_intensity(ambient),
+		aConstant(aCon),
+		aLinear(aLin),
+		aQuadratic(aQuad)
+	{
 	}
 };
 
-class SpotLight : public PointLight
+struct SpotLight
 {
-public:
-	Vec3 Direction;
-	float Cutoff;
+	Vec3 position;
+	Vec3 direction;
+	Vec3 intensity;
+	float aConstant;
+	float aLinear;
+	float aQuadratic;
+	int switched_on;
 
 	SpotLight()
 	{
-		Direction = Vec3(0.0f, 0.0f, 0.0f);
-		Cutoff = 0.0f;
+		position = Vec3(0.0f);
+		direction = Vec3(0.0f);
+		intensity = Vec3(0.0f);
+		cosAngle = 0.0f;
+		aConstant = 0.0f;
+		aLinear = 0.0f;
+		aQuadratic = 0.0f;
+		switched_on = 1;
 	}
-};
 
-#define COLOR_WHITE Vec3(1.0f, 1.0f, 1.0f)
-#define COLOR_RED Vec3(1.0f, 0.0f, 0.0f)
-#define COLOR_GREEN Vec3(0.0f, 1.0f, 0.0f)
-#define COLOR_CYAN Vec3(0.0f, 1.0f, 1.0f)
-#define COLOR_BLUE Vec3(0.0f, 0.0f, 1.0f)
+	SpotLight(const Vec3& pos, const Vec3& dir, const Vec3& col, float coneAngle, float aCon, float aLin, float aQuad, int on) :
+		position(pos),
+		direction(dir),
+		intensity(col),
+		cosAngle(cosf(coneAngle*3.1415f / 180.0f)),
+		aConstant(aCon),
+		aLinear(aLin),
+		aQuadratic(aQuad),
+		switched_on(on)
+	{
+	}
+
+	void SetAngle(float coneAngle)
+	{
+		this->cosAngle = cosf(coneAngle*3.1415f / 180.0f);
+	}
+
+	const float& GetAngle() const
+	{
+		return cosAngle;
+	}
+
+	void ToggleLight()
+	{
+		if (switched_on > 0)
+			switched_on = 0;
+		else
+			switched_on = 1;
+	}
+
+private:
+	float cosAngle;
+};
 
 #endif

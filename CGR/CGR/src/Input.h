@@ -22,6 +22,9 @@ public:
 	void GetMousePosition(double& x, double& y);
 	void SetMousePosition(double x, double y);
 
+	bool LMB = false;
+	bool RMB = false;
+
 private:
 	friend class Input;
 	Input* m_InputManager;

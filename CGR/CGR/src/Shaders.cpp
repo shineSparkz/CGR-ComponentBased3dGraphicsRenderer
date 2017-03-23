@@ -4,7 +4,6 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "utils.h"
-#include "LogFile.h"
 #include "Renderer.h"
 #include "OpenGlLayer.h"
 #include "TextFile.h"

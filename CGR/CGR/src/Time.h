@@ -3,6 +3,13 @@
 
 #include <exception>
 
+enum TimeMeasure
+{
+	MilliSeconds,
+	Seconds,
+	NanoSeconds,
+};
+
 class Time
 {
 public:

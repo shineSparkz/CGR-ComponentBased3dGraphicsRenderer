@@ -102,6 +102,9 @@ void BillboardList::Render(Renderer* renderer, const Mat4& viewProj, const Vec3&
 	m_Material->SetUniformValue<Vec3>("u_CamPos", &camPos);
 	m_Material->SetUniformValue<float>("u_Scale", &m_BillboardScale);
 
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -112,5 +115,7 @@ void BillboardList::Render(Renderer* renderer, const Mat4& viewProj, const Vec3&
 	// I think we shoulf be asking renderer to do this 
 	glBindVertexArray(m_VAO);
 	glDrawArrays(GL_POINTS, 0, (GLsizei)m_NumInstances);
+
+	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_BLEND);
 }

@@ -1,6 +1,7 @@
 #ifndef __RENDERER_H__
 #define __RENDERER_H__
 
+#include "Time.h"
 #include "gl_headers.h"
 #include "types.h"
 #include "Lights.h"
@@ -9,6 +10,7 @@
 #include "FontAlign.h"
 #include <vector>
 #include <map>
+#include "Queery.h"
 #include "Singleton.h"//remove this and use evnts
 
 class Mesh;
@@ -28,51 +30,44 @@ class ShadowFrameBuffer;
 
 // Get rid
 class ShadowMapTechnique;
-class LavaTechnique;
-//ds
-class GeometryPassTechnique;
-class DSDirLightPassTech;
-class DSPointLightPassTech;
-class NullTechnique;
 
 class Renderer : public Singleton<Renderer>
 {
 public:
 	Renderer();
+	bool SetCamera(BaseCamera* camera);
 	bool Init();
-	void Render();
+	void Render(std::vector<GameObject*>& gameObjects);
 	void Close();
 
-	// Render With mesh resource, no textures or materials considered, use for deferred
-	void RenderMesh(Mesh* mesh);
-
-	void RenderMesh(MeshRenderer* mesh);
-	void RenderSkybox(BaseCamera* cam);
 	void RenderText(const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White());
-	Texture* GetTexture(size_t index);
 	void WindowSizeChanged(int w, int h);
+	
+	size_t GetNumSubMeshesInMesh(size_t meshIndex);
+	size_t GetNumTextures() const;
+	Texture* GetTexture(size_t index);
+	bool CreateTexture(size_t& textureIndexout, const std::string& path, int glTexId);
 
 private:
+	void RenderMesh(Mesh* mesh);
+	void RenderMesh(MeshRenderer* mesh);
+	void RenderSkybox(BaseCamera* cam);
+
+	void ForwardRender(std::vector<GameObject*>& gameObjects);
+	void DeferredRender(std::vector<GameObject*>& gameObjects);
+
 	// These will ALL be moved later, this is not dynamic or user enanled, but not concerned at this stage
 	bool setRenderStates();
 	bool setFrameBuffers();
 	bool setLights();
-	bool setCamera();
 	bool loadFonts();
 	bool loadTetxures();
 	bool loadMeshes();
 	bool createMaterials();
-
 	bool loadTexture(const std::string& path, size_t key_store, int glTextureIndex);
-	bool loadMesh(const std::string& path, size_t key_store, bool tangents);
+	bool loadMesh(const std::string& path, size_t key_store, bool tangents, bool withTextures);
 
-	// Deferred
-	void GeomPass();
-	void StencilPass(int lightIndex);
-	void PointLightPass(int lightIndex);
-	void DirLightPass();
-	void FinalPass();
-
+	float GetFrameTime(TimeMeasure tm);
 
 private:
 	// This will be somewhere else
@@ -80,26 +75,25 @@ private:
 	std::map<size_t, Mesh*> m_Meshes;
 	std::map<size_t, ShaderProgram*> m_Shaders;
 
-	std::vector<GameObject*> m_GameObjects;
+	BaseCamera* m_CameraPtr;
+
+	Query m_Query;
+	GLuint m_QueryTime;
+	uint64 m_Frames = 0;
 
 	Font* m_Font;
-	GameObject* m_CameraObj;
-	BaseCamera* m_Camera;//convenience
 	GBuffer* m_Gbuffer;
 
 	// SHould be a mesh renderer
 	BillboardList* m_TreeBillboardList;
 	Terrain* m_Terrain;
 
-	// Deferred
-	GeometryPassTechnique* m_GeomPassMaterial;
-	DSPointLightPassTech* m_PointLightPassMaterial;
-	DSDirLightPassTech* m_DirLightPassMaterial;
-	NullTechnique* m_NullTech;
+	// Needs moving
+	DirectionalLight m_DirLight;
+	SpotLight m_SpotLight;
+	std::vector<PointLight> m_PointLights;
 
-	// These need to be components of a game object
-	DirectionalLight m_DirectionalLight;
-	PointLight m_PointLights[3];
+	bool m_DeferredRender = !false;
 };
 
 
