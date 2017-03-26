@@ -37,4 +37,7 @@
 #define STD_DEF_DIR_LIGHT_SHADER  7
 #define STD_DEF_STENCIL_SHADER  8
 #define STD_FWD_LIGHTING  9
+
+#define FONT_COUR 0
+
 #endif

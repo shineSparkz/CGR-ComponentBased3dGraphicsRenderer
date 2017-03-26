@@ -3,12 +3,21 @@
 //#define MAX_SPOTS 10
 #define MAX_POINTS 10
 
-struct DirectionalLight
+layout(binding = 0, std140) uniform DirectionalLight
 {
-    vec3 direction; 
-    vec3 intensity;
-	float ambient_intensity;
+	vec3 direction;
+	vec3 intensity;
 };
+
+layout (binding = 1, std140) uniform scene
+{ 
+	mat4 proj_xform;
+	mat4 view_xform;
+	vec3 camera_position;
+	vec3 ambient_light;
+};
+
+
 
 struct Spotlight
 {
@@ -32,11 +41,11 @@ struct PointLight
     float   aQuadratic;
 };
 
-uniform DirectionalLight u_dir_light;
+//uniform DirectionalLight u_dir_light;
 uniform Spotlight u_spot_light;
 uniform PointLight u_point_light[MAX_POINTS];
 
-uniform vec3 u_ambience;
+//uniform vec3 u_ambience;
 uniform sampler2D u_sampler;
 uniform int u_num_point_lights;
 
@@ -45,11 +54,12 @@ in  vec3 	P;
 in  vec2    varying_texcoord;   //!< The interpolated co-ordinate to use for the texture sampler.
 out vec4    frag_colour; //!< The calculated colour of the fragment.
 
-vec4 getDirectionalLightColor(DirectionalLight dirLight, vec3 n)
+vec4 getDirectionalLightColour(in vec3 n)
 {
-	float diffuse_intensity = max(0.0, dot(n, -dirLight.direction));
-	float fMult = clamp(dirLight.ambient_intensity + diffuse_intensity, 0.0, 1.0);
-	return vec4(dirLight.intensity * fMult, 1.0);
+	//DirectionalLight dirLight = directionalLight; // directionalLights.lights[index];
+	float diffuse_intensity = max(0.0, dot(n, -direction));
+	float fMult = clamp(0.1 + diffuse_intensity, 0.0, 1.0);
+	return vec4(intensity * fMult, 1.0);
 }
 
 vec4 getPointLightColor(const PointLight ptLight, vec3 p, vec3 n) 
@@ -99,7 +109,7 @@ void main()
 	vec3 n = normalize(N);
 	vec4 tex_colour = texture(u_sampler, varying_texcoord);
 	
-	vec4 total_light =  getDirectionalLightColor(u_dir_light, n) + 
+	vec4 total_light =  getDirectionalLightColour(n) +
 						getSpotLightColor(u_spot_light, P);
 						
 	for(int i = 0; i < u_num_point_lights; ++i)
@@ -107,7 +117,7 @@ void main()
 		total_light += getPointLightColor(u_point_light[i], P, n);
 	}
 						
-	frag_colour = vec4(u_ambience, tex_colour.a) + total_light * tex_colour;
+	frag_colour = vec4(ambient_light, tex_colour.a) + total_light * tex_colour;
 }
 
 

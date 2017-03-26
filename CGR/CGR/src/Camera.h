@@ -113,7 +113,7 @@ private:
 
 	Vec3 velocity;
 	bool fk, bk, lk, rk;
-	float speed = 15.0f;
+	float speed = 65.0f;
 	float mouseSpeed = 1.4f;
 };
 

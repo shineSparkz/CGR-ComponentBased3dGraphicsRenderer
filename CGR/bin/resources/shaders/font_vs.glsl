@@ -2,10 +2,10 @@
 
 layout (location = 0) in vec4 vertex_position;
 out vec2 varying_texcoords;
-uniform mat4 proj_xform;
+uniform mat4 u_proj_xform;
 
 void main()
 {
-	gl_Position = proj_xform * vec4(vertex_position.xy, 0.0, 1.0);
+	gl_Position = u_proj_xform * vec4(vertex_position.xy, 0.0, 1.0);
 	varying_texcoords = vertex_position.zw;
 }

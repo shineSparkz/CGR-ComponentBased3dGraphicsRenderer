@@ -16,7 +16,11 @@ int main(void)
 			return -1;
 		}
 
-		app->ChangeScene("sponza");
+		if (app->ChangeScene("sponza") != GE_OK)
+		{
+			SAFE_CLOSE(app);
+			return -1;
+		}
 		
 		app->Run();
 	}

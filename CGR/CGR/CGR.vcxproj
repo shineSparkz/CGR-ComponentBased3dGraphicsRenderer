@@ -183,7 +183,9 @@
     <ClCompile Include="src\Queery.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
     <ClCompile Include="src\RenderWindow.cpp" />
+    <ClCompile Include="src\ResourceManager.cpp" />
     <ClCompile Include="src\SceneGraph.cpp" />
+    <ClCompile Include="src\ShaderProgram.cpp" />
     <ClCompile Include="src\Shaders.cpp" />
     <ClCompile Include="src\ShadowFrameBuffer.cpp" />
     <ClCompile Include="src\SponzaScene.cpp" />
@@ -193,6 +195,9 @@
     <ClCompile Include="src\Texture.cpp" />
     <ClCompile Include="src\Time.cpp" />
     <ClCompile Include="src\Transform.cpp" />
+    <ClCompile Include="src\Uniform.cpp" />
+    <ClCompile Include="src\UniformBlock.cpp" />
+    <ClCompile Include="src\UniformBlockManager.cpp" />
     <ClCompile Include="src\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -226,9 +231,11 @@
     <ClInclude Include="src\Renderer.h" />
     <ClInclude Include="src\RenderWindow.h" />
     <ClInclude Include="src\ResId.h" />
+    <ClInclude Include="src\ResourceManager.h" />
     <ClInclude Include="src\SceneGraph.h" />
     <ClInclude Include="src\Screen.h" />
     <ClInclude Include="src\Shader.h" />
+    <ClInclude Include="src\ShaderProgram.h" />
     <ClInclude Include="src\ShadowFrameBuffer.h" />
     <ClInclude Include="src\Singleton.h" />
     <ClInclude Include="src\SponzaScene.h" />
@@ -239,6 +246,9 @@
     <ClInclude Include="src\Time.h" />
     <ClInclude Include="src\Transform.h" />
     <ClInclude Include="src\types.h" />
+    <ClInclude Include="src\Uniform.h" />
+    <ClInclude Include="src\UniformBlock.h" />
+    <ClInclude Include="src\UniformBlockManager.h" />
     <ClInclude Include="src\utils.h" />
     <ClInclude Include="src\Vertex.h" />
   </ItemGroup>

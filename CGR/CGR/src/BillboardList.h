@@ -17,7 +17,7 @@ public:
 	bool Init(ShaderProgram* mat, size_t textureIndex, float setScale, size_t numX, size_t numY, float spacing, float startOffset, float yPos);
 	bool InitWithPositions(ShaderProgram* mat, size_t texture, float setScale, const std::vector<Vec3>& positions);
 
-	void Render(Renderer* renderer, const Mat4& viewProj, const Vec3& camPos, const Vec3& camRight);
+	void Render(Renderer* renderer, const Mat4& viewProj, const Vec3& camPos);
 
 private:
 	ShaderProgram* m_Material;

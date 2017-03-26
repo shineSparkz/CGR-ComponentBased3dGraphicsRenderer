@@ -1,6 +1,7 @@
 #include "SponzaScene.h"
 
 #include "Renderer.h"
+#include "Mesh.h"
 #include "Camera.h"
 #include "GameObject.h"
 #include "Screen.h"
@@ -8,6 +9,7 @@
 #include "utils.h"
 #include "Transform.h"
 #include "MeshRenderer.h"
+#include "ResourceManager.h"
 
 SponzaScene::SponzaScene(const std::string& name) :
 	IScene(name)
@@ -57,11 +59,12 @@ void SponzaScene::createGameObjects()
 
 	GameObject* cube1 = new GameObject();
 	Transform* cubet = cube1->AddComponent<Transform>();
-	cubet->SetPosition(Vec3(0.0f, 1.0f, -10.0f));
-	cubet->SetScale(Vec3(1.0f));
+	cubet->SetPosition(Vec3(-7.0f, 0.0f, -10.0f));
+	cubet->SetScale(Vec3(14.0f));
 	MeshRenderer* cube1Mr = cube1->AddComponent<MeshRenderer>();
-	cube1Mr->SetMesh(CUBE_MESH, Renderer::Instance()->GetNumSubMeshesInMesh(CUBE_MESH));
-	cube1Mr->AddTexture(BRICK_TEX);
+	cube1Mr->SetMesh(MALE_MESH, Renderer::Instance()->GetNumSubMeshesInMesh(MALE_MESH));
+	cube1Mr->AddTexture(MALE_TEX1,1);
+	cube1Mr->AddTexture(MALE_TEX2,0);
 	cube1Mr->m_ShaderIndex = STD_DEF_GEOM_SHADER;
 	m_GameObjects.push_back(cube1);
 
@@ -117,6 +120,11 @@ void SponzaScene::createGameObjects()
 
 int SponzaScene::OnSceneLoad()
 {
+	// Load sponza ( New resource)
+	if (!ResourceManager::Instance()->LoadMesh("sponza/sponza.obj", SPONZA_MESH, false, true))
+		return GE_MAJOR_ERROR;
+
+	// Create Camera
 	GameObject* cam = new GameObject();
 	m_Camera = cam->AddComponent<FlyCamera>();
 	m_Camera->Start();
@@ -133,12 +141,11 @@ int SponzaScene::OnSceneLoad()
 	);
 
 	m_Camera->AddSkybox(30.0f, SKYBOX_TEX);
-
 	// Set Pointer in renderer
 	Renderer::Instance()->SetCamera(m_Camera);
-
 	m_GameObjects.push_back(cam);
 
+	// Add Other Objecst
 	this->createGameObjects();
 
 	return GE_OK;
@@ -165,7 +172,9 @@ void SponzaScene::Render(Renderer* renderer)
 {
 	renderer->Render(m_GameObjects);
 
-	renderer->RenderText("Cam Pos: " + util::vec3_to_str(m_Camera->Position()), 8, 16);
-	renderer->RenderText("Cam Fwd: " + util::vec3_to_str(m_Camera->Forward()), 8, 32);
-	renderer->RenderText("Cam Up: " + util::vec3_to_str(m_Camera->Up()), 8, 48);
+	renderer->RenderText(FONT_COUR, "Cam Pos: " + util::vec3_to_str(m_Camera->Position()), 8, 16);
+	renderer->RenderText(FONT_COUR, "Cam Fwd: " + util::vec3_to_str(m_Camera->Forward()), 8, 32);
+	renderer->RenderText(FONT_COUR, "Cam Up: " + util::vec3_to_str(m_Camera->Up()), 8, 48);
+	renderer->RenderText(FONT_COUR, "Num Verts: " + util::to_str(Mesh::NumVerts), 8, 96, FontAlign::Left, Colour::Green());
+	renderer->RenderText(FONT_COUR, "Num Meshes: " + util::to_str(Mesh::NumMeshes), 8, 128, FontAlign::Left, Colour::Green());
 }

@@ -15,6 +15,10 @@
 
 #include "Image.h"
 
+
+uint64 Mesh::NumVerts = 0;
+uint64 Mesh::NumMeshes = 0;
+
 // This is no good having these global but doesn't seem to work otherwise!!
 const struct aiScene* scene = NULL;
 Assimp::Importer importer;
@@ -177,6 +181,9 @@ bool Mesh::Load(const std::string& mesh, bool withTangents, bool loadTextures)
 	m_SubMeshes.resize(scene->mNumMeshes);
 	// Textures
 
+	// Static data
+	Mesh::NumMeshes += scene->mNumMeshes;
+
 	unsigned int num_vertices = 0;
 	unsigned int num_indices = 0;
 
@@ -195,6 +202,8 @@ bool Mesh::Load(const std::string& mesh, bool withTangents, bool loadTextures)
 		num_vertices += scene->mMeshes[i]->mNumVertices;
 		num_indices += m_SubMeshes[i].NumIndices;
 	}
+
+	Mesh::NumVerts += num_vertices;
 	
 	std::vector<unsigned int> indices;
 	indices.reserve(num_indices);

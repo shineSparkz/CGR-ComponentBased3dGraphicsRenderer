@@ -12,6 +12,7 @@
 #include "OpenGlLayer.h"
 #include "utils.h"
 #include "Shader.h"
+#include "ShaderProgram.h"
 
 Terrain::Terrain() :
 	m_Scale(1.0,1.0,1.0),
@@ -462,9 +463,8 @@ void Terrain::Render(Renderer* renderer, BaseCamera* cam, const Vec3& colour)
 	float v = 0.1f * (float)m_Rows;
 
 	// Set uniforms per terrain
-	m_Material->SetUniformValue<Mat4>("u_WVPXform", &(cam->Projection() * cam->View() * Mat4(1.0f)));
-	m_Material->SetUniformValue<Mat4>("u_WorldXform", &(Mat4(1.0f)));
-	m_Material->SetUniformValue<Mat4>("u_HeightMapScaleXform", &(glm::scale(Mat4(1.0f), m_Scale)));
+	m_Material->SetUniformValue<Mat4>("u_world_xform", &(Mat4(1.0f)));
+	m_Material->SetUniformValue<Mat4>("u_height_map_scale_xform", &(glm::scale(Mat4(1.0f), m_Scale)));
 	m_Material->SetUniformValue<float>("u_RenderHeight", &m_Scale.y);
 	m_Material->SetUniformValue<float>("u_MaxTexU", &u);
 	m_Material->SetUniformValue<float>("u_MaxTexV", &v);

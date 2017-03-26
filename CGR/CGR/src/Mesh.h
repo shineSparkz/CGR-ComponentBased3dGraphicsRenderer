@@ -34,6 +34,9 @@ public:
 	Mesh();
 	~Mesh();
 
+	static uint64 NumVerts;
+	static uint64 NumMeshes;
+
 	/*
 		@param: mesh -- Full Path of mesh resource you wish to load
 		@param: withTangents -- If you specify true, then this data will be sent to the GPU, it is epected that this is handled in the
@@ -51,6 +54,8 @@ public:
 	{
 		return m_Textures.size() > 0;
 	}
+
+	size_t GetNumSubMeshes() const;
 	
 private:
 	friend class Renderer;
@@ -61,4 +66,9 @@ private:
 
 	std::vector<Texture*> m_Textures;
 };
+
+INLINE size_t Mesh::GetNumSubMeshes() const
+{
+	return m_SubMeshes.size();
+}
 #endif

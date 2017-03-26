@@ -15,6 +15,7 @@ public:
 	static void OpenGLLayer::clean_GL_program(GLuint* buff);
 	static void OpenGLLayer::clean_GL_shader(GLuint* shader);
 	static void OpenGLLayer::clean_GL_fbo(GLuint* fbo, int count);
+	static size_t glTypeSize(GLenum type);
 };
 
 #endif

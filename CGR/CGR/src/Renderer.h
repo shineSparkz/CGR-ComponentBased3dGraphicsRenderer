@@ -13,6 +13,7 @@
 #include "Queery.h"
 #include "Singleton.h"//remove this and use evnts
 
+class ResourceManager;
 class Mesh;
 class MeshRenderer;
 class LightTechnique;
@@ -27,6 +28,7 @@ class GBuffer;
 class GameObject;
 class ShaderProgram;
 class ShadowFrameBuffer;
+class UniformBlockManager;
 
 // Get rid
 class ShadowMapTechnique;
@@ -35,65 +37,45 @@ class Renderer : public Singleton<Renderer>
 {
 public:
 	Renderer();
-	bool SetCamera(BaseCamera* camera);
-	bool Init();
-	void Render(std::vector<GameObject*>& gameObjects);
-	void Close();
 
-	void RenderText(const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White());
+	bool Init();
+	bool SetCamera(BaseCamera* camera);
+	void Render(std::vector<GameObject*>& gameObjects);
+	void RenderText(size_t fontId, const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White());
 	void WindowSizeChanged(int w, int h);
+	void Close();
 	
-	size_t GetNumSubMeshesInMesh(size_t meshIndex);
+	size_t GetNumSubMeshesInMesh(size_t meshIndex) const;
 	size_t GetNumTextures() const;
-	Texture* GetTexture(size_t index);
-	bool CreateTexture(size_t& textureIndexout, const std::string& path, int glTexId);
+	Texture* GetTexture(size_t index) const;
 
 private:
-	void RenderMesh(Mesh* mesh);
-	void RenderMesh(MeshRenderer* mesh);
-	void RenderSkybox(BaseCamera* cam);
-
-	void ForwardRender(std::vector<GameObject*>& gameObjects);
-	void DeferredRender(std::vector<GameObject*>& gameObjects);
-
-	// These will ALL be moved later, this is not dynamic or user enanled, but not concerned at this stage
-	bool setRenderStates();
+	void forwardRender(std::vector<GameObject*>& gameObjects);
+	void deferredRender(std::vector<GameObject*>& gameObjects);
+	void renderMesh(Mesh* mesh);
+	void renderMesh(MeshRenderer* mesh);
+	void renderSkybox(BaseCamera* cam);
 	bool setFrameBuffers();
 	bool setLights();
-	bool loadFonts();
-	bool loadTetxures();
-	bool loadMeshes();
-	bool createMaterials();
-	bool loadTexture(const std::string& path, size_t key_store, int glTextureIndex);
-	bool loadMesh(const std::string& path, size_t key_store, bool tangents, bool withTextures);
-
-	float GetFrameTime(TimeMeasure tm);
+	float getFrameTime(TimeMeasure tm);
 
 private:
-	// This will be somewhere else
-	std::map<size_t, Texture*> m_Textures;
-	std::map<size_t, Mesh*> m_Meshes;
-	std::map<size_t, ShaderProgram*> m_Shaders;
-
+	ResourceManager* m_ResManager;
 	BaseCamera* m_CameraPtr;
-
 	Query m_Query;
 	GLuint m_QueryTime;
-	uint64 m_Frames = 0;
-
-	Font* m_Font;
+	uint64 m_Frames;
 	GBuffer* m_Gbuffer;
-
-	// SHould be a mesh renderer
 	BillboardList* m_TreeBillboardList;
 	Terrain* m_Terrain;
+	UniformBlockManager* m_UniformBlockManager;
 
-	// Needs moving
+	// Lights
 	DirectionalLight m_DirLight;
 	SpotLight m_SpotLight;
 	std::vector<PointLight> m_PointLights;
 
-	bool m_DeferredRender = !false;
+	bool m_DeferredRender = false;
 };
 
 

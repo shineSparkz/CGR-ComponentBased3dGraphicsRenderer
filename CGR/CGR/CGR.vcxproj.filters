@@ -159,6 +159,21 @@
     <ClInclude Include="src\ResId.h">
       <Filter>Game</Filter>
     </ClInclude>
+    <ClInclude Include="src\ResourceManager.h">
+      <Filter>Application\AssetLoading</Filter>
+    </ClInclude>
+    <ClInclude Include="src\UniformBlock.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\UniformBlockManager.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ShaderProgram.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Uniform.h">
+      <Filter>Render</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -254,6 +269,21 @@
     </ClCompile>
     <ClCompile Include="src\OutdoorScene.cpp">
       <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ResourceManager.cpp">
+      <Filter>Application\AssetLoading</Filter>
+    </ClCompile>
+    <ClCompile Include="src\UniformBlockManager.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\UniformBlock.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ShaderProgram.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Uniform.cpp">
+      <Filter>Render</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

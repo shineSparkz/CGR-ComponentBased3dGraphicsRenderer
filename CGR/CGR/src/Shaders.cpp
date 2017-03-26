@@ -1,12 +1,109 @@
 #include "Shader.h"
 
 #include <iostream>
-#include <glm/gtc/type_ptr.hpp>
 
 #include "utils.h"
 #include "Renderer.h"
 #include "OpenGlLayer.h"
 #include "TextFile.h"
+
+#include "UniformBlockManager.h"
+#include "UniformBlock.h"
+
+#define RFOR(q,n) for(int q=n;q>=0;q--)
+
+bool GetLinesFromFile(const std::string& sFile, bool bIncludePart, std::vector<std::string>* vResult)
+{
+	FILE* fp = fopen(sFile.c_str(), "rt");
+	if (!fp)
+		return false;
+
+	std::string sDirectory;
+	int slashIndex = -1;
+	for (int i = sFile.size() - 1; i >= 0; --i)
+	{
+		if (sFile[i] == '\\' || sFile[i] == '/')
+		{
+			slashIndex = i;
+			break;
+		}
+	}
+
+	sDirectory = sFile.substr(0, slashIndex + 1);
+
+	// Get all lines from a file
+
+	char sLine[255];
+
+	bool bInIncludePart = false;
+
+	while (fgets(sLine, 255, fp))
+	{
+		std::stringstream ss(sLine);
+		std::string sFirst;
+		ss >> sFirst;
+		if (sFirst == "#include")
+		{
+			std::string sFileName;
+			ss >> sFileName;
+			if (sFileName.size() > 0 && sFileName[0] == '\"' && sFileName[ sFileName.size() - 1] == '\"')
+			{
+				sFileName = sFileName.substr(1, sFileName.size() - 2);
+				GetLinesFromFile(sDirectory + sFileName, true, vResult);
+			}
+		}
+		else if (sFirst == "#include_part")
+			bInIncludePart = true;
+		else if (sFirst == "#definition_part")
+			bInIncludePart = false;
+		else if (!bIncludePart || (bIncludePart && bInIncludePart))
+			vResult->push_back(sLine);
+	}
+	fclose(fp);
+
+	return true;
+}
+
+/*
+bool Shader::LoadShader(const std::string& sFile)
+{
+	std::vector<std::string> sLines;
+
+	if (!GetLinesFromFile(sFile, false, &sLines))
+		return false;
+
+	const char** sProgram = new const char*[sLines.size()];
+	for (int i = 0; i < sLines.size(); ++i)
+	{
+		sProgram[i] = sLines[i].c_str();
+	}
+
+	this->shader = glCreateShader(this->shader_type);
+
+	glShaderSource(shader, sLines.size(), sProgram, NULL);
+	glCompileShader(shader);
+
+	delete[] sProgram;
+
+	int iCompilationStatus;
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &iCompilationStatus);
+
+	if (iCompilationStatus == GL_FALSE)
+	{
+		char sInfoLog[1024];
+		char sFinalMessage[1536];
+		int iLogLength;
+		glGetShaderInfoLog(shader, 1024, &iLogLength, sInfoLog);
+		sprintf(sFinalMessage, "Error! Shader file %s wasn't compiled! The compiler returned:\n\n%s", sFile.c_str(), sInfoLog);
+		WRITE_LOG(sFinalMessage, "error");
+		//MessageBox(NULL, sFinalMessage, "Error", MB_ICONERROR);
+		return false;
+	}
+
+	return true;
+}
+*/
+
 
 Shader::Shader() :
 	attributes(),
@@ -43,6 +140,54 @@ bool Shader::LoadShader(const char* srcPath)
 	// Ask OpenGL to attempt shader compilation
 	GLint compile_status = 0;
 	glShaderSource(shader, 1, (const GLchar **)&src, NULL);
+	glCompileShader(shader);
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &compile_status);
+
+	if (compile_status != GL_TRUE)
+	{
+		// Log what went wrong in shader src
+		const int string_length = 1024;
+		GLchar log[string_length] = "";
+		glGetShaderInfoLog(shader, string_length, NULL, log);
+		std::stringstream logger;
+		logger << log << std::endl;
+		WRITE_LOG(logger.str(), "error");
+		return false;
+	}
+
+	return true;
+}
+
+bool Shader::LoadShader(std::vector<std::string> srcs)
+{
+	std::vector<std::string> fromFiles;
+	for (int i = 0; i < srcs.size(); ++i)
+	{
+		TextFile tf;
+		std::string shadersrc = tf.LoadFileIntoStr(srcs[i]);
+		if (shadersrc == "")
+		{
+			return false;
+		}
+
+		fromFiles.push_back(shadersrc);
+	}
+
+
+	// Need to cast to a c string for open GL
+	std::vector<const char*> glSrc;
+	for (int i = 0; i < fromFiles.size(); ++i)
+	{
+		glSrc.push_back(fromFiles[i].c_str());
+	}
+	//const char* src = shadersrc.c_str();
+
+	// Ask openGL to create a shader of passed in type
+	this->shader = glCreateShader(this->shader_type);
+
+	// Ask OpenGL to attempt shader compilation
+	GLint compile_status = 0;
+	glShaderSource(shader, glSrc.size(), (const GLchar**)glSrc.data(), NULL);
 	glCompileShader(shader);
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &compile_status);
 
@@ -137,184 +282,11 @@ dword hash(const char *str)
 	return hash;
 }
 
-ShaderProgram::ShaderProgram() :
-	m_ShaderProgram(0),
-	m_Uniforms()
-{
-}
-
-ShaderProgram::~ShaderProgram()
-{
-}
-
-bool ShaderProgram::CreateProgram(const std::vector<Shader>& shaders, const std::string& fragout_identifier, GLuint frag_loc)
-{
-	// Link shaders
-	m_ShaderProgram = glCreateProgram();
-
-	std::vector<Shader>::const_iterator it;
-	bool has_fragment_shader = false;
-
-	for (it = shaders.begin(); it != shaders.end(); ++it)
-	{
-		if (it->shader_type == GL_FRAGMENT_SHADER)
-			has_fragment_shader = true;
-
-		glAttachShader(m_ShaderProgram, (*it).shader);
-
-		for (size_t j = 0; j < (*it).attributes.size(); ++j)
-		{
-			glBindAttribLocation(m_ShaderProgram, (*it).attributes[j].layout_location,
-				(*it).attributes[j].name.c_str());
-
-			if (OpenGLLayer::check_GL_error())
-			{
-				WRITE_LOG("Error: binding attrib location in shader", "error");
-				return false;
-			}
-		}
-	}
-
-	// Bind Frag
-	if (has_fragment_shader)
-	{
-		glBindFragDataLocation(m_ShaderProgram, frag_loc, fragout_identifier.c_str());
-		if (OpenGLLayer::check_GL_error())
-		{
-			WRITE_LOG("Error: binding frag data location in shader", "error");
-			return false;
-		}
-	}
-
-	glLinkProgram(m_ShaderProgram);
-
-	GLint link_status = 0;
-	glGetProgramiv(m_ShaderProgram, GL_LINK_STATUS, &link_status);
-
-	if (link_status != GL_TRUE)
-	{
-		const int string_length = 1024;
-		GLchar log[string_length] = "";
-		glGetProgramInfoLog(m_ShaderProgram, string_length, NULL, log);
-		std::stringstream logger;
-		logger << log << std::endl;
-		WRITE_LOG(logger.str(), "error");
-		return false;
-	}
-
-	//------------------------------------------------------
-	// Populate m_Uniforms
-	//------------------------------------------------------
-	int total = -1;
-	glGetProgramiv(m_ShaderProgram, GL_ACTIVE_UNIFORMS, &total);
-
-	for (int i = 0; i < total; ++i)
-	{
-		int name_len = -1, num = -1;
-		GLenum type = GL_ZERO;
-		char name[100];
-
-		glGetActiveUniform(
-			m_ShaderProgram,
-			GLuint(i),
-			sizeof(name) - 1,
-			&name_len,
-			&num,
-			&type,
-			name);
-
-		name[name_len] = 0;
-		GLuint location = glGetUniformLocation(m_ShaderProgram, name);
-
-		Uniform* ufm = new Uniform(location, (UniformTypes)type);
-		//m_Uniforms[hash(name)] = ufm;
-		m_Uniforms[name] = ufm;
-	}
-
-	return true;
-}
-
-Uniform* ShaderProgram::GetUniformByName(const std::string& name)
-{
-	//auto i = m_Uniforms.find(hash(name.c_str()));
-	auto i = m_Uniforms.find(name);
-	return ((i != m_Uniforms.end()) ? i->second : nullptr);
-}
-
-void ShaderProgram::Close()
-{
-	for (auto i = m_Uniforms.begin(); i != m_Uniforms.end(); ++i)
-	{
-		SAFE_DELETE(i->second);
-	}
-
-	m_Uniforms.clear();
-
-	// Clean GL stuff
-	OpenGLLayer::clean_GL_program(&m_ShaderProgram);
-}
-
-void ShaderProgram::Use()
-{
-	glUseProgram(m_ShaderProgram);
-}
 
 
 
-Uniform::Uniform(int location, UniformTypes utype) :
-	m_UType(utype),
-	m_Location(location),
-	m_CurrentValue()
-{
-}
 
-void Uniform::SendGPU()
-{
-	switch (m_UType)
-	{
-	case U_FLOAT:
-		glUniform1f(m_Location, *(float*)m_CurrentValue);
-		break;
-	case U_INT:
-		glUniform1i(m_Location, *(int*)m_CurrentValue);
-		break;
-	case U_INT2:
-		break;
-	case U_INT3:
-		break;
-	case U_INT4:
-		break;
-	case U_BOOL:
-		break;
-	case U_BOOL2:
-		break;
-	case U_BOOL3:
-		break;
-	case U_BOOL4:
-		break;
-	case U_VEC2:
-		glUniform2fv(m_Location, 1, glm::value_ptr(*(Vec2*)m_CurrentValue));
-		break;
-	case U_VEC3:
-		glUniform3fv(m_Location, 1, glm::value_ptr(*(Vec3*)m_CurrentValue));
-		break;
-	case U_VEC4:
-		glUniform4fv(m_Location, 1, glm::value_ptr(*(Vec4*)m_CurrentValue));
-		break;
-	case U_MAT2:
-		break;
-	case U_MAT3:
-		break;
-	case U_MAT4:
-		glUniformMatrix4fv(m_Location, 1, GL_FALSE, glm::value_ptr(*(Mat4*)m_CurrentValue));
-		break;
-	case U_SAMPLER:
-		glUniform1i(m_Location, *(int*)m_CurrentValue);
-		break;
-	case U_CUBE_SAMPLER:
-		glUniform1i(m_Location, *(int*)m_CurrentValue);
-		break;
-	default:
-		break;
-	}
-}
+
+
+
+

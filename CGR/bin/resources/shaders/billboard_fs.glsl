@@ -1,4 +1,4 @@
-#version 330
+#version 450
 
 /*
 // Deferred
@@ -53,17 +53,9 @@ vec4 GetDirectionalLightColor(vec3 vNormal)
 }
 
 void main()
-{
-	float fAlphaMultiplier = 1.5;
-	float fAlphaTest = 0.25;
-	
-	vec4 vTexColor = texture2D(u_TextureMap, geom_texcoord); 
-	float fNewAlpha = vTexColor.a * fAlphaMultiplier;                
-	if(fNewAlpha < fAlphaTest) 
-		discard; 
-    
-	if(fNewAlpha > 1.0f) 
-		fNewAlpha = 1.0f;    
-       
-	frag_colour = vec4(vTexColor.xyz, fNewAlpha) * GetDirectionalLightColor(normalize(geom_normal));       
+{	
+	vec4 diffuse = texture2D(u_TextureMap, geom_texcoord);     
+	if(diffuse.a == 0.0f) 
+		discard;
+	frag_colour = diffuse * GetDirectionalLightColor(normalize(geom_normal));       
 }

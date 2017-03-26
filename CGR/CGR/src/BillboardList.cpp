@@ -4,6 +4,7 @@
 #include "Texture.h"
 #include "Renderer.h"
 #include "Shader.h"
+#include "ShaderProgram.h"
 #include <vector>
 
 BillboardList::BillboardList() :
@@ -92,7 +93,7 @@ bool BillboardList::InitWithPositions(ShaderProgram* mat, size_t texture, float 
 	return true;
 }
 
-void BillboardList::Render(Renderer* renderer, const Mat4& viewProj, const Vec3& camPos, const Vec3& camRight)
+void BillboardList::Render(Renderer* renderer, const Mat4& viewProj, const Vec3& camPos)
 {
 	// This should be set globally, not in this one billboard instance, 
 	// what if we have a bunch of different billboards, god this guy is naff!
