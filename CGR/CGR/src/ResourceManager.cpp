@@ -10,6 +10,7 @@
 #include "Screen.h"
 #include "GBuffer.h"
 #include "Font.h"
+#include "UniformBlockManager.h"
 
 const ShaderAttrib POS_ATTR{ 0, "vertex_position" };
 const ShaderAttrib NORM_ATTR{ 1, "vertex_normal" };

@@ -101,7 +101,6 @@ void BaseCamera::SetDirection(const Vec3& p)
 	this->forward = p;
 }
 
-
 void BaseCamera::Update()
 {
 	if (this->camType == CamType::Perspective)
@@ -177,6 +176,8 @@ void FlyCamera::Start()
 void FlyCamera::Update()
 {
 	const float& dt = Time::DeltaTime();
+	const float hscreenWidth = (float)Screen::Instance()->ScreenWidth() * 0.5f;
+	const float hscreenHeight = (float)Screen::Instance()->ScreenHeight() * 0.5f;
 	velocity = Vec3(0.0f);
 
 	int num_dirs_pressed = ((rk ^ lk) ? 1 : 0) +
@@ -194,26 +195,18 @@ void FlyCamera::Update()
 			velocity - forward * speed;
 	}
 	
-	float hscreenWidth =  (float)Screen::Instance()->ScreenWidth() * 0.5f;
-	float hscreenHeight = (float)Screen::Instance()->ScreenHeight() * 0.5f;
 	float mouseX = (float)Mouse::Instance()->PosX();
 	float mouseY = (float)Mouse::Instance()->PosY();
 
 	// Mouse orient
-	//yaw   += mouseSpeed * dt * (hscreenWidth  - mouseX);
-	//pitch += mouseSpeed * dt * (hscreenHeight - mouseY);
-	m_Transform->RotateY( mouseSpeed * dt * (hscreenWidth  - mouseX));
-	m_Transform->RotateX( mouseSpeed * dt * (hscreenHeight - mouseY));
-
+	m_Transform->RotateY(mouseSpeed * dt * (hscreenWidth - mouseX));
+	m_Transform->RotateX(mouseSpeed * dt * (hscreenHeight - mouseY));
 
 	Vec3 rot = m_Transform->Euler();
-	//this->forward = Vec3(cosf(pitch) * sinf(yaw), sinf(pitch), cosf(pitch) * cosf(yaw));
-	//this->right = Vec3(sinf(yaw - 3.14f / 2.0f), 0, cosf(yaw - 3.14f / 2.0f));
-	
 	this->forward = Vec3(cosf(rot.x) * sinf(rot.y), sinf(rot.x), cosf(rot.x) * cosf(rot.y));
 	this->right = Vec3(sinf(rot.y - 3.14f / 2.0f), 0, cosf(rot.y - 3.14f / 2.0f));
 	this->up = glm::cross(right, forward);
-
+	
 	// Update position
 	m_Transform->MovePosition(this->velocity * dt);
 	
@@ -273,5 +266,107 @@ void FlyCamera::HandleEvent(Event* e)
 				}
 			}
 		}
+	}
+}
+
+
+ChaseCamera2D::ChaseCamera2D(GameObject* go) :
+	BaseCamera(go)
+{
+	EventManager* ev = EventManager::Instance();
+
+	if (ev)
+	{
+		ev->AttachEvent(KEY_EVENT, *this);
+	}
+}
+
+ChaseCamera2D::~ChaseCamera2D()
+{
+}
+
+void ChaseCamera2D::Start()
+{
+	BaseCamera::Start();
+}
+
+void ChaseCamera2D::Update()
+{
+	const float& dt = Time::DeltaTime();
+	const float hscreenWidth = (float)Screen::Instance()->ScreenWidth() * 0.5f;
+	const float hscreenHeight = (float)Screen::Instance()->ScreenHeight() * 0.5f;
+	velocity = Vec3(0.0f);
+
+	int num_dirs_pressed = ((rk ^ lk) ? 1 : 0) +
+		((fk ^ bk) ? 1 : 0);
+
+	if (lk ^ rk)
+	{
+		velocity = lk ? velocity - (right * speed) : velocity + (right * speed);
+	}
+
+	if (fk ^ bk)
+	{
+		velocity = fk ? velocity + Vec3(0,1,0) * speed : velocity - Vec3(0,1,0) * speed;
+	}
+
+	// Update position
+	m_Transform->MovePosition(this->velocity * dt);
+
+	// Call base class
+	BaseCamera::Update();
+}
+
+void ChaseCamera2D::HandleEvent(Event* e)
+{
+	switch (e->GetID())
+	{
+	case KEY_EVENT:
+	{
+		KeyEvent* ke = (KeyEvent*)e->GetData();
+
+		if (ke)
+		{
+			if (ke->key == GLFW_KEY_W &&
+				(ke->action == GLFW_PRESS || ke->action == GLFW_REPEAT))
+			{
+				fk = true;
+			}
+			else
+			{
+				fk = false;
+			}
+
+			if (ke->key == GLFW_KEY_S &&
+				(ke->action == GLFW_PRESS || ke->action == GLFW_REPEAT))
+			{
+				bk = true;
+			}
+			else
+			{
+				bk = false;
+			}
+
+			if (ke->key == GLFW_KEY_A &&
+				(ke->action == GLFW_PRESS || ke->action == GLFW_REPEAT))
+			{
+				lk = true;
+			}
+			else
+			{
+				lk = false;
+			}
+
+			if (ke->key == GLFW_KEY_D &&
+				(ke->action == GLFW_PRESS || ke->action == GLFW_REPEAT))
+			{
+				rk = true;
+			}
+			else
+			{
+				rk = false;
+			}
+		}
+	}
 	}
 }

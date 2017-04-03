@@ -29,6 +29,7 @@ public:
 	const Mat4& GetModelXform() const;
 	const Vec3& Position() const;
 	const Vec3& Euler() const;
+	const Vec3& Scale() const;
 
 private:
 	static int m_Id;
@@ -62,6 +63,12 @@ INLINE const Vec3& Transform::Euler() const
 {
 	return euler;
 }
+
+INLINE const Vec3& Transform::Scale() const
+{
+	return scale;
+}
+
 
 
 INLINE void Transform::RotateX(float angle)

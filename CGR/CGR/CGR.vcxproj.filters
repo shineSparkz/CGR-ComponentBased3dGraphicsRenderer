@@ -174,6 +174,9 @@
     <ClInclude Include="src\Uniform.h">
       <Filter>Render</Filter>
     </ClInclude>
+    <ClInclude Include="src\OrthoScene.h">
+      <Filter>Game</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -284,6 +287,9 @@
     </ClCompile>
     <ClCompile Include="src\Uniform.cpp">
       <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\OrthoScene.cpp">
+      <Filter>Game</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

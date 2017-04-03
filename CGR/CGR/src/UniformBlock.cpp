@@ -54,12 +54,12 @@ bool UniformBlock::AddUniform(const std::string& uniformname)
 
 bool UniformBlock::allocBlock(GLuint* shaderProg, const char* name)
 {
-	// Dbl check
+	// Dbl checkd
 	if (m_Bound)
 		return false;
 
 	// TODO : Store our name, out interface through manager
-	m_UboIndex = glGetUniformBlockIndex(*shaderProg, name);
+ 	m_UboIndex = glGetUniformBlockIndex(*shaderProg, name);
 
 	if (m_UboIndex == GL_INVALID_INDEX)
 	{

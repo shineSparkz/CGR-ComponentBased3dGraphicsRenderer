@@ -10,101 +10,6 @@
 #include "UniformBlockManager.h"
 #include "UniformBlock.h"
 
-#define RFOR(q,n) for(int q=n;q>=0;q--)
-
-bool GetLinesFromFile(const std::string& sFile, bool bIncludePart, std::vector<std::string>* vResult)
-{
-	FILE* fp = fopen(sFile.c_str(), "rt");
-	if (!fp)
-		return false;
-
-	std::string sDirectory;
-	int slashIndex = -1;
-	for (int i = sFile.size() - 1; i >= 0; --i)
-	{
-		if (sFile[i] == '\\' || sFile[i] == '/')
-		{
-			slashIndex = i;
-			break;
-		}
-	}
-
-	sDirectory = sFile.substr(0, slashIndex + 1);
-
-	// Get all lines from a file
-
-	char sLine[255];
-
-	bool bInIncludePart = false;
-
-	while (fgets(sLine, 255, fp))
-	{
-		std::stringstream ss(sLine);
-		std::string sFirst;
-		ss >> sFirst;
-		if (sFirst == "#include")
-		{
-			std::string sFileName;
-			ss >> sFileName;
-			if (sFileName.size() > 0 && sFileName[0] == '\"' && sFileName[ sFileName.size() - 1] == '\"')
-			{
-				sFileName = sFileName.substr(1, sFileName.size() - 2);
-				GetLinesFromFile(sDirectory + sFileName, true, vResult);
-			}
-		}
-		else if (sFirst == "#include_part")
-			bInIncludePart = true;
-		else if (sFirst == "#definition_part")
-			bInIncludePart = false;
-		else if (!bIncludePart || (bIncludePart && bInIncludePart))
-			vResult->push_back(sLine);
-	}
-	fclose(fp);
-
-	return true;
-}
-
-/*
-bool Shader::LoadShader(const std::string& sFile)
-{
-	std::vector<std::string> sLines;
-
-	if (!GetLinesFromFile(sFile, false, &sLines))
-		return false;
-
-	const char** sProgram = new const char*[sLines.size()];
-	for (int i = 0; i < sLines.size(); ++i)
-	{
-		sProgram[i] = sLines[i].c_str();
-	}
-
-	this->shader = glCreateShader(this->shader_type);
-
-	glShaderSource(shader, sLines.size(), sProgram, NULL);
-	glCompileShader(shader);
-
-	delete[] sProgram;
-
-	int iCompilationStatus;
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &iCompilationStatus);
-
-	if (iCompilationStatus == GL_FALSE)
-	{
-		char sInfoLog[1024];
-		char sFinalMessage[1536];
-		int iLogLength;
-		glGetShaderInfoLog(shader, 1024, &iLogLength, sInfoLog);
-		sprintf(sFinalMessage, "Error! Shader file %s wasn't compiled! The compiler returned:\n\n%s", sFile.c_str(), sInfoLog);
-		WRITE_LOG(sFinalMessage, "error");
-		//MessageBox(NULL, sFinalMessage, "Error", MB_ICONERROR);
-		return false;
-	}
-
-	return true;
-}
-*/
-
-
 Shader::Shader() :
 	attributes(),
 	shader_type(-1),
@@ -187,7 +92,7 @@ bool Shader::LoadShader(std::vector<std::string> srcs)
 
 	// Ask OpenGL to attempt shader compilation
 	GLint compile_status = 0;
-	glShaderSource(shader, glSrc.size(), (const GLchar**)glSrc.data(), NULL);
+	glShaderSource(shader, (GLsizei)glSrc.size(), (const GLchar**)glSrc.data(), NULL);
 	glCompileShader(shader);
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &compile_status);
 

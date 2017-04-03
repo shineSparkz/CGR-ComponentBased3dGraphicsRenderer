@@ -60,7 +60,7 @@ const Vec3 AMBIENT_LIGHT(0.1f);
 float DIRECTION_ANGLE = 45.0f;
 float ATTEN_CONST = 0.3f;
 float ATTEN_LIN = 0.0174f;
-float ATTEN_QUAD = 0.000080;
+float ATTEN_QUAD = 0.000080f;
 
 float CalcPointLightBSphere(const PointLight& Light)
 {
@@ -88,26 +88,13 @@ Renderer::Renderer() :
 
 bool Renderer::Init()
 {
-	// Uniform Blocks
-	m_UniformBlockManager = new UniformBlockManager();
-	std::vector<std::string> names;
+	m_Query.Init(GL_TIME_ELAPSED);
 	
-	names.push_back("camera_position");
-	names.push_back("ambient_light");
-	names.push_back("view_xform");
-	names.push_back("proj_xform");
-	m_UniformBlockManager->CreateBlock("scene", names);
-
-	names.clear();
-	names.push_back("direction");
-	names.push_back("intensity");
-	//names.push_back("amb_intensity");
-	m_UniformBlockManager->CreateBlock("DirectionalLight", names);
-
 	bool success = true;
 
-	m_Query.Init(GL_TIME_ELAPSED);
-
+	// This needs to be before this as shaders depend on it
+	success &= createUniformBlocks();
+	
 	m_ResManager = new ResourceManager();
 	success &= m_ResManager->CreateDefaultResources();
 
@@ -146,6 +133,63 @@ bool Renderer::Init()
 	return success;
 }
 
+bool Renderer::createUniformBlocks()
+{
+	if(!m_UniformBlockManager)
+		m_UniformBlockManager = new UniformBlockManager();
+	
+	std::vector<std::string> names;
+
+	//===================   Scene Block  ==================================
+	names.push_back("camera_position");
+	names.push_back("ambient_light");
+	names.push_back("view_xform");
+	names.push_back("proj_xform");
+	if (!m_UniformBlockManager->CreateBlock("scene", names))
+		return false;
+
+
+	//===================   Lights Block  ================================
+	names.clear();
+
+	// Dir Light
+	names.push_back("directionLight.direction");
+	names.push_back("directionLight.intensity");
+	
+	// Counters
+	names.push_back("numPoints");
+	names.push_back("numSpots");
+
+	// Point Lights
+	for (int i = 0; i < MAX_POINTS; ++i)
+	{
+		names.push_back("pointLights[" + std::to_string(i) + "].position");
+		names.push_back("pointLights[" + std::to_string(i) + "].intensity");
+		names.push_back("pointLights[" + std::to_string(i) + "].ambient_intensity");
+		names.push_back("pointLights[" + std::to_string(i) + "].aConstant");
+		names.push_back("pointLights[" + std::to_string(i) + "].aLinear");
+		names.push_back("pointLights[" + std::to_string(i) + "].aQuadratic");
+	}
+
+	// Spot Lights
+	for (int i = 0; i < MAX_SPOTS; ++i)
+	{
+		names.push_back("spotLights[" + std::to_string(i) + "].position");
+		names.push_back("spotLights[" + std::to_string(i) + "].direction");
+		names.push_back("spotLights[" + std::to_string(i) + "].intensity");
+		names.push_back("spotLights[" + std::to_string(i) + "].coneAngle");
+		names.push_back("spotLights[" + std::to_string(i) + "].aConstant");
+		names.push_back("spotLights[" + std::to_string(i) + "].aLinear");
+		names.push_back("spotLights[" + std::to_string(i) + "].aQuadratic");
+		names.push_back("spotLights[" + std::to_string(i) + "].switched_on");
+	}
+
+	if (!m_UniformBlockManager->CreateBlock("Lights", names))
+		return false;
+
+	return true;
+}
+
 bool Renderer::SetCamera(BaseCamera* camera)
 {
 	m_CameraPtr = camera;
@@ -159,10 +203,7 @@ void Renderer::Render(std::vector<GameObject*>& gameObjects)
 		DIRECTION_ANGLE += 1.0f;
 	if (Mouse::Instance()->RMB)
 	{
-		m_SpotLight.ToggleLight();
-
-		m_ResManager->m_Shaders[STD_FWD_LIGHTING]->Use();
-		m_ResManager->m_Shaders[STD_FWD_LIGHTING]->SetUniformValue<int>("u_spot_light.switched_on", &m_SpotLight.switched_on);
+		m_SpotLights[0].ToggleLight();
 	}
 
 	m_Query.Start();
@@ -311,34 +352,20 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 		this->renderSkybox(m_CameraPtr);
 	}
 
-	ShaderProgram* sp = m_ResManager->m_Shaders[STD_FWD_LIGHTING]; //m_Shaders[mr->m_ShaderIndex];
-	if (sp)
+	// Uniform Blocks
+	UniformBlock* scene = m_UniformBlockManager->GetBlock("scene");
+	scene->SetValue("ambient_light", (void*)glm::value_ptr(AMBIENT_LIGHT));
+	scene->SetValue("view_xform", (void*)glm::value_ptr(m_CameraPtr->View()));
+	scene->SetValue("proj_xform", (void*)glm::value_ptr(m_CameraPtr->Projection()));
+	scene->Bind();
+
+	UniformBlock* lights = m_UniformBlockManager->GetBlock("Lights");
+	if (lights)
 	{
-		sp->Use();
-
-		// Update Uniform blocks for all shaders
-		UniformBlock* scene = m_UniformBlockManager->GetBlock("scene");
-		scene->SetValue("ambient_light", (void*)glm::value_ptr(AMBIENT_LIGHT));
-		scene->SetValue("view_xform", (void*)glm::value_ptr(m_CameraPtr->View()));
-		scene->SetValue("proj_xform", (void*)glm::value_ptr(m_CameraPtr->Projection()));
-		scene->Bind();
-
-		UniformBlock* dirLight = m_UniformBlockManager->GetBlock("DirectionalLight");
-		if (dirLight)
-		{
-			m_DirLight.direction.y = sinf(Time::ElapsedTime());
-
-			dirLight->SetValue("direction", (void*)glm::value_ptr(m_DirLight.direction));
-			dirLight->SetValue("intensity", (void*)glm::value_ptr(m_DirLight.intensity));
-			//dirLight->SetValue("amb_intensity", &m_DirLight.ambient_intensity);
-			dirLight->Bind();
-		}
-
-		// Update Cam spot light
-		Vec3 spot_dir = m_CameraPtr->Forward();
-		Vec3 spot_pos = m_CameraPtr->Position();
-		sp->SetUniformValue<Vec3>("u_spot_light.direction", &spot_dir);
-		sp->SetUniformValue<Vec3>("u_spot_light.position", &spot_pos);
+		// Dir Light Update
+		m_DirLight.direction.y = sinf(Time::ElapsedTime());
+		lights->SetValue("directionLight.direction", (void*)glm::value_ptr(m_DirLight.direction));
+		lights->SetValue("directionLight.intensity", (void*)glm::value_ptr(m_DirLight.intensity));
 
 		// Update Point Light
 		float light_val_x = sinf(Time::ElapsedTime()) * 8.0f;
@@ -350,13 +377,23 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 					m_PointLights[i].position.y,
 					light_val_z);
 
-			sp->SetUniformValue<Vec3>("u_point_light[" + std::to_string(i) + "].position",
-				&m_PointLights[i].position);
+			lights->SetValue("pointLights[" + std::to_string(i) + "].position", &m_PointLights[i].position);
 		}
 
-		// Update Dir Light
-		//m_DirLight.direction = Vec3(cos(DIRECTION_ANGLE * 3.1415 / 180.0) * 70, sin(DIRECTION_ANGLE * 3.1415 / 180.0) * 70, 0.0);
-		//sp->SetUniformValue<Vec3>("u_dir_light.direction", &-glm::normalize(m_DirLight.direction));
+		// Update Cam spot light
+		m_SpotLights[0].direction = m_CameraPtr->Forward();
+		m_SpotLights[0].position = m_CameraPtr->Position();
+		lights->SetValue("spotLights[" + std::to_string(0) + "].position", &m_SpotLights[0].position);
+		lights->SetValue("spotLights[" + std::to_string(0) + "].direction", &m_SpotLights[0].direction);
+		lights->SetValue("spotLights[" + std::to_string(0) + "].switched_on", &m_SpotLights[0].switched_on);
+
+		lights->Bind();
+	}
+
+	ShaderProgram* sp = m_ResManager->m_Shaders[STD_FWD_LIGHTING]; //m_Shaders[mr->m_ShaderIndex];
+	if (sp)
+	{
+		sp->Use();
 	}
 
 	// Render Mesh Renderers
@@ -688,9 +725,11 @@ bool Renderer::setFrameBuffers()
 
 bool Renderer::setLights()
 {
+	// TODO ::: THESE LIGHTS SHOULD BE PASSED IN BY THE SCENE
+
 	// Dir Light
 	m_DirLight.direction = Vec3(0, -1, 0);
-	m_DirLight.intensity = Vec3(1.0f, 0.1f, 0.1f);
+	m_DirLight.intensity = Vec3(0.7f, 0.7f, 0.7f);
 	m_DirLight.ambient_intensity = 0.1f;
 
 	// Point Light
@@ -699,13 +738,12 @@ bool Renderer::setLights()
 	m_PointLights[0].position = Vec3(20.0f, 3.0f, -20.0f);
 	m_PointLights[1].position = Vec3(-50.0f, 3.0f, 30.0f);
 	m_PointLights[2].position = Vec3(70.0f, 3.0f, 10.0f);
-	m_PointLights[0].intensity = Vec3(1.0f, 0.0f, 0.0f);
-	m_PointLights[1].intensity = Vec3(0.0f, 1.0f, 0.0f);
-	m_PointLights[2].intensity = Vec3(0.0f, 0.0f, 1.0f);
+	m_PointLights[0].intensity = Vec3(0.7f, 0.7f, 0.7f);
+	m_PointLights[1].intensity = Vec3(0.7f, 0.7f, 0.7f);
+	m_PointLights[2].intensity = Vec3(0.7f, 0.7f, 0.7f);
 
 	for (size_t i = 0; i < m_PointLights.size(); ++i)
 	{
-		//m_PointLights[i].intensity = Vec3(0.75f);
 		m_PointLights[i].ambient_intensity = 0.2f;
 		m_PointLights[i].aConstant = ATTEN_CONST;
 		m_PointLights[i].aLinear = ATTEN_LIN;
@@ -713,53 +751,64 @@ bool Renderer::setLights()
 	}
 
 	// Spot Light(s)
-	m_SpotLight.position = Vec3(0.0f);
-	m_SpotLight.direction = Vec3(0.0f, 0.0f, -1.0f);
-	m_SpotLight.switched_on = 1;
-	m_SpotLight.intensity = Vec3(0.2f, 0.2f, 0.6f);
-	m_SpotLight.aConstant = ATTEN_CONST;
-	m_SpotLight.aLinear = 0.0174;
-	m_SpotLight.aQuadratic = ATTEN_QUAD;
-	m_SpotLight.SetAngle(15.0f);
+	m_SpotLights.resize(1);
+	m_SpotLights[0].position = Vec3(0.0f);
+	m_SpotLights[0].direction = Vec3(0.0f, 0.0f, -1.0f);
+	m_SpotLights[0].switched_on = 1;
+	m_SpotLights[0].intensity = Vec3(0.2f, 0.2f, 0.6f);
+	m_SpotLights[0].aConstant = ATTEN_CONST;
+	m_SpotLights[0].aLinear = 0.0174f;
+	m_SpotLights[0].aQuadratic = ATTEN_QUAD;
+	m_SpotLights[0].SetAngle(15.0f);
+	//----------------------------------
 
 	// TODO : change this on window size callback
 	Vec2 screenSize((float)Screen::Instance()->FrameBufferWidth(), (float)Screen::Instance()->FrameBufferHeight());
+	int sampler = 0;
+	int num_points = static_cast<int>(m_PointLights.size());
+	int num_spots =  static_cast<int>(m_SpotLights.size());
 
 	// Set Light Uniforms
-	int sampler = 0;
 	ShaderProgram* lsp = m_ResManager->GetShader(STD_FWD_LIGHTING);
 	lsp->Use();
 
 	// Set constants
 	lsp->SetUniformValue<int>("u_sampler", &sampler);
-	lsp->SetUniformValue<Vec3>("u_ambience", &AMBIENT_LIGHT);
 
-	// Dir light
-	//lsp->SetUniformValue<Vec3>("u_dir_light.intensity", &m_DirLight.intensity);
-	//lsp->SetUniformValue<Vec3>("u_dir_light.direction", &m_DirLight.direction);
-	//lsp->SetUniformValue<float>("u_dir_light.ambient_intensity", &m_DirLight.ambient_intensity);
-
-	// Spot Light
-	lsp->SetUniformValue<Vec3>("u_spot_light.position", &m_SpotLight.position);
-	lsp->SetUniformValue<Vec3>("u_spot_light.direction", &m_SpotLight.direction);
-	lsp->SetUniformValue<Vec3>("u_spot_light.intensity", &m_SpotLight.intensity);
-	lsp->SetUniformValue<float>("u_spot_light.coneAngle", &m_SpotLight.GetAngle());
-	lsp->SetUniformValue<float>("u_spot_light.aConstant", &m_SpotLight.aConstant);
-	lsp->SetUniformValue<float>("u_spot_light.aLinear", &m_SpotLight.aLinear);
-	lsp->SetUniformValue<float>("u_spot_light.aQuadratic", &m_SpotLight.aQuadratic);
-	lsp->SetUniformValue<int>("u_spot_light.switched_on", &m_SpotLight.switched_on);
-
-	// Point Light
-	int num_points = static_cast<int>(m_PointLights.size());
-	lsp->SetUniformValue<int>("u_num_point_lights", &num_points);
-	for (int i = 0; i < num_points; ++i)
+	// Light Uniform Block
+	UniformBlock* lights = m_UniformBlockManager->GetBlock("Lights");
+	if (lights)
 	{
-		lsp->SetUniformValue<Vec3>("u_point_light[" + std::to_string(i) + "].position", &m_PointLights[i].position);
-		lsp->SetUniformValue<Vec3>("u_point_light[" + std::to_string(i) + "].intensity", &m_PointLights[i].intensity);
-		lsp->SetUniformValue<float>("u_point_light[" + std::to_string(i) + "].ambient_intensity", &m_PointLights[i].ambient_intensity);
-		lsp->SetUniformValue<float>("u_point_light[" + std::to_string(i) + "].aConstant", &m_PointLights[i].aConstant);
-		lsp->SetUniformValue<float>("u_point_light[" + std::to_string(i) + "].aLinear", &m_PointLights[i].aLinear);
-		lsp->SetUniformValue<float>("u_point_light[" + std::to_string(i) + "].aQuadratic", &m_PointLights[i].aQuadratic);
+		lights->SetValue("numPoints", &num_points);
+		lights->SetValue("numSpots", &num_spots);
+
+		// Point Lights
+		for (int i = 0; i < num_points; ++i)
+		{
+			lights->SetValue("pointLights[" + std::to_string(i) + "].position", &m_PointLights[i].position);
+			lights->SetValue("pointLights[" + std::to_string(i) + "].intensity", &m_PointLights[i].intensity);
+			lights->SetValue("pointLights[" + std::to_string(i) + "].ambient_intensity", &m_PointLights[i].ambient_intensity);
+			lights->SetValue("pointLights[" + std::to_string(i) + "].aConstant", &m_PointLights[i].aConstant);
+			lights->SetValue("pointLights[" + std::to_string(i) + "].aLinear", &m_PointLights[i].aLinear);
+			lights->SetValue("pointLights[" + std::to_string(i) + "].aQuadratic", &m_PointLights[i].aQuadratic);
+		}
+
+		// Spot Lights
+		for (int i = 0; i < num_spots; ++i)
+		{
+			float angle = m_SpotLights[i].GetAngle();
+
+			lights->SetValue("spotLights[" + std::to_string(i) + "].position", &m_SpotLights[i].position);
+			lights->SetValue("spotLights[" + std::to_string(i) + "].direction", &m_SpotLights[i].direction);
+			lights->SetValue("spotLights[" + std::to_string(i) + "].intensity", &m_SpotLights[i].intensity);
+			lights->SetValue("spotLights[" + std::to_string(i) + "].coneAngle", &angle);
+			lights->SetValue("spotLights[" + std::to_string(i) + "].aConstant", &m_SpotLights[i].aConstant);
+			lights->SetValue("spotLights[" + std::to_string(i) + "].aLinear", &m_SpotLights[i].aLinear);
+			lights->SetValue("spotLights[" + std::to_string(i) + "].aQuadratic", &m_SpotLights[i].aQuadratic);
+			lights->SetValue("spotLights[" + std::to_string(i) + "].switched_on", &m_SpotLights[i].switched_on);
+		}
+
+		lights->Bind();
 	}
 
 	//--------------------------------------------------------------------------------
@@ -798,7 +847,7 @@ float Renderer::getFrameTime(TimeMeasure tm)
 	switch (tm)
 	{
 	case TimeMeasure::NanoSeconds:
-		return m_QueryTime;
+		return (float)m_QueryTime;
 	case TimeMeasure::MilliSeconds:
 		return m_QueryTime / 1000000.f;
 	case TimeMeasure::Seconds:

@@ -59,6 +59,8 @@ private:
 	bool setLights();
 	float getFrameTime(TimeMeasure tm);
 
+	bool createUniformBlocks();
+
 private:
 	ResourceManager* m_ResManager;
 	BaseCamera* m_CameraPtr;
@@ -72,7 +74,7 @@ private:
 
 	// Lights
 	DirectionalLight m_DirLight;
-	SpotLight m_SpotLight;
+	std::vector<SpotLight> m_SpotLights;
 	std::vector<PointLight> m_PointLights;
 
 	bool m_DeferredRender = false;

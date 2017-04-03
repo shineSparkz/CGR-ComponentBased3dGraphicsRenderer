@@ -116,6 +116,11 @@ void SponzaScene::createGameObjects()
 	lmr->m_ShaderIndex = STD_DEF_GEOM_SHADER;
 	m_GameObjects.push_back(lava);
 	*/
+
+	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
+	{
+		(*i)->Start();
+	}
 }
 
 int SponzaScene::OnSceneLoad()

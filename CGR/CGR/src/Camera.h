@@ -79,6 +79,11 @@ public:
 	const Mat4& View() const;
 	const Mat4 ProjXView() const;
 
+	const CamType GetProjectionType() const
+	{
+		return camType;
+	}
+
 protected:
 	static int m_Id;
 	Transform* m_Transform;
@@ -113,7 +118,25 @@ private:
 
 	Vec3 velocity;
 	bool fk, bk, lk, rk;
-	float speed = 65.0f;
+	float speed = 45.0f;
+	float mouseSpeed = 1.4f;
+};
+
+class ChaseCamera2D : public EventHandler, public BaseCamera
+{
+public:
+	ChaseCamera2D(GameObject* go);
+	virtual ~ChaseCamera2D();
+
+	void Start() override;
+	void Update() override;
+
+private:
+	void HandleEvent(Event* ev) override;
+
+	Vec3 velocity;
+	bool fk, bk, lk, rk;
+	float speed = 565.0f;
 	float mouseSpeed = 1.4f;
 };
 

@@ -8,11 +8,11 @@
 class Texture;
 class Mesh;
 class Font;
+class UniformBlockManager;
 
 class ResourceManager : public Singleton<ResourceManager>
 {
 public:
-	bool CreateDefaultResources();
 	bool LoadFont(const std::string& path, size_t key, int size);
 	bool LoadMesh(const std::string& path, size_t key_store, bool tangents, bool withTextures);
 	bool LoadTexture(const std::string& path, size_t key_store, int glTextureIndex);
@@ -23,6 +23,9 @@ public:
 	size_t GetNumTextures() const;
 	Texture* GetTexture(size_t index);
 	ShaderProgram* GetShader(size_t index);
+
+private:
+	bool CreateDefaultResources();
 
 private:
 	bool loadDefaultTextures();

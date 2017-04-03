@@ -9,7 +9,7 @@
 class ShaderProgram;
 class Renderer;
 class BaseCamera;
-class DirectionalLight;
+struct DirectionalLight;
 
 class Terrain
 {

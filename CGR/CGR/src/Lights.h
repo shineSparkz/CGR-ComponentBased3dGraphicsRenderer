@@ -4,6 +4,9 @@
 #include "types.h"
 #include <string>
 
+#define MAX_SPOTS 10
+#define MAX_POINTS 10
+
 struct DirectionalLight
 {
 	Vec3 direction;

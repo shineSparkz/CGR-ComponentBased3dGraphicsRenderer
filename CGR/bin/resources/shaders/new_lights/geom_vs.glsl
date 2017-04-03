@@ -21,6 +21,7 @@ void main()
 {
 	gl_Position = proj_xform * view_xform * u_world_xform * vec4(vertex_position, 1.0);
 	varying_texcoord = vertex_texcoord;
+	
 	N =  vec3( u_world_xform * vec4(vertex_normal,   0.0));
 	P =  vec3( u_world_xform * vec4(vertex_position, 1.0));
 }
