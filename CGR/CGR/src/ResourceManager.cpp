@@ -50,15 +50,6 @@ bool ResourceManager::loadDefaultForwardShaders()
 			return false;
 		}
 
-		/*
-		std::string res2 = "../resources/shaders/new_lights/lights_fs.glsl";
-		if (!lights.LoadShader(res2))
-		{
-		WRITE_LOG("lights failed compile", "error");
-		return false;
-		}
-		*/
-
 		if (!fwd_fs.LoadShader("../resources/shaders/new_lights/forward_render_fs.glsl"))
 		{
 			WRITE_LOG("Forward render failed compile", "error");

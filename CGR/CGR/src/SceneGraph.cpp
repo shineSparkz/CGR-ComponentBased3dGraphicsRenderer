@@ -4,6 +4,7 @@
 #include "IScene.h"
 #include "EventManager.h"
 #include "utils.h"
+#include "Renderer.h"
 
 SceneGraph::SceneGraph() :
 	m_Scenes(),
@@ -53,6 +54,9 @@ void SceneGraph::ChangeScene(int newState)
 	{
 		m_Scenes[m_ActiveScene]->OnSceneExit();
 		m_ActiveScene = newState;
+
+		if(Renderer::Instance())
+			Renderer::Instance()->SceneChange();
 	}
 
 	if (m_Scenes[m_ActiveScene]->OnSceneLoad() != GE_OK)

@@ -21,6 +21,7 @@ public:
 	void Close();
 
 	bool IsBound() const;
+	bool ShouldUpdateGPU() const;
 	std::vector<const char*> GetUniformNames();
 	bool AddUniform(const std::string& uniformname);
 	void SetValue(const std::string& uniformName, void* value);
@@ -38,6 +39,7 @@ private:
 	byte* m_Buffer;
 	std::map<std::string, BlockData> m_Uniforms;
 	bool m_Bound{ false };
+	bool m_ShouldUpdatGPU{ false };
 };
 
 

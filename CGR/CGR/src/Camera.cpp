@@ -13,6 +13,7 @@ const Mat4 IDENTITY(1.0f);
 
 BaseCamera::BaseCamera(GameObject* go) :
 	Component(go),
+	m_Transform(nullptr),
 	projection(IDENTITY),
 	view(IDENTITY),
 	perspectiveSettings(),
@@ -31,8 +32,11 @@ BaseCamera::~BaseCamera()
 
 void BaseCamera::Start()
 {
-	m_Transform = this->gameObject()->AddComponent<Transform>();
-	m_Transform->Start();
+	if (!m_Transform)
+	{
+		m_Transform = this->gameObject()->AddComponent<Transform>();
+		m_Transform->Start();
+	}
 }
 
 void BaseCamera::Init(CamType type, const Vec3& position, const Vec3& up, const Vec3& right, const Vec3& forward, float fov, float aspect, float near, float far)

@@ -23,6 +23,11 @@ bool UniformBlock::IsBound() const
 	return m_Bound;
 }
 
+bool UniformBlock::ShouldUpdateGPU() const
+{
+	return m_ShouldUpdatGPU;
+}
+
 std::vector<const char*> UniformBlock::GetUniformNames()
 {
 	// Build and return 
@@ -151,6 +156,7 @@ void UniformBlock::SetValue(const std::string& uniformName, void* value)
 	if (block != m_Uniforms.end())
 	{
 		memcpy(m_Buffer + block->second.offset, value, block->second.size);
+		m_ShouldUpdatGPU = true;
 	}
 }
 
@@ -176,4 +182,5 @@ void UniformBlock::Bind()
 	glBufferData(GL_UNIFORM_BUFFER, m_BuffSize, m_Buffer, GL_DYNAMIC_DRAW);
 	glBindBufferBase(GL_UNIFORM_BUFFER, m_UboIndex, m_UBO);
 	//glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	m_ShouldUpdatGPU = false;
 }

@@ -39,7 +39,8 @@ public:
 	Renderer();
 
 	bool Init();
-	bool SetCamera(BaseCamera* camera);
+	void SceneChange();
+	bool SetSceneData(BaseCamera* camera, const Vec3& ambientLight);
 	void Render(std::vector<GameObject*>& gameObjects);
 	void RenderText(size_t fontId, const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White());
 	void WindowSizeChanged(int w, int h);
@@ -49,6 +50,10 @@ public:
 	size_t GetNumTextures() const;
 	Texture* GetTexture(size_t index) const;
 
+	int GetDirLightIndex();
+	int GetSpotLightIndex();
+	int GetPointLightIndex();
+
 private:
 	void forwardRender(std::vector<GameObject*>& gameObjects);
 	void deferredRender(std::vector<GameObject*>& gameObjects);
@@ -56,28 +61,28 @@ private:
 	void renderMesh(MeshRenderer* mesh);
 	void renderSkybox(BaseCamera* cam);
 	bool setFrameBuffers();
-	bool setLights();
+	bool setStaticDefaultShaderValues();
 	float getFrameTime(TimeMeasure tm);
 
 	bool createUniformBlocks();
 
 private:
-	ResourceManager* m_ResManager;
-	BaseCamera* m_CameraPtr;
-	Query m_Query;
-	GLuint m_QueryTime;
-	uint64 m_Frames;
-	GBuffer* m_Gbuffer;
-	BillboardList* m_TreeBillboardList;
-	Terrain* m_Terrain;
-	UniformBlockManager* m_UniformBlockManager;
+	UniformBlockManager*	m_UniformBlockManager;
+	ResourceManager*		m_ResManager;
+	BaseCamera*				m_CameraPtr;
+	GBuffer*				m_Gbuffer;
+	GLuint					m_QueryTime;
+	uint64					m_Frames;
+	Query					m_Query;
 
-	// Lights
-	DirectionalLight m_DirLight;
-	std::vector<SpotLight> m_SpotLights;
-	std::vector<PointLight> m_PointLights;
+	// Remove these
+	BillboardList*			m_TreeBillboardList;
+	Terrain*				m_Terrain;
 
-	bool m_DeferredRender = false;
+	int						m_NumDirLightsInScene;
+	int						m_NumPointLightsInScene;
+	int						m_NumSpotLightsInScene;
+	bool					m_DeferredRender{ true };
 };
 
 

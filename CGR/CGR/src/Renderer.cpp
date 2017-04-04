@@ -37,15 +37,6 @@
 #include "Input.h"
 #include "ResId.h"
 
-// Transforms -- for now
-const Mat4 MALE_XFORM =  glm::translate(Mat4(1.0f), Vec3(-0.5f, -1.5f, -10.0f))  *  glm::scale(Mat4(1.0f), Vec3(1.0f));
-const Mat4 DINO_XFORM =  glm::translate(Mat4(1.0f), Vec3(1.8f, -1.5f, -10.0f))   *  glm::scale(Mat4(1.0f), Vec3(0.05f));
-const Mat4 CUBE1_XFORM = glm::translate(Mat4(1.0f), Vec3(0.0f, 1.0f, -10.0f))   *  glm::scale(Mat4(1.0f), Vec3(1.0f));
-const Mat4 CUBE2_XFORM = glm::translate(Mat4(1.0f), Vec3(-2.0f, 0.0f, 0.0f))   *  glm::scale(Mat4(1.0f), Vec3(0.5f));
-const Mat4 FLOOR_XFORM = glm::translate(Mat4(1.0f), Vec3(0.0f, -2.0f, -3.0f))  *  glm::scale(Mat4(1.0f), Vec3(30.0f, 0.5f, 30.0f));
-const Mat4 LAVA_XFORM = glm::translate(Mat4(1.0f),  Vec3(0.0f, 4.0f, 0.0f)) *  glm::scale(Mat4(1.0f), Vec3(400.0f, 2.0f, 400.0f));
-
-
 // ---- Globals ----
 const Mat4 IDENTITY(1.0f);
 const bool DO_SHADOWS = true;
@@ -54,13 +45,6 @@ const ShaderAttrib POS_ATTR{  0, "vertex_position" };
 const ShaderAttrib NORM_ATTR{ 1, "vertex_normal" };
 const ShaderAttrib TEX_ATTR{  2, "vertex_texcoord" };
 const ShaderAttrib TAN_ATTR{  3, "vertex_tangent" };
-
-// Temp Light stuff 
-const Vec3 AMBIENT_LIGHT(0.1f);
-float DIRECTION_ANGLE = 45.0f;
-float ATTEN_CONST = 0.3f;
-float ATTEN_LIN = 0.0174f;
-float ATTEN_QUAD = 0.000080f;
 
 float CalcPointLightBSphere(const PointLight& Light)
 {
@@ -82,26 +66,29 @@ Renderer::Renderer() :
 	m_Gbuffer(nullptr),
 	m_TreeBillboardList(nullptr),
 	m_Terrain(nullptr),
-	m_UniformBlockManager(nullptr)
+	m_UniformBlockManager(nullptr),
+	m_NumDirLightsInScene(-1),
+	m_NumPointLightsInScene(-1),
+	m_NumSpotLightsInScene(-1)
 {
 }
 
 bool Renderer::Init()
 {
+	if(!m_ResManager)
+		m_ResManager = new ResourceManager();
+	
 	m_Query.Init(GL_TIME_ELAPSED);
 	
 	bool success = true;
 
-	// This needs to be before this as shaders depend on it
+	// This needs to be before this as shaders depend on it,
 	success &= createUniformBlocks();
-	
-	m_ResManager = new ResourceManager();
 	success &= m_ResManager->CreateDefaultResources();
-
 	success &= setFrameBuffers();
-	success &= setLights();
+	success &= setStaticDefaultShaderValues();
 
-	// Create Terrain
+	// ===== REMOVE THIS =====
 	std::vector<Vec3> billboardPositions;
 	m_Terrain = new Terrain();
 
@@ -133,6 +120,13 @@ bool Renderer::Init()
 	return success;
 }
 
+void Renderer::SceneChange()
+{
+	m_NumDirLightsInScene = -1;
+	m_NumPointLightsInScene = -1;
+	m_NumSpotLightsInScene = -1;
+}
+
 bool Renderer::createUniformBlocks()
 {
 	if(!m_UniformBlockManager)
@@ -146,7 +140,10 @@ bool Renderer::createUniformBlocks()
 	names.push_back("view_xform");
 	names.push_back("proj_xform");
 	if (!m_UniformBlockManager->CreateBlock("scene", names))
+	{
+		WRITE_LOG("The renderer can't create a default uniform block with name 'scene' have you used this name for custom block..", "error");
 		return false;
+	}
 
 
 	//===================   Lights Block  ================================
@@ -185,30 +182,26 @@ bool Renderer::createUniformBlocks()
 	}
 
 	if (!m_UniformBlockManager->CreateBlock("Lights", names))
+	{
+		WRITE_LOG("The renderer can't create a default uniform block with name 'Lights' have you used this name for custom block..", "error");
 		return false;
+	}
 
 	return true;
 }
 
-bool Renderer::SetCamera(BaseCamera* camera)
+bool Renderer::SetSceneData(BaseCamera* camera, const Vec3& ambient_light)
 {
 	m_CameraPtr = camera;
+
+	UniformBlock* scene = m_UniformBlockManager->GetBlock("scene");
+	scene->SetValue("ambient_light", (void*)glm::value_ptr(ambient_light));
 	return true;
 }
 
 void Renderer::Render(std::vector<GameObject*>& gameObjects)
 {
-	// Temp
-	if (Mouse::Instance()->LMB)
-		DIRECTION_ANGLE += 1.0f;
-	if (Mouse::Instance()->RMB)
-	{
-		m_SpotLights[0].ToggleLight();
-	}
-
 	m_Query.Start();
-
-	// Set Light data as uniform buffer
 
 	if (m_DeferredRender)
 		deferredRender(gameObjects);
@@ -339,7 +332,6 @@ Texture* Renderer::GetTexture(size_t index) const
 void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-
 	glEnable(GL_DEPTH_TEST);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -347,49 +339,28 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 		// Should log if that hasn't been set
 		return;
 
+	// Render Skybox
 	if (m_CameraPtr->HasSkybox())
 	{
 		this->renderSkybox(m_CameraPtr);
 	}
 
-	// Uniform Blocks
+	// Update scene (the only block controlled by renderer)
 	UniformBlock* scene = m_UniformBlockManager->GetBlock("scene");
-	scene->SetValue("ambient_light", (void*)glm::value_ptr(AMBIENT_LIGHT));
-	scene->SetValue("view_xform", (void*)glm::value_ptr(m_CameraPtr->View()));
-	scene->SetValue("proj_xform", (void*)glm::value_ptr(m_CameraPtr->Projection()));
-	scene->Bind();
-
-	UniformBlock* lights = m_UniformBlockManager->GetBlock("Lights");
-	if (lights)
+	if (scene)
 	{
-		// Dir Light Update
-		m_DirLight.direction.y = sinf(Time::ElapsedTime());
-		lights->SetValue("directionLight.direction", (void*)glm::value_ptr(m_DirLight.direction));
-		lights->SetValue("directionLight.intensity", (void*)glm::value_ptr(m_DirLight.intensity));
-
-		// Update Point Light
-		float light_val_x = sinf(Time::ElapsedTime()) * 8.0f;
-		float light_val_z = cosf(Time::ElapsedTime()) * 8.0f;
-		for (int i = 0; i < 1; ++i)
-		{
-			m_PointLights[i].position =
-				Vec3(light_val_x,
-					m_PointLights[i].position.y,
-					light_val_z);
-
-			lights->SetValue("pointLights[" + std::to_string(i) + "].position", &m_PointLights[i].position);
-		}
-
-		// Update Cam spot light
-		m_SpotLights[0].direction = m_CameraPtr->Forward();
-		m_SpotLights[0].position = m_CameraPtr->Position();
-		lights->SetValue("spotLights[" + std::to_string(0) + "].position", &m_SpotLights[0].position);
-		lights->SetValue("spotLights[" + std::to_string(0) + "].direction", &m_SpotLights[0].direction);
-		lights->SetValue("spotLights[" + std::to_string(0) + "].switched_on", &m_SpotLights[0].switched_on);
-
-		lights->Bind();
+		scene->SetValue("view_xform", (void*)glm::value_ptr(m_CameraPtr->View()));
+		scene->SetValue("proj_xform", (void*)glm::value_ptr(m_CameraPtr->Projection()));
 	}
-
+	
+	// Bind all Uniform Blocks (including custom usr ones)
+	for (auto i = m_UniformBlockManager->m_Blocks.begin(); i != m_UniformBlockManager->m_Blocks.end(); ++i)
+	{
+		if (i->second->ShouldUpdateGPU())
+			i->second->Bind();
+	}
+	
+	// TODO : need to use the shader program that was set to each mesh or batch them 
 	ShaderProgram* sp = m_ResManager->m_Shaders[STD_FWD_LIGHTING]; //m_Shaders[mr->m_ShaderIndex];
 	if (sp)
 	{
@@ -414,6 +385,8 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 		}
 	}
 
+	// TODO : Make terrain and bill boards a game object
+
 	// Render Terrain
 	//m_Terrain->Render(this, m_CameraPtr, Vec3(1.0f));
 	//m_TreeBillboardList->Render(this, m_CameraPtr->ProjXView(), m_CameraPtr->Position());
@@ -421,6 +394,23 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 
 void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 {
+	// Update scene (the only block controlled by renderer)
+	UniformBlock* scene = m_UniformBlockManager->GetBlock("scene");
+	if (scene)
+	{
+		scene->SetValue("view_xform", (void*)glm::value_ptr(m_CameraPtr->View()));
+		scene->SetValue("proj_xform", (void*)glm::value_ptr(m_CameraPtr->Projection()));
+	}
+
+	// Bind all Uniform Blocks (including custom usr ones)
+	for (auto i = m_UniformBlockManager->m_Blocks.begin(); i != m_UniformBlockManager->m_Blocks.end(); ++i)
+	{
+		if (i->second->ShouldUpdateGPU())
+			i->second->Bind();
+	}
+
+	// ==============================================
+
 	m_Gbuffer->StartFrame();
 
 	// Geom Pass
@@ -441,9 +431,7 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// RenderTerrain and Billboards
-		m_Terrain->Render(this, m_CameraPtr, Vec3(1.0f));
-
-		Mat4 ProjViewXform = m_CameraPtr->Projection() * m_CameraPtr->View();
+		//m_Terrain->Render(this, m_CameraPtr, Vec3(1.0f));
 
 		// Render Mesh Renderers
 		for (auto i = gameObjects.begin(); i != gameObjects.end(); ++i)
@@ -454,16 +442,15 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 			if (!t || !mr)
 				continue;
 
-			ShaderProgram* sp = m_ResManager->m_Shaders[mr->m_ShaderIndex];
+			ShaderProgram* sp = m_ResManager->m_Shaders[STD_DEF_GEOM_SHADER]; //[mr->m_ShaderIndex];
 			if (sp)
 			{
 				sp->Use();
-				sp->SetUniformValue<Mat4>("u_WVP", &(ProjViewXform * t->GetModelXform()));
-				sp->SetUniformValue<Mat4>("u_World", &(t->GetModelXform()));
+				sp->SetUniformValue<Mat4>("u_world_xform", &(t->GetModelXform()));
 
-				// This is shit
-				float elapsed = Time::ElapsedTime();
-				sp->SetUniformValue<float>("u_GlobalTime", &elapsed);
+				// This is terrible....
+				//float elapsed = Time::ElapsedTime();
+				//sp->SetUniformValue<float>("u_GlobalTime", &elapsed);
 
 				// Render Mesh here
 				this->renderMesh(mr);
@@ -477,6 +464,7 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 	{
 		glEnable(GL_STENCIL_TEST);
 
+		/*
 		for (int i = 0; i < m_PointLights.size(); ++i)
 		{
 			// Stencil
@@ -537,6 +525,7 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 				glDisable(GL_BLEND);
 			}
 		}
+		*/
 
 		glDisable(GL_STENCIL_TEST);
 	}
@@ -546,7 +535,7 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 		glDisable(GL_CULL_FACE);
 		m_Gbuffer->BindForLightPass();
 		m_ResManager->m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->Use();
-		m_ResManager->m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<Vec3>("u_EyeWorldPos", &m_CameraPtr->Position());
+		
 		// Should only set once
 		m_ResManager->m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<Mat4>("u_WVP", &(Mat4(1.0f)));
 
@@ -723,103 +712,21 @@ bool Renderer::setFrameBuffers()
 	return true;
 }
 
-bool Renderer::setLights()
+bool Renderer::setStaticDefaultShaderValues()
 {
-	// TODO ::: THESE LIGHTS SHOULD BE PASSED IN BY THE SCENE
-
-	// Dir Light
-	m_DirLight.direction = Vec3(0, -1, 0);
-	m_DirLight.intensity = Vec3(0.7f, 0.7f, 0.7f);
-	m_DirLight.ambient_intensity = 0.1f;
-
-	// Point Light
-	m_PointLights.resize(3);
-
-	m_PointLights[0].position = Vec3(20.0f, 3.0f, -20.0f);
-	m_PointLights[1].position = Vec3(-50.0f, 3.0f, 30.0f);
-	m_PointLights[2].position = Vec3(70.0f, 3.0f, 10.0f);
-	m_PointLights[0].intensity = Vec3(0.7f, 0.7f, 0.7f);
-	m_PointLights[1].intensity = Vec3(0.7f, 0.7f, 0.7f);
-	m_PointLights[2].intensity = Vec3(0.7f, 0.7f, 0.7f);
-
-	for (size_t i = 0; i < m_PointLights.size(); ++i)
-	{
-		m_PointLights[i].ambient_intensity = 0.2f;
-		m_PointLights[i].aConstant = ATTEN_CONST;
-		m_PointLights[i].aLinear = ATTEN_LIN;
-		m_PointLights[i].aQuadratic = ATTEN_QUAD;
-	}
-
-	// Spot Light(s)
-	m_SpotLights.resize(1);
-	m_SpotLights[0].position = Vec3(0.0f);
-	m_SpotLights[0].direction = Vec3(0.0f, 0.0f, -1.0f);
-	m_SpotLights[0].switched_on = 1;
-	m_SpotLights[0].intensity = Vec3(0.2f, 0.2f, 0.6f);
-	m_SpotLights[0].aConstant = ATTEN_CONST;
-	m_SpotLights[0].aLinear = 0.0174f;
-	m_SpotLights[0].aQuadratic = ATTEN_QUAD;
-	m_SpotLights[0].SetAngle(15.0f);
-	//----------------------------------
-
-	// TODO : change this on window size callback
-	Vec2 screenSize((float)Screen::Instance()->FrameBufferWidth(), (float)Screen::Instance()->FrameBufferHeight());
-	int sampler = 0;
-	int num_points = static_cast<int>(m_PointLights.size());
-	int num_spots =  static_cast<int>(m_SpotLights.size());
-
 	// Set Light Uniforms
+	int sampler = 0;
 	ShaderProgram* lsp = m_ResManager->GetShader(STD_FWD_LIGHTING);
 	lsp->Use();
-
-	// Set constants
 	lsp->SetUniformValue<int>("u_sampler", &sampler);
-
-	// Light Uniform Block
-	UniformBlock* lights = m_UniformBlockManager->GetBlock("Lights");
-	if (lights)
-	{
-		lights->SetValue("numPoints", &num_points);
-		lights->SetValue("numSpots", &num_spots);
-
-		// Point Lights
-		for (int i = 0; i < num_points; ++i)
-		{
-			lights->SetValue("pointLights[" + std::to_string(i) + "].position", &m_PointLights[i].position);
-			lights->SetValue("pointLights[" + std::to_string(i) + "].intensity", &m_PointLights[i].intensity);
-			lights->SetValue("pointLights[" + std::to_string(i) + "].ambient_intensity", &m_PointLights[i].ambient_intensity);
-			lights->SetValue("pointLights[" + std::to_string(i) + "].aConstant", &m_PointLights[i].aConstant);
-			lights->SetValue("pointLights[" + std::to_string(i) + "].aLinear", &m_PointLights[i].aLinear);
-			lights->SetValue("pointLights[" + std::to_string(i) + "].aQuadratic", &m_PointLights[i].aQuadratic);
-		}
-
-		// Spot Lights
-		for (int i = 0; i < num_spots; ++i)
-		{
-			float angle = m_SpotLights[i].GetAngle();
-
-			lights->SetValue("spotLights[" + std::to_string(i) + "].position", &m_SpotLights[i].position);
-			lights->SetValue("spotLights[" + std::to_string(i) + "].direction", &m_SpotLights[i].direction);
-			lights->SetValue("spotLights[" + std::to_string(i) + "].intensity", &m_SpotLights[i].intensity);
-			lights->SetValue("spotLights[" + std::to_string(i) + "].coneAngle", &angle);
-			lights->SetValue("spotLights[" + std::to_string(i) + "].aConstant", &m_SpotLights[i].aConstant);
-			lights->SetValue("spotLights[" + std::to_string(i) + "].aLinear", &m_SpotLights[i].aLinear);
-			lights->SetValue("spotLights[" + std::to_string(i) + "].aQuadratic", &m_SpotLights[i].aQuadratic);
-			lights->SetValue("spotLights[" + std::to_string(i) + "].switched_on", &m_SpotLights[i].switched_on);
-		}
-
-		lights->Bind();
-	}
 
 	//--------------------------------------------------------------------------------
 
 	ShaderProgram* dsp = m_ResManager->GetShader(STD_DEF_DIR_LIGHT_SHADER);
 	dsp->Use();
-	dsp->SetUniformValue<Vec3>("u_DirectionalLight.Base.Color", &m_DirLight.intensity);
-	dsp->SetUniformValue<Vec3>("u_DirectionalLight.Direction", &m_DirLight.direction);
-	dsp->SetUniformValue<float>("u_DirectionalLight.Base.AmbientIntensity", &m_DirLight.ambient_intensity);
-	dsp->SetUniformValue<float>("u_DirectionalLight.Base.DiffuseIntensity", &m_DirLight.ambient_intensity);
-
+	// TODO : This would change on screensize
+	Vec2 screenSize = Vec2((float)Screen::Instance()->FrameBufferWidth(), (float)Screen::Instance()->FrameBufferHeight());
+	dsp->SetUniformValue<Vec2>("u_ScreenSize", &screenSize);
 
 	// Set for terrain in forward mode
 	if (!m_DeferredRender)
@@ -827,10 +734,12 @@ bool Renderer::setLights()
 		ShaderProgram* terrainShader = m_ResManager->GetShader(TERRAIN_SHADER);
 		terrainShader->Use();
 
+		// TODO : Add UBO to terrain shaders
+
 		// Dir light
-		terrainShader->SetUniformValue<Vec3>("u_DirectionalLight.color", &m_DirLight.intensity);
-		terrainShader->SetUniformValue<Vec3>("u_DirectionalLight.dir", &m_DirLight.direction);
-		terrainShader->SetUniformValue<float>("u_DirectionalLight.ambient_intensity", &m_DirLight.ambient_intensity);
+		//terrainShader->SetUniformValue<Vec3>("u_DirectionalLight.color", &m_DirLight.intensity);
+		//terrainShader->SetUniformValue<Vec3>("u_DirectionalLight.dir", &m_DirLight.direction);
+		//terrainShader->SetUniformValue<float>("u_DirectionalLight.ambient_intensity", &m_DirLight.ambient_intensity);
 
 		for (int i = 0; i < 5; ++i)
 		{
@@ -857,6 +766,23 @@ float Renderer::getFrameTime(TimeMeasure tm)
 	return 0.0f;
 }
 
+int Renderer::GetDirLightIndex()
+{
+	int temp = m_NumDirLightsInScene + 1;
+	return temp < 2 ? ++m_NumDirLightsInScene : -1;
+}
+
+int Renderer::GetSpotLightIndex()
+{
+	int temp = m_NumSpotLightsInScene + 1;
+	return temp < MAX_SPOTS ? ++m_NumSpotLightsInScene : -1;
+}
+
+int Renderer::GetPointLightIndex()
+{
+	int temp = m_NumPointLightsInScene + 1;
+	return temp < MAX_POINTS ? ++m_NumPointLightsInScene : -1;
+}
 
 //------------------------
 /*

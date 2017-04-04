@@ -13,3 +13,4 @@ CGR/bin/Win64_Release/CGR.exe
 *.ipdb
 CGR/CGR/obj
 CGR/CGR.VC.VC.opendb
+CGR/CGR.VC.opendb

@@ -76,7 +76,7 @@ int OrthoScene::OnSceneLoad()
 	//m_Camera->AddSkybox(30.0f, SKYBOX_TEX);
 	
 	// Set Pointer in renderer
-	Renderer::Instance()->SetCamera(m_Camera);
+	Renderer::Instance()->SetSceneData(m_Camera, Vec3(0.1f));
 	m_GameObjects.push_back(cam);
 	return GE_OK;
 }

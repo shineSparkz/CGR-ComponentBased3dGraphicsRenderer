@@ -11,6 +11,48 @@
 #include "MeshRenderer.h"
 #include "ResourceManager.h"
 
+#include "DirectionalLight.h"
+#include "PointLight.h"
+#include "SpotLight.h"
+
+GameObject* createPointLight(const Vec3& position, const Vec3& colour, float intensity)
+{
+	const float ATTEN_CONST = 0.3f;
+	const float ATTEN_LIN = 0.0174f;
+	const float ATTEN_QUAD = 0.000080f;
+
+	GameObject* pointLight = new GameObject();
+	PointLightC* light = pointLight->AddComponent<PointLightC>();
+
+	if (!light->SetLight(position, colour, intensity, ATTEN_CONST, ATTEN_LIN, ATTEN_QUAD))
+	{
+		SAFE_CLOSE(pointLight);
+		return nullptr;
+	}
+
+	return pointLight;
+}
+
+GameObject* createSpotLight(const Vec3& position, const Vec3& colour, const Vec3& direction, float angle, int switchedOn)
+{
+	const float ATTEN_CONST = 0.3f;
+	const float ATTEN_LIN = 0.0174f;
+	const float ATTEN_QUAD = 0.000080f;
+
+	GameObject* spotLight = new GameObject();
+	SpotLightC* light = spotLight->AddComponent<SpotLightC>();
+
+	if (!light->SetLight(position, direction, colour, angle, ATTEN_CONST, ATTEN_LIN, ATTEN_QUAD, switchedOn))
+	{
+		SAFE_CLOSE(spotLight);
+		return nullptr;
+	}
+
+	return spotLight;
+}
+
+
+
 SponzaScene::SponzaScene(const std::string& name) :
 	IScene(name)
 {
@@ -77,6 +119,26 @@ void SponzaScene::createGameObjects()
 	sponzaMr->m_ShaderIndex = STD_DEF_GEOM_SHADER;
 	m_GameObjects.push_back(sponza);
 
+	GameObject* p1 = createPointLight(Vec3(20.0f, 3.0f, -20.0f), Vec3(0.7f), 0.2f);
+	GameObject* p2 = createPointLight(Vec3(-50.0f, 3.0f, 30.0f), Vec3(0.7f), 0.2f);
+	GameObject* p3 = createPointLight(Vec3(70.0f, 3.0f, 10.0f), Vec3(0.7f), 0.2f);
+
+	if (p1)
+		m_GameObjects.push_back(p1);
+	if (p2)
+		m_GameObjects.push_back(p2);
+	if (p3)
+		m_GameObjects.push_back(p3);
+
+	GameObject* s1 = createSpotLight(m_Camera->Position(), Vec3(0, 1, 0), m_Camera->Forward(), 30.0f, 1);
+	if (s1)
+		m_GameObjects.push_back(s1);
+
+	GameObject* dlight = new GameObject();
+	DirectionalLightC* dl = dlight->AddComponent<DirectionalLightC>();
+	dl->SetLight(Vec3(0, -1, 0), Vec3(0.7f));
+	m_GameObjects.push_back(dlight);
+	
 	/*
 	GameObject* cube2 = new GameObject();
 	Transform* cube2t = cube2->AddComponent<Transform>();
@@ -147,7 +209,7 @@ int SponzaScene::OnSceneLoad()
 
 	m_Camera->AddSkybox(30.0f, SKYBOX_TEX);
 	// Set Pointer in renderer
-	Renderer::Instance()->SetCamera(m_Camera);
+	Renderer::Instance()->SetSceneData(m_Camera, Vec3(0.1f));
 	m_GameObjects.push_back(cam);
 
 	// Add Other Objecst
@@ -167,6 +229,16 @@ void SponzaScene::OnSceneExit()
 
 void SponzaScene::Update(float dt)
 {
+	// Hack Test
+	m_GameObjects.back()->GetComponent<DirectionalLightC>()->SetDirectionY(cosf(Time::ElapsedTime()));
+
+	auto* spot = m_GameObjects[m_GameObjects.size() - 2]->GetComponent<SpotLightC>();
+	if (spot)
+	{
+		spot->SetDirection(m_Camera->Forward());
+		spot->SetPosition(m_Camera->Position());
+	}
+
 	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
 	{
 		(*i)->Update();
