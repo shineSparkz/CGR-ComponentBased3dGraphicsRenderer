@@ -195,6 +195,12 @@
     <ClInclude Include="src\SpotLight.h">
       <Filter>Application\Component</Filter>
     </ClInclude>
+    <ClInclude Include="src\IndoorLevelScene.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\CgrEngine.h">
+      <Filter>Application</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -317,6 +323,12 @@
     </ClCompile>
     <ClCompile Include="src\SpotLight.cpp">
       <Filter>Application\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="src\IndoorLevelScene.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CgrEngine.cpp">
+      <Filter>Application</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -2,42 +2,47 @@
 #define __RES_ID_H__
 
 // Mesh ID's -- for now
-#define CUBE_MESH		0
-#define SPHERE_MESH		1
-#define QUAD_MESH		2
-#define MALE_MESH		3
-#define DINO_MESH		4
-#define SPONZA_MESH		5
+#define MESH_ID_CUBE					0
+#define MESH_ID_SPHERE					1
+#define MESH_ID_QUAD					2
+#define MESH_ID_MALE					3
+#define MESH_ID_DINO					4
+// "User Defined"
+#define MESH_ID_LEVEL					5
+#define MESH_ID_SPONZA					6
+
 
 // Texture ID's -- for now
-#define MALE_TEX1  0
-#define MALE_TEX2  1
-#define DINO_TEX  2
-#define WALL_TEX  3
-#define SKYBOX_TEX  4
-#define BRICK_TEX  5
-#define BRICK_NORM_TEX  6
-#define FAKE_NORMAL_TEX  7
-#define TREE_BILLBOARD_TEX  8
-#define TERRAIN1_TEX  9
-#define TERRAIN2_TEX  10
-#define TERRAIN3_TEX  11
-#define TERRAIN4_TEX  12
-#define TERRAIN5_TEX  13
-#define LAVA_NOISE_TEX  14
+#define TEX_GRASS						0
+#define TEX_SKYBOX_DEFAULT				1
+#define TEX_BRICKS						2
+#define TEX_BRICKS_NORMAL				3
+#define TEX_FAKE_NORMAL					4
+#define TEX_GRASS_BILLBOARD				5
+#define TEX_TERRAIN1					6
+#define TEX_TERRAIN2					7
+#define TEX_TERRAIN3					8
+#define TEX_TERRAIN4					9
+#define TEX_TERRAIN5					10
+#define TEX_NOISE						11
+#define TEX_MALE_LOW					12
+#define TEX_MALE_HIGH					13
+#define TEX_DINO						14
 
 // Shader ID's -- for now
-#define FONT_SHADER 0
-#define SKYBOX_SHADER  1
-#define BILLBOARD_SHADER 2
-#define TERRAIN_SHADER  3
-#define LAVA_SHADER  4
-#define STD_DEF_GEOM_SHADER  5
-#define STD_DEF_PNT_LIGHT_SHADER  6
-#define STD_DEF_DIR_LIGHT_SHADER  7
-#define STD_DEF_STENCIL_SHADER  8
-#define STD_FWD_LIGHTING  9
+#define SHADER_FONT_FWD					0
+#define SHADER_SKYBOX_ANY				1
+#define SHADER_BILLBOARD_FWD			2
+#define SHADER_TERRAIN_DEF				3
+#define SHADER_LAVA_FWD					4
+#define SHADER_GEOM_PASS_DEF			5
+#define SHADER_POINT_LIGHT_PASS_DEF		6
+#define SHADER_DIR_LIGHT_PASS_DEF		7
+#define SHADER_STENCIL_PASS_DEF		    8
+#define SHADER_LIGHTING_FWD			    9
+#define SHADER_ID_COUNT					9
 
-#define FONT_COUR 0
+#define FONT_COURIER					0
+#define FONT_ID_COUNT					0
 
 #endif

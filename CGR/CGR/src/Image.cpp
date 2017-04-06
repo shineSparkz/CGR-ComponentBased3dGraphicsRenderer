@@ -6,6 +6,34 @@
 
 #include <sstream>
 
+extern "C"
+{
+#include <jpeg/jpeglib.h>
+#include <jpeg/jerror.h>
+}
+#include <cctype>
+
+struct my_error_mgr {
+	struct jpeg_error_mgr pub;	/* "public" fields */
+
+	jmp_buf setjmp_buffer;	/* for return to caller */
+};
+
+typedef struct my_error_mgr * my_error_ptr;
+
+METHODDEF(void) my_error_exit(j_common_ptr cinfo)
+{
+	/* cinfo->err really points to a my_error_mgr struct, so coerce pointer */
+	my_error_ptr myerr = (my_error_ptr)cinfo->err;
+
+	/* Always display the message. */
+	/* We could postpone this until after returning, if we chose. */
+	(*cinfo->err->output_message) (cinfo);
+
+	/* Return control to the setjmp point */
+	longjmp(myerr->setjmp_buffer, 1);
+}
+
 const std::string BAD_FILE = "BAD_FILE";
 
 Image::Image()
@@ -103,7 +131,50 @@ bool Image::LoadImg(const char* file_name_no_ext)
 #endif
 		return true;
 	}
-	//else if ... todo
+	else if (extension == "jpg" || extension == "jpeg")
+	{
+		FILE* file = fopen(file_name_no_ext, "rb");  //open the file
+		struct my_error_mgr jerr;
+		struct jpeg_decompress_struct info;  //the jpeg decompress info
+
+		info.err = jpeg_std_error(&jerr.pub);
+		jpeg_create_decompress(&info); 
+
+		if (!file)
+		{
+			fprintf(stderr, "Error reading JPEG file %s!!!", file_name_no_ext);
+			return false;
+		}
+
+		jpeg_stdio_src(&info, file);
+		jpeg_read_header(&info, TRUE);   
+		jpeg_start_decompress(&info); 
+
+		this->width = info.output_width;
+		this->height = info.output_height;
+		this->num_bytes = info.num_components;
+
+		int size = this->width * this->height * this->num_bytes;
+		this->data = new byte[size];
+
+		//  Read data into this buffer
+		byte* p1 = data;
+		byte** p2 = &p1;
+		int numlines = 0;
+		while (info.output_scanline < info.output_height)
+		{
+			numlines = jpeg_read_scanlines(&info, p2, 1);
+			*p2 += numlines * this->num_bytes * info.output_width;
+		}
+
+		// Finish decompressing this 
+		jpeg_finish_decompress(&info);   
+		jpeg_destroy_decompress(&info);
+
+		fclose(file);
+
+		return true;
+	}
 	else
 	{
 		WRITE_LOG("Error: Unsupported Image filetype: " + extension, "error");

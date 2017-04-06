@@ -3,7 +3,6 @@
 - I needs to figure out how to instance duplicate meshes. Especially in sponza. And what about the shaders -_- I dont want to write new shaders that
   do the same thing.
 - fog
-- picking
 - waving grasss
 - Need to bring back shadows and bump mapping with all the new stuff
 - Do a deferred scene (without shadows)
@@ -12,11 +11,13 @@
 - Outdoor terrain scene (forward rendererd)
 - Deferred scene
 - Refactor all shaders and tidy up
-- Octree
 - Frustum culling
 - Some better debugging stuff
+
+Extra
+- picking
 - Collsions for examples
-- Animation
+- Octree
 	
 Done
 	- need to optimize shaders with uniform blocks

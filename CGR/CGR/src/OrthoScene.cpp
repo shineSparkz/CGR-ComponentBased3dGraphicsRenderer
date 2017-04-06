@@ -37,9 +37,9 @@ int OrthoScene::OnSceneLoad()
 		quadT->SetPosition(Vec3(0.0f, 0.0f, -50.0f));
 		quadT->SetScale(Vec3(850, 600, 1));
 		MeshRenderer* quadMr = quad->AddComponent<MeshRenderer>();
-		quadMr->SetMesh(QUAD_MESH, Renderer::Instance()->GetNumSubMeshesInMesh(QUAD_MESH));
-		quadMr->AddTexture(TERRAIN1_TEX);
-		quadMr->m_ShaderIndex = STD_FWD_LIGHTING;
+		quadMr->SetMesh(MESH_ID_QUAD, Renderer::Instance()->GetNumSubMeshesInMesh(MESH_ID_QUAD));
+		quadMr->AddTexture(TEX_GRASS);
+		quadMr->m_ShaderIndex = SHADER_LIGHTING_FWD;
 		m_GameObjects.push_back(quad);
 	}
 
@@ -51,9 +51,9 @@ int OrthoScene::OnSceneLoad()
 		cubet->SetPosition(Vec3(i*64, 0.0f, -1.0f));
 		cubet->SetScale(Vec3(32.0f, 32, 1));
 		MeshRenderer* cube1Mr = cube1->AddComponent<MeshRenderer>();
-		cube1Mr->SetMesh(CUBE_MESH, Renderer::Instance()->GetNumSubMeshesInMesh(MALE_MESH));
-		cube1Mr->AddTexture(WALL_TEX);
-		cube1Mr->m_ShaderIndex = STD_FWD_LIGHTING;
+		cube1Mr->SetMesh(MESH_ID_CUBE, Renderer::Instance()->GetNumSubMeshesInMesh(MESH_ID_CUBE));
+		cube1Mr->AddTexture(TEX_GRASS);
+		cube1Mr->m_ShaderIndex = SHADER_LIGHTING_FWD;
 		m_GameObjects.push_back(cube1);
 	}
 
@@ -108,8 +108,8 @@ void OrthoScene::Render(Renderer* renderer)
 {
 	renderer->Render(m_GameObjects);
 
-	renderer->RenderText(FONT_COUR, "Cam Pos: " + util::vec3_to_str(m_Camera->Position()), 8, 16);
-	renderer->RenderText(FONT_COUR, "Cam Fwd: " + util::vec3_to_str(m_Camera->Forward()), 8, 32);
-	renderer->RenderText(FONT_COUR, "Cam Up: " + util::vec3_to_str(m_Camera->Up()), 8, 48);
+	renderer->RenderText(FONT_COURIER, "Cam Pos: " + util::vec3_to_str(m_Camera->Position()), 8, 16);
+	renderer->RenderText(FONT_COURIER, "Cam Fwd: " + util::vec3_to_str(m_Camera->Forward()), 8, 32);
+	renderer->RenderText(FONT_COURIER, "Cam Up: " + util::vec3_to_str(m_Camera->Up()), 8, 48);
 	
 }

@@ -20,7 +20,7 @@ out vec3 varying_position;
 
 void main()
 { 
-    gl_Position = proj_xform * view_xform * u_world_xform * vec4(vertex_position, 1.0);
+    gl_Position = (proj_xform * view_xform * u_world_xform) * vec4(vertex_position, 1.0);
     varying_texcoord = vertex_texcoord; 
     varying_normal = (u_world_xform * vec4(vertex_normal, 0.0)).xyz;
     varying_position = (u_world_xform * vec4(vertex_position, 1.0)).xyz;

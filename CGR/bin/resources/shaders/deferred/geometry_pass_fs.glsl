@@ -1,4 +1,4 @@
-#version 330
+#version 450
 
 in vec2 varying_texcoord; 
 in vec3 varying_normal; 

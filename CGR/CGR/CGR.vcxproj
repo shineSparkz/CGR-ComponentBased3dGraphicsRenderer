@@ -118,7 +118,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>external/lib/win64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;glfw3dll.lib;assimp.lib;freetype271.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;glfw3dll.lib;assimp.lib;freetype271.lib;jpeg.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -150,7 +150,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>external;external/freetype2;external/freetype2/freetype2;;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>external;external/freetype2;external/freetype2/freetype2</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -158,7 +158,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>external/lib/win64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;glfw3dll.lib;assimp.lib;freetype271.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;glfw3dll.lib;assimp.lib;freetype271.lib;jpeg.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -166,6 +166,7 @@
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\BillboardList.cpp" />
     <ClCompile Include="src\Camera.cpp" />
+    <ClCompile Include="src\CgrEngine.cpp" />
     <ClCompile Include="src\Colour.cpp" />
     <ClCompile Include="src\Component.cpp" />
     <ClCompile Include="src\DirectionalLight.cpp" />
@@ -175,6 +176,7 @@
     <ClCompile Include="src\GameObject.cpp" />
     <ClCompile Include="src\GBuffer.cpp" />
     <ClCompile Include="src\Image.cpp" />
+    <ClCompile Include="src\IndoorLevelScene.cpp" />
     <ClCompile Include="src\Input.cpp" />
     <ClCompile Include="src\LogFile.cpp" />
     <ClCompile Include="src\Mesh.cpp" />
@@ -208,6 +210,7 @@
     <ClInclude Include="src\Application.h" />
     <ClInclude Include="src\BillboardList.h" />
     <ClInclude Include="src\Camera.h" />
+    <ClInclude Include="src\CgrEngine.h" />
     <ClInclude Include="src\Colour.h" />
     <ClInclude Include="src\Component.h" />
     <ClInclude Include="src\DirectionalLight.h" />
@@ -221,6 +224,7 @@
     <ClInclude Include="src\GBuffer.h" />
     <ClInclude Include="src\gl_headers.h" />
     <ClInclude Include="src\Image.h" />
+    <ClInclude Include="src\IndoorLevelScene.h" />
     <ClInclude Include="src\Input.h" />
     <ClInclude Include="src\IScene.h" />
     <ClInclude Include="src\KeyEvent.h" />

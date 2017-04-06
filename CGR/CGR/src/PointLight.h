@@ -35,6 +35,9 @@ public:
 	static int GetId();
 
 private:
+	float calcPointLightBSphere();
+
+private:
 	static int		m_Id;
 	UniformBlock*	m_LightBlock;	// Weak ptr
 	Vec3			m_Position;
@@ -43,6 +46,7 @@ private:
 	float			m_aConstant;
 	float			m_aLinear;   
 	float			m_aQuadratic;
+	float			m_Range;
 	int				m_LightIndex;
 	int				m_LightValid;
 };

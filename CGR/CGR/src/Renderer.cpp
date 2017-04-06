@@ -46,16 +46,6 @@ const ShaderAttrib NORM_ATTR{ 1, "vertex_normal" };
 const ShaderAttrib TEX_ATTR{  2, "vertex_texcoord" };
 const ShaderAttrib TAN_ATTR{  3, "vertex_tangent" };
 
-float CalcPointLightBSphere(const PointLight& Light)
-{
-	float MaxChannel = fmax(fmax(Light.intensity.x, Light.intensity.y), Light.intensity.z);
-
-	float ret = (-Light.aLinear + sqrtf(Light.aLinear * Light.aLinear -
-		4 * Light.aQuadratic* (Light.aQuadratic - 256 * MaxChannel * Light.ambient_intensity)))
-		/
-		(2 * Light.aQuadratic);
-	return ret;
-}
 
 Renderer::Renderer() :
 	m_ResManager(nullptr),
@@ -75,6 +65,20 @@ Renderer::Renderer() :
 
 bool Renderer::Init()
 {
+	// Log Info
+	{
+		const GLubyte* rendererS = glGetString(GL_RENDERER);
+		const GLubyte* vendorS = glGetString(GL_VENDOR);
+		const GLubyte* versionS = glGetString(GL_VERSION);
+		std::stringstream ss;
+		ss << "Renderer started..... system using: " << rendererS << ",  " << vendorS << ", GL Version: " << versionS;
+		WRITE_LOG(ss.str(), "info");
+	}
+
+	m_DeferredRender = false;
+
+	m_PointsInfo.resize(MAX_POINTS);
+
 	if(!m_ResManager)
 		m_ResManager = new ResourceManager();
 	
@@ -92,10 +96,10 @@ bool Renderer::Init()
 	std::vector<Vec3> billboardPositions;
 	m_Terrain = new Terrain();
 
-	unsigned int textures[5] = { TERRAIN1_TEX, TERRAIN2_TEX, TERRAIN3_TEX, TERRAIN4_TEX, TERRAIN5_TEX };
+	unsigned int textures[5] = { TEX_TERRAIN1, TEX_TERRAIN2, TEX_TERRAIN3, TEX_TERRAIN4, TEX_TERRAIN5 };
 	success &= m_Terrain->LoadFromHeightMapWithBillboards(
 		"../resources/textures/terrain/heightmap.tga",
-		m_ResManager->GetShader(TERRAIN_SHADER),
+		m_ResManager->GetShader(SHADER_TERRAIN_DEF),
 		textures,
 		Vec3(200, 30, 200),
 		billboardPositions,
@@ -104,7 +108,7 @@ bool Renderer::Init()
 
 	// Need material and textures for bill board creation, which again I am not too happy with
 	m_TreeBillboardList = new BillboardList();
-	success &= m_TreeBillboardList->InitWithPositions(m_ResManager->GetShader(BILLBOARD_SHADER), TREE_BILLBOARD_TEX, 0.5f, billboardPositions);
+	success &= m_TreeBillboardList->InitWithPositions(m_ResManager->GetShader(SHADER_BILLBOARD_FWD), TEX_GRASS_BILLBOARD, 0.5f, billboardPositions);
 
 	/*
 	m_TreeBillboardList->Init(m_ResManager->GetShader(BILLBOARD_SHADER), TREE_BILLBOARD_TEX, 
@@ -203,6 +207,21 @@ void Renderer::Render(std::vector<GameObject*>& gameObjects)
 {
 	m_Query.Start();
 
+	// Update Uniform blocks for wither rendering mode
+	UniformBlock* scene = m_UniformBlockManager->GetBlock("scene");
+	if (scene)
+	{
+		scene->SetValue("view_xform", (void*)glm::value_ptr(m_CameraPtr->View()));
+		scene->SetValue("proj_xform", (void*)glm::value_ptr(m_CameraPtr->Projection()));
+	}
+
+	// Bind all Uniform Blocks (including custom usr ones)
+	for (auto i = m_UniformBlockManager->m_Blocks.begin(); i != m_UniformBlockManager->m_Blocks.end(); ++i)
+	{
+		if (i->second->ShouldUpdateGPU())
+			i->second->Bind();
+	}
+
 	if (m_DeferredRender)
 		deferredRender(gameObjects);
 	else
@@ -217,7 +236,7 @@ void Renderer::Render(std::vector<GameObject*>& gameObjects)
 	}
 
 	// -- Render Text ----
-	RenderText(FONT_COUR, "Frm Time: " + util::to_str(getFrameTime(TimeMeasure::Seconds)), 8, Screen::Instance()->FrameBufferHeight() - 16.0f, FontAlign::Left, Colour::Red());
+	RenderText(FONT_COURIER, "Frm Time: " + util::to_str(getFrameTime(TimeMeasure::Seconds)), 8, Screen::Instance()->FrameBufferHeight() - 16.0f, FontAlign::Left, Colour::Red());
 
 }
 
@@ -227,14 +246,14 @@ void Renderer::RenderText(size_t fontId, const std::string& txt, float x, float 
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	// Activate corresponding render state	
-	m_ResManager->m_Shaders[FONT_SHADER]->Use();
+	m_ResManager->m_Shaders[SHADER_FONT_FWD]->Use();
 
 	Mat4 projection = glm::ortho(0.0f, (float)Screen::Instance()->FrameBufferWidth(),
 		0.0f,
 		(float)Screen::Instance()->FrameBufferHeight());
 
-	m_ResManager->m_Shaders[FONT_SHADER]->SetUniformValue<Mat4>("u_proj_xform", &projection);
-	m_ResManager->m_Shaders[FONT_SHADER]->SetUniformValue<Vec4>("text_colour", &colour.Normalize());
+	m_ResManager->m_Shaders[SHADER_FONT_FWD]->SetUniformValue<Mat4>("u_proj_xform", &projection);
+	m_ResManager->m_Shaders[SHADER_FONT_FWD]->SetUniformValue<Vec4>("text_colour", &colour.Normalize());
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindVertexArray(m_ResManager->m_Fonts[fontId]->m_Vao);
@@ -344,24 +363,9 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 	{
 		this->renderSkybox(m_CameraPtr);
 	}
-
-	// Update scene (the only block controlled by renderer)
-	UniformBlock* scene = m_UniformBlockManager->GetBlock("scene");
-	if (scene)
-	{
-		scene->SetValue("view_xform", (void*)glm::value_ptr(m_CameraPtr->View()));
-		scene->SetValue("proj_xform", (void*)glm::value_ptr(m_CameraPtr->Projection()));
-	}
-	
-	// Bind all Uniform Blocks (including custom usr ones)
-	for (auto i = m_UniformBlockManager->m_Blocks.begin(); i != m_UniformBlockManager->m_Blocks.end(); ++i)
-	{
-		if (i->second->ShouldUpdateGPU())
-			i->second->Bind();
-	}
 	
 	// TODO : need to use the shader program that was set to each mesh or batch them 
-	ShaderProgram* sp = m_ResManager->m_Shaders[STD_FWD_LIGHTING]; //m_Shaders[mr->m_ShaderIndex];
+	ShaderProgram* sp = m_ResManager->m_Shaders[SHADER_LIGHTING_FWD]; //m_Shaders[mr->m_ShaderIndex];
 	if (sp)
 	{
 		sp->Use();
@@ -394,23 +398,6 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 
 void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 {
-	// Update scene (the only block controlled by renderer)
-	UniformBlock* scene = m_UniformBlockManager->GetBlock("scene");
-	if (scene)
-	{
-		scene->SetValue("view_xform", (void*)glm::value_ptr(m_CameraPtr->View()));
-		scene->SetValue("proj_xform", (void*)glm::value_ptr(m_CameraPtr->Projection()));
-	}
-
-	// Bind all Uniform Blocks (including custom usr ones)
-	for (auto i = m_UniformBlockManager->m_Blocks.begin(); i != m_UniformBlockManager->m_Blocks.end(); ++i)
-	{
-		if (i->second->ShouldUpdateGPU())
-			i->second->Bind();
-	}
-
-	// ==============================================
-
 	m_Gbuffer->StartFrame();
 
 	// Geom Pass
@@ -442,7 +429,7 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 			if (!t || !mr)
 				continue;
 
-			ShaderProgram* sp = m_ResManager->m_Shaders[STD_DEF_GEOM_SHADER]; //[mr->m_ShaderIndex];
+			ShaderProgram* sp = m_ResManager->m_Shaders[SHADER_GEOM_PASS_DEF]; //[mr->m_ShaderIndex];
 			if (sp)
 			{
 				sp->Use();
@@ -464,12 +451,15 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 	{
 		glEnable(GL_STENCIL_TEST);
 
-		/*
-		for (int i = 0; i < m_PointLights.size(); ++i)
+		Vec2 screenSize = Vec2((float)Screen::Instance()->FrameBufferWidth(), (float)Screen::Instance()->FrameBufferHeight());
+
+		for (int i = 0; i < m_NumPointLightsInScene + 1; ++i)
 		{
+			Mat4 LIGHT_TRANS = glm::translate(Mat4(1.0f), m_PointsInfo[i].pos) * glm::scale(Mat4(1.0f), Vec3(m_PointsInfo[i].range));
+
 			// Stencil
 			{
-				m_ResManager->m_Shaders[STD_DEF_STENCIL_SHADER]->Use();
+				m_ResManager->m_Shaders[SHADER_STENCIL_PASS_DEF]->Use();
 
 				// Disable color/depth write and enable stencil
 				m_Gbuffer->BindForStencilPass();
@@ -485,18 +475,20 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 				glStencilOpSeparate(GL_BACK, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
 				glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
 
-				Mat4 LIGHT_TRANS = glm::translate(Mat4(1.0f), m_PointLights[i].position) * glm::scale(Mat4(1.0f), Vec3(CalcPointLightBSphere(m_PointLights[i])));
-				m_ResManager->m_Shaders[STD_DEF_STENCIL_SHADER]->SetUniformValue<Mat4>("u_WVP", &(m_CameraPtr->Projection() * m_CameraPtr->View() * LIGHT_TRANS));
-				this->renderMesh(m_ResManager->m_Meshes[SPHERE_MESH]);
+				m_ResManager->m_Shaders[SHADER_STENCIL_PASS_DEF]->SetUniformValue<Mat4>("u_WVP", &(m_CameraPtr->Projection() * m_CameraPtr->View() * LIGHT_TRANS));
+				this->renderMesh(m_ResManager->m_Meshes[MESH_ID_SPHERE]);
 			}
 
 			// Point Light
 			{
 				m_Gbuffer->BindForLightPass();
 
-				ShaderProgram* sp = m_ResManager->m_Shaders[STD_DEF_PNT_LIGHT_SHADER];
+				ShaderProgram* sp = m_ResManager->m_Shaders[SHADER_POINT_LIGHT_PASS_DEF];
 				sp->Use();
-				sp->SetUniformValue<Vec3>("u_EyeWorldPos", &m_CameraPtr->Position());
+
+				sp->SetUniformValue<int>("u_LightIndex", &i);
+				sp->SetUniformValue<Vec2>("u_ScreenSize", &screenSize);
+				sp->SetUniformValue<Mat4>("u_WVP", &(m_CameraPtr->Projection() * m_CameraPtr->View() * LIGHT_TRANS));
 
 				glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
 
@@ -508,24 +500,12 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 				glEnable(GL_CULL_FACE);
 				glCullFace(GL_FRONT);
 
-				Mat4 LIGHT_TRANS = glm::translate(Mat4(1.0f), m_PointLights[i].position) * glm::scale(Mat4(1.0f), Vec3((CalcPointLightBSphere(m_PointLights[i]))));
-
 				// Set PointLight
-				sp->SetUniformValue<Vec3>("u_PointLight.Base.Color", &m_PointLights[i].intensity);
-				sp->SetUniformValue<Vec3>("u_PointLight.Position", &m_PointLights[i].position);
-				sp->SetUniformValue<float>("u_PointLight.Base.AmbientIntensity", &m_PointLights[i].ambient_intensity);
-				sp->SetUniformValue<float>("u_PointLight.Atten.Constant", &m_PointLights[i].aConstant);
-				sp->SetUniformValue<float>("u_PointLight.Atten.Linear", &m_PointLights[i].aLinear);
-				sp->SetUniformValue<float>("u_PointLight.Atten.Exp", &m_PointLights[i].aQuadratic);
-				sp->SetUniformValue<Mat4>("u_WVP", &(m_CameraPtr->Projection() * m_CameraPtr->View() * LIGHT_TRANS));
-
-				this->renderMesh(m_ResManager->m_Meshes[SPHERE_MESH]);
-
+				this->renderMesh(m_ResManager->m_Meshes[MESH_ID_SPHERE]);
 				glCullFace(GL_BACK);
 				glDisable(GL_BLEND);
 			}
 		}
-		*/
 
 		glDisable(GL_STENCIL_TEST);
 	}
@@ -534,17 +514,17 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 	{
 		glDisable(GL_CULL_FACE);
 		m_Gbuffer->BindForLightPass();
-		m_ResManager->m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->Use();
+		m_ResManager->m_Shaders[SHADER_DIR_LIGHT_PASS_DEF]->Use();
 		
 		// Should only set once
-		m_ResManager->m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<Mat4>("u_WVP", &(Mat4(1.0f)));
+		m_ResManager->m_Shaders[SHADER_DIR_LIGHT_PASS_DEF]->SetUniformValue<Mat4>("u_WVP", &(Mat4(1.0f)));
 
 		glDisable(GL_DEPTH_TEST);
 		glEnable(GL_BLEND);
 		glBlendEquation(GL_FUNC_ADD);
 		glBlendFunc(GL_ONE, GL_ONE);
 
-		this->renderMesh(m_ResManager->m_Meshes[QUAD_MESH]);
+		this->renderMesh(m_ResManager->m_Meshes[MESH_ID_QUAD]);
 		glDisable(GL_BLEND);
 	}
 
@@ -642,7 +622,7 @@ void Renderer::renderSkybox(BaseCamera* cam)
 		glEnable(GL_DEPTH_TEST);
 	
 	// Use skybox material
-	m_ResManager->m_Shaders[SKYBOX_SHADER]->Use();
+	m_ResManager->m_Shaders[SHADER_SKYBOX_ANY]->Use();
 
 	SkyboxSettings* sb = cam->SkyBoxParams();
 	if (!sb)
@@ -658,15 +638,15 @@ void Renderer::renderSkybox(BaseCamera* cam)
 	Mat4 model = glm::translate(IDENTITY, cam->Position())
 		* glm::scale(IDENTITY, Vec3(sb->scale));
 
-	m_ResManager->m_Shaders[SKYBOX_SHADER]->SetUniformValue<Mat4>("world_xform", &(model));
+	m_ResManager->m_Shaders[SHADER_SKYBOX_ANY]->SetUniformValue<Mat4>("world_xform", &(model));
 
 	// Render mesh with texture here, THIS SHOULDNT BE HERE
-	glBindVertexArray(m_ResManager->m_Meshes[CUBE_MESH]->m_VAO);
+	glBindVertexArray(m_ResManager->m_Meshes[MESH_ID_CUBE]->m_VAO);
 	Texture* t = m_ResManager->m_Textures[sb->textureIndex];
 	if (t) t->Bind();
 
-	for (std::vector<SubMesh>::iterator i = m_ResManager->m_Meshes[CUBE_MESH]->m_SubMeshes.begin();
-		i != m_ResManager->m_Meshes[CUBE_MESH]->m_SubMeshes.end(); i++)
+	for (std::vector<SubMesh>::iterator i = m_ResManager->m_Meshes[MESH_ID_CUBE]->m_SubMeshes.begin();
+		i != m_ResManager->m_Meshes[MESH_ID_CUBE]->m_SubMeshes.end(); i++)
 	{
 		SubMesh subMesh = (*i);
 
@@ -716,13 +696,13 @@ bool Renderer::setStaticDefaultShaderValues()
 {
 	// Set Light Uniforms
 	int sampler = 0;
-	ShaderProgram* lsp = m_ResManager->GetShader(STD_FWD_LIGHTING);
+	ShaderProgram* lsp = m_ResManager->GetShader(SHADER_LIGHTING_FWD);
 	lsp->Use();
 	lsp->SetUniformValue<int>("u_sampler", &sampler);
 
 	//--------------------------------------------------------------------------------
 
-	ShaderProgram* dsp = m_ResManager->GetShader(STD_DEF_DIR_LIGHT_SHADER);
+	ShaderProgram* dsp = m_ResManager->GetShader(SHADER_DIR_LIGHT_PASS_DEF);
 	dsp->Use();
 	// TODO : This would change on screensize
 	Vec2 screenSize = Vec2((float)Screen::Instance()->FrameBufferWidth(), (float)Screen::Instance()->FrameBufferHeight());
@@ -731,7 +711,7 @@ bool Renderer::setStaticDefaultShaderValues()
 	// Set for terrain in forward mode
 	if (!m_DeferredRender)
 	{
-		ShaderProgram* terrainShader = m_ResManager->GetShader(TERRAIN_SHADER);
+		ShaderProgram* terrainShader = m_ResManager->GetShader(SHADER_TERRAIN_DEF);
 		terrainShader->Use();
 
 		// TODO : Add UBO to terrain shaders
@@ -781,7 +761,22 @@ int Renderer::GetSpotLightIndex()
 int Renderer::GetPointLightIndex()
 {
 	int temp = m_NumPointLightsInScene + 1;
-	return temp < MAX_POINTS ? ++m_NumPointLightsInScene : -1;
+	if (temp < MAX_POINTS)
+	{
+		return ++m_NumPointLightsInScene;
+	}
+
+	return -1;
+	//return temp < MAX_POINTS ? ++m_NumPointLightsInScene : -1;
+}
+
+void Renderer::UpdatePointLight(int index, const Vec3& position, float range)
+{
+	if (index >= 0 && index < MAX_POINTS)
+	{
+		m_PointsInfo[index].pos = position;
+		m_PointsInfo[index].range = range;
+	}
 }
 
 //------------------------

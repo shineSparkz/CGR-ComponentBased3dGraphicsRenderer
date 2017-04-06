@@ -11,46 +11,10 @@
 #include "MeshRenderer.h"
 #include "ResourceManager.h"
 
+#include "CgrEngine.h"
 #include "DirectionalLight.h"
 #include "PointLight.h"
 #include "SpotLight.h"
-
-GameObject* createPointLight(const Vec3& position, const Vec3& colour, float intensity)
-{
-	const float ATTEN_CONST = 0.3f;
-	const float ATTEN_LIN = 0.0174f;
-	const float ATTEN_QUAD = 0.000080f;
-
-	GameObject* pointLight = new GameObject();
-	PointLightC* light = pointLight->AddComponent<PointLightC>();
-
-	if (!light->SetLight(position, colour, intensity, ATTEN_CONST, ATTEN_LIN, ATTEN_QUAD))
-	{
-		SAFE_CLOSE(pointLight);
-		return nullptr;
-	}
-
-	return pointLight;
-}
-
-GameObject* createSpotLight(const Vec3& position, const Vec3& colour, const Vec3& direction, float angle, int switchedOn)
-{
-	const float ATTEN_CONST = 0.3f;
-	const float ATTEN_LIN = 0.0174f;
-	const float ATTEN_QUAD = 0.000080f;
-
-	GameObject* spotLight = new GameObject();
-	SpotLightC* light = spotLight->AddComponent<SpotLightC>();
-
-	if (!light->SetLight(position, direction, colour, angle, ATTEN_CONST, ATTEN_LIN, ATTEN_QUAD, switchedOn))
-	{
-		SAFE_CLOSE(spotLight);
-		return nullptr;
-	}
-
-	return spotLight;
-}
-
 
 
 SponzaScene::SponzaScene(const std::string& name) :
@@ -99,29 +63,35 @@ void SponzaScene::createGameObjects()
 	m_GameObjects.push_back(dino);
 	*/
 
-	GameObject* cube1 = new GameObject();
-	Transform* cubet = cube1->AddComponent<Transform>();
-	cubet->SetPosition(Vec3(-7.0f, 0.0f, -10.0f));
-	cubet->SetScale(Vec3(14.0f));
-	MeshRenderer* cube1Mr = cube1->AddComponent<MeshRenderer>();
-	cube1Mr->SetMesh(MALE_MESH, Renderer::Instance()->GetNumSubMeshesInMesh(MALE_MESH));
-	cube1Mr->AddTexture(MALE_TEX1,1);
-	cube1Mr->AddTexture(MALE_TEX2,0);
-	cube1Mr->m_ShaderIndex = STD_DEF_GEOM_SHADER;
-	m_GameObjects.push_back(cube1);
+	// Create Male
+	GameObject* male = new GameObject();
+	Transform* maleT = male->AddComponent<Transform>();
+	maleT->SetPosition(Vec3(-7.0f, 0.0f, -10.0f));
+	maleT->SetScale(Vec3(14.0f));
+	MeshRenderer* maleMr = male->AddComponent<MeshRenderer>();
+	maleMr->SetMesh(MESH_ID_MALE, Renderer::Instance()->GetNumSubMeshesInMesh(MESH_ID_MALE));
+	maleMr->AddTexture(TEX_MALE_HIGH, 0);
+	maleMr->AddTexture(TEX_MALE_LOW, 1);
+	maleMr->m_ShaderIndex = SHADER_GEOM_PASS_DEF;
+	m_GameObjects.push_back(male);
 
+	// Create Sponza
 	GameObject* sponza = new GameObject();
 	Transform* sponzat = sponza->AddComponent<Transform>();
 	sponzat->SetPosition(Vec3(0.0f, 0.0f, 0.0f));
 	sponzat->SetScale(Vec3(0.2f));
 	MeshRenderer* sponzaMr = sponza->AddComponent<MeshRenderer>();
-	sponzaMr->SetMesh(SPONZA_MESH, Renderer::Instance()->GetNumSubMeshesInMesh(SPONZA_MESH));
-	sponzaMr->m_ShaderIndex = STD_DEF_GEOM_SHADER;
+	sponzaMr->SetMesh(MESH_ID_SPONZA, Renderer::Instance()->GetNumSubMeshesInMesh(MESH_ID_SPONZA));
+	sponzaMr->m_ShaderIndex = SHADER_GEOM_PASS_DEF;
 	m_GameObjects.push_back(sponza);
 
-	GameObject* p1 = createPointLight(Vec3(20.0f, 3.0f, -20.0f), Vec3(0.7f), 0.2f);
-	GameObject* p2 = createPointLight(Vec3(-50.0f, 3.0f, 30.0f), Vec3(0.7f), 0.2f);
-	GameObject* p3 = createPointLight(Vec3(70.0f, 3.0f, 10.0f), Vec3(0.7f), 0.2f);
+	// Point Lights
+	GameObject* p1 = CgrEngine::CreatePointLight(Vec3(20.0f, 15.0f, -20.0f), Vec3(0.7f,0,0), 0.02f);
+	GameObject* p2 = CgrEngine::CreatePointLight(Vec3(-50.0f, 15.0f, 30.0f), Vec3(0.7f), 0.02f);
+	GameObject* p3 = CgrEngine::CreatePointLight(Vec3(70.0f, 15.0f, 10.0f), Vec3(0.7f), 0.02f);
+	//GameObject* p4 = createPointLight(Vec3(100.0f, 35.0f, -150.0f), Vec3(0.7f, 0, 0), 0.02f);
+	//GameObject* p5 = createPointLight(Vec3(-100.0f, 25.0f, 150.0f), Vec3(0.7f), 0.02f);
+	//GameObject* p6 = createPointLight(Vec3(0.0f, 55.0f, -70.0f), Vec3(0.7f), 0.02f);
 
 	if (p1)
 		m_GameObjects.push_back(p1);
@@ -129,11 +99,20 @@ void SponzaScene::createGameObjects()
 		m_GameObjects.push_back(p2);
 	if (p3)
 		m_GameObjects.push_back(p3);
+	/*
+	if (p4)
+		m_GameObjects.push_back(p4);
+	if (p5)
+		m_GameObjects.push_back(p5);
+	if (p6)
+		m_GameObjects.push_back(p6);
+	*/
 
-	GameObject* s1 = createSpotLight(m_Camera->Position(), Vec3(0, 1, 0), m_Camera->Forward(), 30.0f, 1);
+	GameObject* s1 = CgrEngine::CreateSpotLight(m_Camera->Position(), Vec3(0, 1, 0), m_Camera->Forward(), 12.0f, 1);
 	if (s1)
 		m_GameObjects.push_back(s1);
 
+	// Directional Light
 	GameObject* dlight = new GameObject();
 	DirectionalLightC* dl = dlight->AddComponent<DirectionalLightC>();
 	dl->SetLight(Vec3(0, -1, 0), Vec3(0.7f));
@@ -188,7 +167,7 @@ void SponzaScene::createGameObjects()
 int SponzaScene::OnSceneLoad()
 {
 	// Load sponza ( New resource)
-	if (!ResourceManager::Instance()->LoadMesh("sponza/sponza.obj", SPONZA_MESH, false, true))
+	if (!ResourceManager::Instance()->LoadMesh("sponza/sponza.obj", MESH_ID_SPONZA, false, true))
 		return GE_MAJOR_ERROR;
 
 	// Create Camera
@@ -207,7 +186,7 @@ int SponzaScene::OnSceneLoad()
 		500.0f																								// Far
 	);
 
-	m_Camera->AddSkybox(30.0f, SKYBOX_TEX);
+	m_Camera->AddSkybox(30.0f, TEX_SKYBOX_DEFAULT);
 	// Set Pointer in renderer
 	Renderer::Instance()->SetSceneData(m_Camera, Vec3(0.1f));
 	m_GameObjects.push_back(cam);
@@ -249,9 +228,9 @@ void SponzaScene::Render(Renderer* renderer)
 {
 	renderer->Render(m_GameObjects);
 
-	renderer->RenderText(FONT_COUR, "Cam Pos: " + util::vec3_to_str(m_Camera->Position()), 8, 16);
-	renderer->RenderText(FONT_COUR, "Cam Fwd: " + util::vec3_to_str(m_Camera->Forward()), 8, 32);
-	renderer->RenderText(FONT_COUR, "Cam Up: " + util::vec3_to_str(m_Camera->Up()), 8, 48);
-	renderer->RenderText(FONT_COUR, "Num Verts: " + util::to_str(Mesh::NumVerts), 8, 96, FontAlign::Left, Colour::Green());
-	renderer->RenderText(FONT_COUR, "Num Meshes: " + util::to_str(Mesh::NumMeshes), 8, 128, FontAlign::Left, Colour::Green());
+	renderer->RenderText(FONT_COURIER, "Cam Pos: " + util::vec3_to_str(m_Camera->Position()), 8, 16);
+	renderer->RenderText(FONT_COURIER, "Cam Fwd: " + util::vec3_to_str(m_Camera->Forward()), 8, 32);
+	renderer->RenderText(FONT_COURIER, "Cam Up: " + util::vec3_to_str(m_Camera->Up()), 8, 48);
+	renderer->RenderText(FONT_COURIER, "Num Verts: " + util::to_str(Mesh::NumVerts), 8, 96, FontAlign::Left, Colour::Green());
+	renderer->RenderText(FONT_COURIER, "Num Meshes: " + util::to_str(Mesh::NumMeshes), 8, 128, FontAlign::Left, Colour::Green());
 }

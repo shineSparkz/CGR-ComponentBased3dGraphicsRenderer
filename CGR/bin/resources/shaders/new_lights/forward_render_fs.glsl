@@ -57,6 +57,36 @@ in  vec3 	P;
 in  vec2    varying_texcoord;   //!< The interpolated co-ordinate to use for the texture sampler.
 out vec4    frag_colour; 		//!< The calculated colour of the fragment.
 
+vec4 reflection(vec3 light_intensity, float light_ambient_intensity, vec3 light_dir, vec3 p, vec3 n)
+{
+	vec4 ambColour = vec4(light_intensity * light_ambient_intensity, 1.0);
+	vec4 difColour = vec4(0.0);
+	vec4 specularColor = vec4(0, 0, 0, 0);
+	
+	float diffCoeff = dot(n, -light_dir);
+	
+	if(diffCoeff > 0)
+	{
+		// TODO : Make these part of meshes material
+		const float specular_intensity = 0.2;
+		const float shininess = 16.0;
+		
+		difColour = vec4(light_intensity * diffCoeff, 1.0);
+		
+		vec3 vertexToEye = normalize(camera_position - p);
+        vec3 lightReflect = normalize(reflect(light_dir, n));
+        float specularFactor = dot(vertexToEye, lightReflect);  
+		
+        if (specularFactor > 0.0) 
+		{
+            specularFactor = pow(specularFactor, shininess);
+            specularColor = vec4(light_intensity * specular_intensity * specularFactor, 1.0);
+        }
+	}
+	
+	return (ambColour + difColour + specularColor);
+}
+
 vec4 getDirectionalLightColour(in vec3 n)
 {
 	float diffuse_intensity = max(0.0, dot(n, -directionLight.direction));
@@ -68,11 +98,20 @@ vec4 getPointLightColor(const PointLight ptLight, vec3 p, vec3 n)
 { 
    vec3 light_dir = p - ptLight.position; 
    float dist = length(light_dir); 
-   light_dir = normalize(light_dir); 
-    
-   float diffuse = max(0.0, dot(n, -light_dir)); 
-   float attenuation = ptLight.aConstant + ptLight.aLinear * dist + ptLight.aQuadratic * dist*dist; 
-   return vec4(ptLight.intensity, 1.0) * (ptLight.ambient_intensity + diffuse) / attenuation; 
+   // TODO : have this for each light source in struct
+   const float light_range = 129.0f;	
+   
+   if(dist < light_range)
+   {
+		light_dir = normalize(light_dir); 
+		vec4 colour = reflection(ptLight.intensity, ptLight.ambient_intensity, light_dir, p, n);
+		//float diffuse = max(0.0, dot(n, -light_dir)); 
+		float attenuation = max(1.0, ptLight.aConstant + ptLight.aLinear * dist + ptLight.aQuadratic * dist*dist); 
+		return colour / attenuation;
+		//return vec4(ptLight.intensity, 1.0) * (ptLight.ambient_intensity + diffuse) / attenuation; 
+   }
+   
+   return vec4(0.0);
 }
 
 vec4 getSpotLightColor(const Spotlight spotLight, vec3 p)

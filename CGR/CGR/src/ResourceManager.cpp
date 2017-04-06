@@ -63,9 +63,8 @@ bool ResourceManager::loadDefaultForwardShaders()
 		std::vector<Shader> shaders;
 		shaders.push_back(geom_vs);
 		shaders.push_back(fwd_fs);
-		//shaders.push_back(lights);
 
-		if (!this->CreateShaderProgram(shaders, STD_FWD_LIGHTING))
+		if (!this->CreateShaderProgram(shaders, SHADER_LIGHTING_FWD))
 			return false;
 	}
 
@@ -81,7 +80,7 @@ bool ResourceManager::loadDefaultForwardShaders()
 		shaders.push_back(font_vert);
 		shaders.push_back(font_frag);
 
-		if (!this->CreateShaderProgram(shaders, FONT_SHADER))
+		if (!this->CreateShaderProgram(shaders, SHADER_FONT_FWD))
 		{
 			return false;
 		}
@@ -98,13 +97,13 @@ bool ResourceManager::loadDefaultForwardShaders()
 		shaders.push_back(vert);
 		shaders.push_back(frag);
 
-		if (!this->CreateShaderProgram(shaders, SKYBOX_SHADER))
+		if (!this->CreateShaderProgram(shaders, SHADER_SKYBOX_ANY))
 			return false;
 
 		// One off values
 		int texUnit = 0;
-		m_Shaders[SKYBOX_SHADER]->Use();
-		m_Shaders[SKYBOX_SHADER]->SetUniformValue<int>("cube_sampler", &texUnit);
+		m_Shaders[SHADER_SKYBOX_ANY]->Use();
+		m_Shaders[SHADER_SKYBOX_ANY]->SetUniformValue<int>("cube_sampler", &texUnit);
 	}
 
 	// ---- Bill board (Fwd) ----
@@ -122,7 +121,7 @@ bool ResourceManager::loadDefaultForwardShaders()
 		shaders.push_back(geom);
 		shaders.push_back(frag);
 
-		if (!this->CreateShaderProgram(shaders, BILLBOARD_SHADER))
+		if (!this->CreateShaderProgram(shaders, SHADER_BILLBOARD_FWD))
 		{
 			return false;
 		}
@@ -149,13 +148,13 @@ bool ResourceManager::loadDefaultDeferredShaders()
 		shaders.push_back(vert);
 		shaders.push_back(frag);
 
-		if (!this->CreateShaderProgram(shaders, TERRAIN_SHADER))
+		if (!this->CreateShaderProgram(shaders, SHADER_TERRAIN_DEF))
 			return false;
 
-		m_Shaders[TERRAIN_SHADER]->Use();
+		m_Shaders[SHADER_TERRAIN_DEF]->Use();
 		for (int i = 0; i < 5; ++i)
 		{
-			m_Shaders[TERRAIN_SHADER]->SetUniformValue<int>("u_Sampler" + std::to_string(i), &i);
+			m_Shaders[SHADER_TERRAIN_DEF]->SetUniformValue<int>("u_Sampler" + std::to_string(i), &i);
 		}
 	}
 
@@ -173,13 +172,13 @@ bool ResourceManager::loadDefaultDeferredShaders()
 		shaders.push_back(vert);
 		shaders.push_back(frag);
 
-		if (!this->CreateShaderProgram(shaders, LAVA_SHADER))
+		if (!this->CreateShaderProgram(shaders, SHADER_LAVA_FWD))
 			return false;
 
-		m_Shaders[LAVA_SHADER]->Use();
+		m_Shaders[SHADER_LAVA_FWD]->Use();
 		int sampler = 0;
-		m_Shaders[LAVA_SHADER]->SetUniformValue<int>("u_Sampler", &sampler);
-		m_Shaders[LAVA_SHADER]->SetUniformValue<Vec2>("u_Resolution", &screenSize);
+		m_Shaders[SHADER_LAVA_FWD]->SetUniformValue<int>("u_Sampler", &sampler);
+		m_Shaders[SHADER_LAVA_FWD]->SetUniformValue<Vec2>("u_Resolution", &screenSize);
 	}
 
 	// ---- Std Geom Shader (Def) ----
@@ -196,12 +195,12 @@ bool ResourceManager::loadDefaultDeferredShaders()
 		shaders.push_back(vert);
 		shaders.push_back(frag);
 
-		if (!this->CreateShaderProgram(shaders, STD_DEF_GEOM_SHADER))
+		if (!this->CreateShaderProgram(shaders, SHADER_GEOM_PASS_DEF))
 			return false;
 
 		int sampler = 0;
-		m_Shaders[STD_DEF_GEOM_SHADER]->Use();
-		m_Shaders[STD_DEF_GEOM_SHADER]->SetUniformValue<int>("u_ColourMap", &sampler);
+		m_Shaders[SHADER_GEOM_PASS_DEF]->Use();
+		m_Shaders[SHADER_GEOM_PASS_DEF]->SetUniformValue<int>("u_ColourMap", &sampler);
 	}
 
 	// ---- Std Stencil Shader (Def) ----
@@ -216,7 +215,7 @@ bool ResourceManager::loadDefaultDeferredShaders()
 		shaders.push_back(vert);
 		shaders.push_back(frag);
 
-		if (!this->CreateShaderProgram(shaders, STD_DEF_STENCIL_SHADER))
+		if (!this->CreateShaderProgram(shaders, SHADER_STENCIL_PASS_DEF))
 			return false;
 	}
 
@@ -234,7 +233,7 @@ bool ResourceManager::loadDefaultDeferredShaders()
 		shaders.push_back(vert);
 		shaders.push_back(frag);
 
-		if (!this->CreateShaderProgram(shaders, STD_DEF_PNT_LIGHT_SHADER))
+		if (!this->CreateShaderProgram(shaders, SHADER_POINT_LIGHT_PASS_DEF))
 			return false;
 
 		int p = (int)GBuffer::TexTypes::Position;
@@ -242,13 +241,11 @@ bool ResourceManager::loadDefaultDeferredShaders()
 		int n = (int)GBuffer::TexTypes::Normal;
 		float matSpec = 0.1f;
 
-		m_Shaders[STD_DEF_PNT_LIGHT_SHADER]->Use();
-		m_Shaders[STD_DEF_PNT_LIGHT_SHADER]->SetUniformValue<int>("u_PositionMap", &p);
-		m_Shaders[STD_DEF_PNT_LIGHT_SHADER]->SetUniformValue<int>("u_ColourMap", &d);
-		m_Shaders[STD_DEF_PNT_LIGHT_SHADER]->SetUniformValue<int>("u_NormalMap", &n);
-		m_Shaders[STD_DEF_PNT_LIGHT_SHADER]->SetUniformValue<Vec2>("u_ScreenSize", &screenSize);
-		m_Shaders[STD_DEF_PNT_LIGHT_SHADER]->SetUniformValue<float>("u_MatSpecularIntensity", &matSpec);
-		m_Shaders[STD_DEF_PNT_LIGHT_SHADER]->SetUniformValue<float>("u_SpecularPower", &matSpec);
+		m_Shaders[SHADER_POINT_LIGHT_PASS_DEF]->Use();
+		m_Shaders[SHADER_POINT_LIGHT_PASS_DEF]->SetUniformValue<int>("u_PositionMap", &p);
+		m_Shaders[SHADER_POINT_LIGHT_PASS_DEF]->SetUniformValue<int>("u_ColourMap", &d);
+		m_Shaders[SHADER_POINT_LIGHT_PASS_DEF]->SetUniformValue<int>("u_NormalMap", &n);
+		m_Shaders[SHADER_POINT_LIGHT_PASS_DEF]->SetUniformValue<Vec2>("u_ScreenSize", &screenSize);
 	}
 
 	// ---- Std Dir Light Shader (Def) ----
@@ -265,7 +262,7 @@ bool ResourceManager::loadDefaultDeferredShaders()
 		shaders.push_back(vert);
 		shaders.push_back(frag);
 
-		if (!this->CreateShaderProgram(shaders, STD_DEF_DIR_LIGHT_SHADER))
+		if (!this->CreateShaderProgram(shaders, SHADER_DIR_LIGHT_PASS_DEF))
 			return false;
 
 		int p = (int)GBuffer::TexTypes::Position;
@@ -273,14 +270,12 @@ bool ResourceManager::loadDefaultDeferredShaders()
 		int n = (int)GBuffer::TexTypes::Normal;
 		float matSpec = 0.2f;
 
-		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->Use();
+		m_Shaders[SHADER_DIR_LIGHT_PASS_DEF]->Use();
 
-		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<int>("u_PositionMap", &p);
-		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<int>("u_ColourMap", &d);
-		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<int>("u_NormalMap", &n);
-		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<Vec2>("u_ScreenSize", &screenSize);
-		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<float>("u_MatSpecularIntensity", &matSpec);
-		m_Shaders[STD_DEF_DIR_LIGHT_SHADER]->SetUniformValue<float>("u_SpecularPower", &matSpec);
+		m_Shaders[SHADER_DIR_LIGHT_PASS_DEF]->SetUniformValue<int>("u_PositionMap", &p);
+		m_Shaders[SHADER_DIR_LIGHT_PASS_DEF]->SetUniformValue<int>("u_ColourMap", &d);
+		m_Shaders[SHADER_DIR_LIGHT_PASS_DEF]->SetUniformValue<int>("u_NormalMap", &n);
+		m_Shaders[SHADER_DIR_LIGHT_PASS_DEF]->SetUniformValue<Vec2>("u_ScreenSize", &screenSize);
 	}
 
 	return true;
@@ -289,21 +284,21 @@ bool ResourceManager::loadDefaultDeferredShaders()
 bool ResourceManager::loadDefaultTextures()
 {
 	bool success = true;
-	success &= this->LoadTexture("../resources/textures/male_body_low_albedo.tga", MALE_TEX1, GL_TEXTURE0);
-	success &= this->LoadTexture("../resources/textures/male_body_high_albedo.tga", MALE_TEX2, GL_TEXTURE0);
-	success &= this->LoadTexture("../resources/textures/dino_diffuse.tga", DINO_TEX, GL_TEXTURE0);
-	success &= this->LoadTexture("../resources/textures/terrain.tga", WALL_TEX, GL_TEXTURE0);
-	success &= this->LoadTexture("../resources/textures/bricks/bricks.tga", BRICK_TEX, GL_TEXTURE0);
-	success &= this->LoadTexture("../resources/textures/bricks/bricks_normal.tga", BRICK_NORM_TEX, GL_TEXTURE2);
-	success &= this->LoadTexture("../resources/textures/default_normal_map.tga", FAKE_NORMAL_TEX, GL_TEXTURE2);
-	success &= this->LoadTexture("../resources/textures/billboards/grass.tga", TREE_BILLBOARD_TEX, GL_TEXTURE0);
+	success &= this->LoadTexture("../resources/textures/male_body_low_albedo.tga", TEX_MALE_LOW, GL_TEXTURE0);
+	success &= this->LoadTexture("../resources/textures/male_body_high_albedo.tga", TEX_MALE_HIGH, GL_TEXTURE0);
+	success &= this->LoadTexture("../resources/textures/dino_diffuse.tga", TEX_DINO, GL_TEXTURE0);
+	success &= this->LoadTexture("../resources/textures/terrain.tga", TEX_GRASS, GL_TEXTURE0);
+	success &= this->LoadTexture("../resources/textures/bricks/bricks.tga", TEX_BRICKS, GL_TEXTURE0);
+	success &= this->LoadTexture("../resources/textures/bricks/bricks_normal.tga", TEX_BRICKS_NORMAL, GL_TEXTURE2);
+	success &= this->LoadTexture("../resources/textures/default_normal_map.tga", TEX_FAKE_NORMAL, GL_TEXTURE2);
+	success &= this->LoadTexture("../resources/textures/billboards/grass.tga", TEX_GRASS_BILLBOARD, GL_TEXTURE0);
 
-	success &= this->LoadTexture("../resources/textures/terrain/fungus.tga", TERRAIN1_TEX, GL_TEXTURE0);
-	success &= this->LoadTexture("../resources/textures/terrain/sand_grass.tga", TERRAIN2_TEX, GL_TEXTURE1);
-	success &= this->LoadTexture("../resources/textures/terrain/rock.tga", TERRAIN3_TEX, GL_TEXTURE2);
-	success &= this->LoadTexture("../resources/textures/terrain/sand.tga", TERRAIN4_TEX, GL_TEXTURE3);
-	success &= this->LoadTexture("../resources/textures/terrain/path.tga", TERRAIN5_TEX, GL_TEXTURE4);
-	success &= this->LoadTexture("../resources/textures/noise.tga", LAVA_NOISE_TEX, GL_TEXTURE0);
+	success &= this->LoadTexture("../resources/textures/terrain/fungus.tga", TEX_TERRAIN1, GL_TEXTURE0);
+	success &= this->LoadTexture("../resources/textures/terrain/sand_grass.tga", TEX_TERRAIN2, GL_TEXTURE1);
+	success &= this->LoadTexture("../resources/textures/terrain/rock.tga", TEX_TERRAIN3, GL_TEXTURE2);
+	success &= this->LoadTexture("../resources/textures/terrain/sand.tga", TEX_TERRAIN4, GL_TEXTURE3);
+	success &= this->LoadTexture("../resources/textures/terrain/path.tga", TEX_TERRAIN5, GL_TEXTURE4);
+	success &= this->LoadTexture("../resources/textures/noise.tga", TEX_NOISE, GL_TEXTURE0);
 
 	std::string s[6] =
 	{
@@ -315,7 +310,7 @@ bool ResourceManager::loadDefaultTextures()
 		"../resources/textures/skybox/frontr.tga"
 	};
 
-	success &= this->LoadCubeMap(s, SKYBOX_TEX, GL_TEXTURE0);
+	success &= this->LoadCubeMap(s, TEX_SKYBOX_DEFAULT, GL_TEXTURE0);
 
 	return success;
 }
@@ -323,18 +318,18 @@ bool ResourceManager::loadDefaultTextures()
 bool ResourceManager::loadDefaultMeshes()
 {
 	bool success = true;
-	success &= LoadMesh("cube.obj", CUBE_MESH, false, false);
-	success &= LoadMesh("quad.obj", QUAD_MESH, false, false);
-	success &= LoadMesh("sphere.obj", SPHERE_MESH, false, false);
-	success &= LoadMesh("male.obj", MALE_MESH, false, false);
-	success &= LoadMesh("dino.obj", DINO_MESH, false, false);
+	success &= LoadMesh("cube.obj", MESH_ID_CUBE, false, false);
+	success &= LoadMesh("quad.obj", MESH_ID_QUAD, false, false);
+	success &= LoadMesh("sphere.obj", MESH_ID_SPHERE, false, false);
+	success &= LoadMesh("male.obj", MESH_ID_MALE, false, false);
+	success &= LoadMesh("dino.obj", MESH_ID_DINO, false, false);
 	return success;
 }
 
 bool ResourceManager::loadDefaultFonts()
 {
 	bool success = true;
-	success &= this->LoadFont("../resources/fonts/cour.ttf", FONT_COUR, 24);
+	success &= this->LoadFont("../resources/fonts/cour.ttf", FONT_COURIER, 24);
 	return success;
 }
 
@@ -540,4 +535,3 @@ void ResourceManager::Close()
 	}
 	m_Fonts.clear();
 }
-

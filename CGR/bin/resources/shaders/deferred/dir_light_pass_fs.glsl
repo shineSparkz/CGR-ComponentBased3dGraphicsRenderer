@@ -1,5 +1,8 @@
 #version 450
 
+#define MAX_SPOTS 10
+#define MAX_POINTS 10
+
 struct DirectionLight
 {
 	vec3 direction;
@@ -12,9 +15,9 @@ struct Spotlight
 	vec3    direction;     
 	vec3    intensity;      
     float   coneAngle;       
-    float   aConstant;      //!< The constant co-efficient for the attenuation formula.
-    float   aLinear;        //!< The linear co-efficient for the attenuation formula.
-    float   aQuadratic;     //!< The quadratic co-efficient for the attenuation formula.
+    float   aConstant;      
+    float   aLinear;        
+    float   aQuadratic;
 	int 	switched_on;
 };
 
@@ -27,10 +30,6 @@ struct PointLight
     float   aLinear;
     float   aQuadratic;
 };
-
-
-#define MAX_SPOTS 10
-#define MAX_POINTS 10
 
 layout(binding = 0, std140) uniform Lights
 {

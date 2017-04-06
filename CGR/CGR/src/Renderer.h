@@ -33,6 +33,12 @@ class UniformBlockManager;
 // Get rid
 class ShadowMapTechnique;
 
+struct DeferredPointLightInfo
+{
+	Vec3 pos;
+	float range;
+};
+
 class Renderer : public Singleton<Renderer>
 {
 public:
@@ -53,6 +59,8 @@ public:
 	int GetDirLightIndex();
 	int GetSpotLightIndex();
 	int GetPointLightIndex();
+
+	void UpdatePointLight(int index, const Vec3& position, float range);
 
 private:
 	void forwardRender(std::vector<GameObject*>& gameObjects);
@@ -79,10 +87,13 @@ private:
 	BillboardList*			m_TreeBillboardList;
 	Terrain*				m_Terrain;
 
+
 	int						m_NumDirLightsInScene;
 	int						m_NumPointLightsInScene;
 	int						m_NumSpotLightsInScene;
-	bool					m_DeferredRender{ true };
+	bool					m_DeferredRender{ false };
+
+	std::vector<DeferredPointLightInfo>	m_PointsInfo;
 };
 
 

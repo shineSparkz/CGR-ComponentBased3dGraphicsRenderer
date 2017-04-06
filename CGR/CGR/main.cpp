@@ -2,7 +2,7 @@
 
 #include "src\SponzaScene.h"
 #include "src\OrthoScene.h"
-
+#include "src\IndoorLevelScene.h"
 
 /*
 List
@@ -35,7 +35,8 @@ int main(void)
 	if (app->Init(1280, 720, true, "CGR Render Engine - Alex Spellman", 0, 16, 9, 4, 5))
 	{
 		// User Adds scenes here
-		if (app->AddScene<SponzaScene>(new SponzaScene("ortho")) != GE_OK)
+		if (app->AddScene<IndoorLevelScene>(new IndoorLevelScene("ortho")) != GE_OK)
+		//if(app->AddScene<SponzaScene>(new SponzaScene("ortho")) != GE_OK)
 		{
 			SAFE_CLOSE(app);
 			return -1;

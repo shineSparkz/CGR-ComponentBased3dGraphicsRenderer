@@ -82,7 +82,7 @@ bool Texture::create_tex2D(GLuint* textureOut, int active, GLint internalformat,
 		data
 		);
 
-	OpenGLLayer::check_GL_error();
+//	OpenGLLayer::check_GL_error();
 
 	if (mips)
 	{
@@ -127,7 +127,8 @@ bool Texture::Create(Image* images[6])
 
 bool Texture::Create(Image* img)
 {
-	GLenum pixel_formats[] = { 0, GL_RED, GL_RG, GL_BGR, GL_BGRA };
+	// TODO : Need to fix this hack, it's hardcoded for JPEG's to be GL_RGB, and TGA to be GLBGRA
+	GLenum pixel_formats[] = { 0, GL_RED, GL_RG, GL_RGB, GL_BGRA };
 
 	// If tex2D
 	if (!create_tex2D(

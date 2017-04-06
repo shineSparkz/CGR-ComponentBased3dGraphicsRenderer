@@ -84,6 +84,7 @@ bool PointLightC::SetLight(const Vec3& position,
 	m_aLinear = aLinear;
 	m_aQuadratic = aQuadratic;
 	m_LightValid = GE_TRUE;
+	m_Range = calcPointLightBSphere();
 
 	m_LightBlock->SetValue("pointLights[" + std::to_string(m_LightIndex) + "].position", &m_Position);
 	m_LightBlock->SetValue("pointLights[" + std::to_string(m_LightIndex) + "].intensity", &m_Intensity);
@@ -94,6 +95,7 @@ bool PointLightC::SetLight(const Vec3& position,
 
 	int num_points = m_LightIndex + 1;
 	m_LightBlock->SetValue("numPoints", &num_points);
+	Renderer::Instance()->UpdatePointLight(m_LightIndex, m_Position, m_Range);
 }
 
 void PointLightC::SetPosition(const Vec3& pos)
@@ -102,6 +104,7 @@ void PointLightC::SetPosition(const Vec3& pos)
 	{
 		m_Position = pos;
 		m_LightBlock->SetValue("pointLights[" + std::to_string(m_LightIndex) + "].position", &m_Position);
+		Renderer::Instance()->UpdatePointLight(m_LightIndex, m_Position, m_Range);
 	}
 }
 
@@ -111,6 +114,7 @@ void PointLightC::SetPositionX(float x)
 	{
 		m_Position.x = x;
 		m_LightBlock->SetValue("pointLights[" + std::to_string(m_LightIndex) + "].position", &m_Position);
+		Renderer::Instance()->UpdatePointLight(m_LightIndex, m_Position, m_Range);
 	}
 }
 
@@ -120,6 +124,7 @@ void PointLightC::SetPositionY(float y)
 	{
 		m_Position.y = y;
 		m_LightBlock->SetValue("pointLights[" + std::to_string(m_LightIndex) + "].position", &m_Position);
+		Renderer::Instance()->UpdatePointLight(m_LightIndex, m_Position, m_Range);
 	}
 }
 
@@ -129,6 +134,7 @@ void PointLightC::SetPositionZ(float z)
 	{
 		m_Position.z = z;
 		m_LightBlock->SetValue("pointLights[" + std::to_string(m_LightIndex) + "].position", &m_Position);
+		Renderer::Instance()->UpdatePointLight(m_LightIndex, m_Position, m_Range);
 	}
 }
 
@@ -138,6 +144,8 @@ void PointLightC::SetColour(const Vec3& newCol)
 	{
 		m_Intensity = newCol;
 		m_LightBlock->SetValue("pointLights[" + std::to_string(m_LightIndex) + "].intensity", &m_Intensity);
+		m_Range = calcPointLightBSphere();
+		Renderer::Instance()->UpdatePointLight(m_LightIndex, m_Position, m_Range);
 	}
 }
 
@@ -147,6 +155,8 @@ void PointLightC::SetColR(float r)
 	{
 		m_Intensity.r = r;
 		m_LightBlock->SetValue("pointLights[" + std::to_string(m_LightIndex) + "].intensity", &m_Intensity);
+		m_Range = calcPointLightBSphere();
+		Renderer::Instance()->UpdatePointLight(m_LightIndex, m_Position, m_Range);
 	}
 }
 
@@ -156,6 +166,8 @@ void PointLightC::SetColG(float g)
 	{
 		m_Intensity.g = g;
 		m_LightBlock->SetValue("pointLights[" + std::to_string(m_LightIndex) + "].intensity", &m_Intensity);
+		m_Range = calcPointLightBSphere();
+		Renderer::Instance()->UpdatePointLight(m_LightIndex, m_Position, m_Range);
 	}
 }
 
@@ -165,5 +177,16 @@ void PointLightC::SetColB(float b)
 	{
 		m_Intensity.b = b;
 		m_LightBlock->SetValue("pointLights[" + std::to_string(m_LightIndex) + "].intensity", &m_Intensity);
+		m_Range = calcPointLightBSphere();
+		Renderer::Instance()->UpdatePointLight(m_LightIndex, m_Position, m_Range);
 	}
+}
+
+float PointLightC::calcPointLightBSphere()
+{
+	//float lightMax = std::fmaxf(std::fmaxf(m_Intensity.r, m_Intensity.g), m_Intensity.b);
+	//return(-m_aLinear + std::sqrtf(m_aLinear * m_aLinear - 4 * m_aQuadratic * (m_aConstant - (256.0f / 5.0f) * lightMax))) / (2 * m_aQuadratic);
+
+	float maxChannel = fmax(fmax(m_Intensity.x, m_Intensity.y), m_Intensity.z);
+	return (-m_aLinear + sqrtf(m_aLinear * m_aLinear -	4 * m_aQuadratic * (m_aQuadratic - 256 * maxChannel * m_AmbientIntensity))) / (2 * m_aQuadratic);
 }
