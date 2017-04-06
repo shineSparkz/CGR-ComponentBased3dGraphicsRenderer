@@ -54,7 +54,6 @@ Renderer::Renderer() :
 	m_QueryTime(0),
 	m_Frames(0),
 	m_Gbuffer(nullptr),
-	m_TreeBillboardList(nullptr),
 	m_Terrain(nullptr),
 	m_UniformBlockManager(nullptr),
 	m_NumDirLightsInScene(-1),
@@ -74,8 +73,6 @@ bool Renderer::Init()
 		ss << "Renderer started..... system using: " << rendererS << ",  " << vendorS << ", GL Version: " << versionS;
 		WRITE_LOG(ss.str(), "info");
 	}
-
-	m_DeferredRender = false;
 
 	m_PointsInfo.resize(MAX_POINTS);
 
@@ -106,21 +103,6 @@ bool Renderer::Init()
 		500
 	);
 
-	// Need material and textures for bill board creation, which again I am not too happy with
-	m_TreeBillboardList = new BillboardList();
-	success &= m_TreeBillboardList->InitWithPositions(m_ResManager->GetShader(SHADER_BILLBOARD_FWD), TEX_GRASS_BILLBOARD, 0.5f, billboardPositions);
-
-	/*
-	m_TreeBillboardList->Init(m_ResManager->GetShader(BILLBOARD_SHADER), TREE_BILLBOARD_TEX, 
-		0.5f,	// scale
-		10,		// numX
-		10,		// numY
-		2.0f,	// spacing
-		14.0f,	// offset pos
-		-1.4f	// ypos
-	);
-	*/
-	
 	return success;
 }
 
@@ -222,7 +204,7 @@ void Renderer::Render(std::vector<GameObject*>& gameObjects)
 			i->second->Bind();
 	}
 
-	if (m_DeferredRender)
+	if (m_ShadingMode == ShadingMode::Deferred)
 		deferredRender(gameObjects);
 	else
 		forwardRender(gameObjects);
@@ -238,6 +220,19 @@ void Renderer::Render(std::vector<GameObject*>& gameObjects)
 	// -- Render Text ----
 	RenderText(FONT_COURIER, "Frm Time: " + util::to_str(getFrameTime(TimeMeasure::Seconds)), 8, Screen::Instance()->FrameBufferHeight() - 16.0f, FontAlign::Left, Colour::Red());
 
+	// Wait until everything is drawn first
+	if (m_ShadingModePending)
+	{
+		glFlush();
+
+		if (m_ShadingMode == ShadingMode::Deferred)
+		{
+			glDepthMask(GL_TRUE);
+		}
+
+		m_ShadingMode = m_PendingShadingMode;
+		m_ShadingModePending = false;
+	}
 }
 
 void Renderer::RenderText(size_t fontId, const std::string& txt, float x, float y, FontAlign fa, const Colour& colour)
@@ -310,6 +305,36 @@ void Renderer::RenderText(size_t fontId, const std::string& txt, float x, float 
 	glDisable(GL_BLEND);
 }
 
+void Renderer::RenderBillboardList(BillboardList* billboard)
+{
+	if (billboard && m_CameraPtr)
+	{
+		if (billboard->m_Material)
+		{
+			billboard->m_Material->Use();
+			billboard->m_Material->SetUniformValue<float>("u_Scale", &billboard->m_BillboardScale);
+			billboard->m_Material->SetUniformValue<Vec3>("u_camera_position", &m_CameraPtr->Position());
+			billboard->m_Material->SetUniformValue<Mat4>("u_view_proj_xform", &m_CameraPtr->ProjXView());
+		}
+
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LEQUAL);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		// Bind the texture we get from renderer. This needs sorting too
+		Texture* t = this->GetTexture(billboard->m_TextureIndex);
+		if (t) t->Bind();
+
+		// I think we shoulf be asking renderer to do this 
+		glBindVertexArray(billboard->m_VAO);
+		glDrawArrays(GL_POINTS, 0, (GLsizei)billboard->m_NumInstances);
+
+		glDisable(GL_DEPTH_TEST);
+		glDisable(GL_BLEND);
+	}
+}
+
 void Renderer::WindowSizeChanged(int w, int h)
 {
 	m_CameraPtr->SetAspect(static_cast<float>(w / h));
@@ -324,7 +349,6 @@ void Renderer::Close()
 {
 	m_Query.Clean();
 
-	SAFE_DELETE(m_TreeBillboardList);
 	SAFE_DELETE(m_Terrain);
 	SAFE_DELETE(m_Gbuffer);
 
@@ -388,12 +412,6 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 			this->renderMesh(mr);
 		}
 	}
-
-	// TODO : Make terrain and bill boards a game object
-
-	// Render Terrain
-	//m_Terrain->Render(this, m_CameraPtr, Vec3(1.0f));
-	//m_TreeBillboardList->Render(this, m_CameraPtr->ProjXView(), m_CameraPtr->Position());
 }
 
 void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
@@ -405,9 +423,6 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 		// Skybox
 		if (m_CameraPtr->HasSkybox())
 			renderSkybox(m_CameraPtr);
-
-		// Terrain
-		//m_TreeBillboardList->Render(this, m_Camera->Projection() * m_Camera->View(), m_Camera->Position(), m_Camera->Right());
 
 		// -- Deferred Geom pass ---
 		m_Gbuffer->BindForGeomPass();
@@ -434,11 +449,6 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 			{
 				sp->Use();
 				sp->SetUniformValue<Mat4>("u_world_xform", &(t->GetModelXform()));
-
-				// This is terrible....
-				//float elapsed = Time::ElapsedTime();
-				//sp->SetUniformValue<float>("u_GlobalTime", &elapsed);
-
 				// Render Mesh here
 				this->renderMesh(mr);
 			}
@@ -618,7 +628,7 @@ void Renderer::renderMesh(MeshRenderer* meshInstance)
 
 void Renderer::renderSkybox(BaseCamera* cam)
 {
-	if(m_DeferredRender)
+	if(m_ShadingMode == ShadingMode::Deferred)
 		glEnable(GL_DEPTH_TEST);
 	
 	// Use skybox material
@@ -669,25 +679,22 @@ void Renderer::renderSkybox(BaseCamera* cam)
 	glCullFace(oldCullMode);
 	glDepthFunc(oldDepthFunc);
 
-	if(m_DeferredRender)
+	if(m_ShadingMode == ShadingMode::Deferred)
 		glDisable(GL_DEPTH_TEST);
 }
 
 bool Renderer::setFrameBuffers()
 {
-	if (m_DeferredRender)
+	if (!m_Gbuffer)
 	{
-		if (!m_Gbuffer)
-		{
-			m_Gbuffer = new GBuffer();
-		}
-
-		if (!m_Gbuffer->Init())
-		{
-			WRITE_LOG("Gbuffer load failed", "error");
-			return false;
-		}	
+		m_Gbuffer = new GBuffer();
 	}
+
+	if (!m_Gbuffer->Init())
+	{
+		WRITE_LOG("Gbuffer load failed", "error");
+		return false;
+	}	
 
 	return true;
 }
@@ -703,28 +710,24 @@ bool Renderer::setStaticDefaultShaderValues()
 	//--------------------------------------------------------------------------------
 
 	ShaderProgram* dsp = m_ResManager->GetShader(SHADER_DIR_LIGHT_PASS_DEF);
-	dsp->Use();
-	// TODO : This would change on screensize
-	Vec2 screenSize = Vec2((float)Screen::Instance()->FrameBufferWidth(), (float)Screen::Instance()->FrameBufferHeight());
-	dsp->SetUniformValue<Vec2>("u_ScreenSize", &screenSize);
+	if (dsp)
+	{
+		dsp->Use();
+		// TODO : This would change on screensize
+		Vec2 screenSize = Vec2((float)Screen::Instance()->FrameBufferWidth(), (float)Screen::Instance()->FrameBufferHeight());
+		dsp->SetUniformValue<Vec2>("u_ScreenSize", &screenSize);
+	}
 
 	// Set for terrain in forward mode
-	if (!m_DeferredRender)
+	ShaderProgram* terrainShader = m_ResManager->GetShader(SHADER_TERRAIN_DEF);
+	if (terrainShader)
 	{
-		ShaderProgram* terrainShader = m_ResManager->GetShader(SHADER_TERRAIN_DEF);
 		terrainShader->Use();
-
-		// TODO : Add UBO to terrain shaders
-
-		// Dir light
-		//terrainShader->SetUniformValue<Vec3>("u_DirectionalLight.color", &m_DirLight.intensity);
-		//terrainShader->SetUniformValue<Vec3>("u_DirectionalLight.dir", &m_DirLight.direction);
-		//terrainShader->SetUniformValue<float>("u_DirectionalLight.ambient_intensity", &m_DirLight.ambient_intensity);
 
 		for (int i = 0; i < 5; ++i)
 		{
 			int val = GL_TEXTURE0 + i;
-			terrainShader->SetUniformValue<int>("u_Sampler"+std::to_string(i), &val);
+			terrainShader->SetUniformValue<int>("u_Sampler" + std::to_string(i), &val);
 		}
 	}
 
@@ -777,6 +780,36 @@ void Renderer::UpdatePointLight(int index, const Vec3& position, float range)
 		m_PointsInfo[index].pos = position;
 		m_PointsInfo[index].range = range;
 	}
+}
+
+void Renderer::ToggleShadingMode()
+{
+	if (m_ShadingMode == ShadingMode::Deferred)
+	{
+		m_PendingShadingMode = ShadingMode::Forward;
+	}
+	else
+	{
+		m_PendingShadingMode = ShadingMode::Deferred;
+	}
+
+	m_ShadingModePending = true;
+}
+
+void Renderer::SetShadingMode(ShadingMode mode)
+{
+	m_PendingShadingMode = mode;
+	m_ShadingModePending = true;
+}
+
+ShadingMode Renderer::GetShadingMode() const
+{
+	return m_ShadingMode;
+}
+
+std::string Renderer::GetShadingModeStr() const
+{
+	return m_ShadingMode == ShadingMode::Forward ? "Renderer Shading mode set to : Forward" : "Renderer Shading mode set to: Deferred";
 }
 
 //------------------------

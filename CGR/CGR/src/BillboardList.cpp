@@ -47,24 +47,14 @@ bool BillboardList::Init(ShaderProgram* mat, size_t textureIndex, float scale, s
 
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	//glVertexAttribPointer(
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
-	// Should this really be here? Or just in material itself
-	if (m_Material)
-	{
-		m_Material->Use();
-		int sampler = 0;
-		m_Material->SetUniformValue<int>("u_TextureMap", &sampler);
-	}
-
-	return true;
+	return this->SetShaderProgram(mat);
 }
 
 bool BillboardList::InitWithPositions(ShaderProgram* mat, size_t texture, float setScale, const std::vector<Vec3>& positions)
 {
-	m_Material = mat;
 	m_TextureIndex = texture;
 	m_BillboardScale = setScale;
 
@@ -78,45 +68,22 @@ bool BillboardList::InitWithPositions(ShaderProgram* mat, size_t texture, float 
 
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	//glVertexAttribPointer(
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
-	// Should this really be here? Or just in material itself
+	return this->SetShaderProgram(mat);
+}
+
+bool BillboardList::SetShaderProgram(ShaderProgram* shader)
+{
+	m_Material = shader;
 	if (m_Material)
 	{
 		m_Material->Use();
 		int sampler = 0;
 		m_Material->SetUniformValue<int>("u_TextureMap", &sampler);
+		return true;
 	}
 
-	return true;
-}
-
-void BillboardList::Render(Renderer* renderer, const Mat4& viewProj, const Vec3& camPos)
-{
-	// This should be set globally, not in this one billboard instance, 
-	// what if we have a bunch of different billboards, god this guy is naff!
-	m_Material->Use();
-
-	m_Material->SetUniformValue<Mat4>("u_ViewProjXform", &viewProj);
-	m_Material->SetUniformValue<Vec3>("u_CamPos", &camPos);
-	m_Material->SetUniformValue<float>("u_Scale", &m_BillboardScale);
-
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LEQUAL);
-
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-	// Bind the texture we get from renderer. This needs sorting too
-	Texture* t = renderer->GetTexture(m_TextureIndex);
-	if (t)t->Bind();
-
-	// I think we shoulf be asking renderer to do this 
-	glBindVertexArray(m_VAO);
-	glDrawArrays(GL_POINTS, 0, (GLsizei)m_NumInstances);
-
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_BLEND);
+	return false;
 }

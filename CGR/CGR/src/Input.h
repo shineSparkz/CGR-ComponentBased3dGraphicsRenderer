@@ -5,6 +5,7 @@
 #include "Singleton.h"
 #include "gl_headers.h"
 #include "types.h"
+#include <map>
 
 class RenderWindow;
 struct GLFWwindow;
@@ -38,6 +39,8 @@ public:
 	~Input();
 
 	int Init();
+
+	static std::map<int, int> Keys;
 
 private:
 	void GetMousePosition(double& x, double& y);

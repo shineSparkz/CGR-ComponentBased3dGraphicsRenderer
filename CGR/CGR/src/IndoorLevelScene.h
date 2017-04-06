@@ -5,6 +5,7 @@
 #include "IScene.h"
 
 class GameObject;
+class BillboardList;
 
 class IndoorLevelScene: public IScene
 {
@@ -19,7 +20,8 @@ public:
 	virtual void Render(Renderer* renderer) override;
 
 private:
-	std::vector<GameObject*> m_GameObjects;
+	std::vector<GameObject*>	m_GameObjects;
+	BillboardList*				m_TreeBillboardList;
 };
 
 #endif

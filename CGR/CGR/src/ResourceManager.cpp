@@ -44,13 +44,13 @@ bool ResourceManager::loadDefaultForwardShaders()
 		Shader geom_vs(GL_VERTEX_SHADER);
 		Shader fwd_fs(GL_FRAGMENT_SHADER);
 
-		if (!geom_vs.LoadShader("../resources/shaders/new_lights/geom_vs.glsl"))
+		if (!geom_vs.LoadShader("../resources/shaders/new_lights/forward_geom_vs.glsl"))
 		{
 			WRITE_LOG("Geom shader failed compile", "error");
 			return false;
 		}
 
-		if (!fwd_fs.LoadShader("../resources/shaders/new_lights/forward_render_fs.glsl"))
+		if (!fwd_fs.LoadShader("../resources/shaders/new_lights/forward_lights_fs.glsl"))
 		{
 			WRITE_LOG("Forward render failed compile", "error");
 			return false;
@@ -72,8 +72,8 @@ bool ResourceManager::loadDefaultForwardShaders()
 	{
 		Shader font_vert(GL_VERTEX_SHADER);
 		Shader font_frag(GL_FRAGMENT_SHADER);
-		if (!font_vert.LoadShader("../resources/shaders/font_vs.glsl")) { return false; }
-		if (!font_frag.LoadShader("../resources/shaders/font_fs.glsl")) { return false; }
+		if (!font_vert.LoadShader("../resources/shaders/font/font_vs.glsl")) { return false; }
+		if (!font_frag.LoadShader("../resources/shaders/font/font_fs.glsl")) { return false; }
 		font_vert.AddAttribute(POS_ATTR);
 		
 		std::vector<Shader> shaders;
@@ -90,8 +90,8 @@ bool ResourceManager::loadDefaultForwardShaders()
 	{
 		Shader vert(GL_VERTEX_SHADER);
 		Shader frag(GL_FRAGMENT_SHADER);
-		if (!vert.LoadShader("../resources/shaders/skybox_vs.glsl")) { return false; }
-		if (!frag.LoadShader("../resources/shaders/skybox_fs.glsl")) { return false; }
+		if (!vert.LoadShader("../resources/shaders/skybox/skybox_vs.glsl")) { return false; }
+		if (!frag.LoadShader("../resources/shaders/skybox/skybox_fs.glsl")) { return false; }
 		vert.AddAttribute(POS_ATTR);
 		std::vector<Shader> shaders;
 		shaders.push_back(vert);
@@ -111,9 +111,9 @@ bool ResourceManager::loadDefaultForwardShaders()
 		Shader vert(GL_VERTEX_SHADER);
 		Shader geom(GL_GEOMETRY_SHADER);
 		Shader frag(GL_FRAGMENT_SHADER);
-		if (!vert.LoadShader("../resources/shaders/billboard_vs.glsl")) { return false; }
-		if (!geom.LoadShader("../resources/shaders/billboard_gs.glsl")) { return false; }
-		if (!frag.LoadShader("../resources/shaders/billboard_fs.glsl")) { return false; }
+		if (!vert.LoadShader("../resources/shaders/billboard/billboard_vs.glsl")) { return false; }
+		if (!geom.LoadShader("../resources/shaders/billboard/billboard_gs.glsl")) { return false; }
+		if (!frag.LoadShader("../resources/shaders/billboard/billboard_forward_fs.glsl")) { return false; }
 		vert.AddAttribute(POS_ATTR);
 
 		std::vector<Shader> shaders;
@@ -138,8 +138,8 @@ bool ResourceManager::loadDefaultDeferredShaders()
 	{
 		Shader vert(GL_VERTEX_SHADER);
 		Shader frag(GL_FRAGMENT_SHADER);
-		if (!vert.LoadShader("../resources/shaders/terrain_vs.glsl")) { return false; }
-		if (!frag.LoadShader("../resources/shaders/terrain_fs.glsl")) { return false; }
+		if (!vert.LoadShader("../resources/shaders/terrain/terrain_vs.glsl")) { return false; }
+		if (!frag.LoadShader("../resources/shaders/terrain/terrain_fs.glsl")) { return false; }
 		vert.AddAttribute(POS_ATTR);
 		vert.AddAttribute(NORM_ATTR);
 		vert.AddAttribute(TEX_ATTR);
@@ -157,6 +157,7 @@ bool ResourceManager::loadDefaultDeferredShaders()
 			m_Shaders[SHADER_TERRAIN_DEF]->SetUniformValue<int>("u_Sampler" + std::to_string(i), &i);
 		}
 	}
+
 
 	// ---- Lava Shader (Def) ----
 	{

@@ -1,5 +1,6 @@
 #include "IndoorLevelScene.h"
 
+#include "Input.h"
 #include "Renderer.h"
 #include "Mesh.h"
 #include "Camera.h"
@@ -10,6 +11,7 @@
 #include "Transform.h"
 #include "MeshRenderer.h"
 #include "ResourceManager.h"
+#include "BillboardList.h"
 
 #include "CgrEngine.h"
 #include "DirectionalLight.h"
@@ -17,7 +19,9 @@
 #include "SpotLight.h"
 
 IndoorLevelScene::IndoorLevelScene(const std::string& name) :
-	IScene(name)
+	IScene(name),
+	m_GameObjects(),
+	m_TreeBillboardList(nullptr)
 {
 }
 
@@ -67,7 +71,7 @@ int IndoorLevelScene::OnSceneLoad()
 	MeshRenderer* levelMr = level->AddComponent<MeshRenderer>();
 	levelMr->SetMesh(MESH_ID_LEVEL, Renderer::Instance()->GetNumSubMeshesInMesh(MESH_ID_LEVEL));
 	levelMr->AddTexture(TEX_BRICKS);
-	levelMr->m_ShaderIndex = SHADER_GEOM_PASS_DEF;
+	levelMr->SetShader(SHADER_GEOM_PASS_DEF);
 	m_GameObjects.push_back(level);
 
 	// Point Lights
@@ -91,6 +95,23 @@ int IndoorLevelScene::OnSceneLoad()
 	dl->SetLight(Vec3(0, -1, 0), Vec3(0.7f));
 	m_GameObjects.push_back(dlight);
 
+	// Load Billboard list
+	if (!m_TreeBillboardList)
+	{
+		m_TreeBillboardList = new BillboardList();
+	
+		// Need material and textures for bill board creation, which again I am not too happy with
+		//success &= m_TreeBillboardList->InitWithPositions(m_ResManager->GetShader(SHADER_BILLBOARD_FWD), TEX_GRASS_BILLBOARD, 0.5f, billboardPositions);
+		m_TreeBillboardList->Init(ResourceManager::Instance()->GetShader(SHADER_BILLBOARD_FWD), TEX_GRASS_BILLBOARD,
+			0.5f,	// scale
+			10,		// numX
+			10,		// numY
+			2.0f,	// spacing
+			14.0f,	// offset pos
+			-1.4f	// ypos
+		);
+	}
+
 	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
 	{
 		(*i)->Start();
@@ -107,10 +128,20 @@ void IndoorLevelScene::OnSceneExit()
 		SAFE_CLOSE(m_GameObjects[i]);
 	}
 	m_GameObjects.clear();
+
+	SAFE_DELETE(m_TreeBillboardList);
 }
+
+float timeNow = 0;
 
 void IndoorLevelScene::Update(float dt)
 {
+	if (Input::Keys[GLFW_KEY_P] == GLFW_PRESS && Time::ElapsedTime() - timeNow > 0.5f)
+	{
+		Renderer::Instance()->ToggleShadingMode();
+		timeNow = Time::ElapsedTime();
+	}
+
 	m_GameObjects.back()->GetComponent<DirectionalLightC>()->SetDirectionY(cosf(Time::ElapsedTime() ));
 
 	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
@@ -122,5 +153,8 @@ void IndoorLevelScene::Update(float dt)
 void IndoorLevelScene::Render(Renderer* renderer)
 {
 	renderer->Render(m_GameObjects);
+	renderer->RenderBillboardList(m_TreeBillboardList);
 	renderer->RenderText(FONT_COURIER, "Cam Pos: " + util::vec3_to_str(m_Camera->Position()), 8, 16);
+	renderer->RenderText(FONT_COURIER, Renderer::Instance()->GetShadingModeStr(), 8, 32);
+
 }

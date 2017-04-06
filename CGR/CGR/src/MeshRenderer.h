@@ -18,10 +18,9 @@ public:
 	void Update() override;
 
 	void SetMesh(size_t meshIndex, size_t numSubMeshes);
+	void SetShader(size_t texture);
 	bool AddTexture(size_t texHandle, size_t meshIndex);
 	bool AddTexture(size_t texHandle);
-
-	size_t m_ShaderIndex = 0;
 
 private:
 	friend class Renderer;
@@ -29,6 +28,7 @@ private:
 
 	// Key for resource in hash table
 	size_t MeshIndex;
+	size_t m_ShaderIndex;
 
 	// Keys for textures in resource hash table
 	std::vector<size_t> m_TextureHandles;

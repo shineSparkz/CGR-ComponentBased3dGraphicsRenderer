@@ -39,6 +39,11 @@ struct DeferredPointLightInfo
 	float range;
 };
 
+enum ShadingMode
+{
+	Forward, Deferred
+};
+
 class Renderer : public Singleton<Renderer>
 {
 public:
@@ -47,11 +52,16 @@ public:
 	bool Init();
 	void SceneChange();
 	bool SetSceneData(BaseCamera* camera, const Vec3& ambientLight);
+	void Close();
+
+	void WindowSizeChanged(int w, int h);
+	
 	void Render(std::vector<GameObject*>& gameObjects);
 	void RenderText(size_t fontId, const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White());
-	void WindowSizeChanged(int w, int h);
-	void Close();
-	
+
+	// Render a billboard (forward rendering only)
+	void RenderBillboardList(BillboardList* billboard);
+
 	size_t GetNumSubMeshesInMesh(size_t meshIndex) const;
 	size_t GetNumTextures() const;
 	Texture* GetTexture(size_t index) const;
@@ -61,6 +71,11 @@ public:
 	int GetPointLightIndex();
 
 	void UpdatePointLight(int index, const Vec3& position, float range);
+
+	void ToggleShadingMode();
+	void SetShadingMode(ShadingMode mode);
+	ShadingMode GetShadingMode() const;
+	std::string GetShadingModeStr() const;
 
 private:
 	void forwardRender(std::vector<GameObject*>& gameObjects);
@@ -84,14 +99,17 @@ private:
 	Query					m_Query;
 
 	// Remove these
-	BillboardList*			m_TreeBillboardList;
 	Terrain*				m_Terrain;
 
 
 	int						m_NumDirLightsInScene;
 	int						m_NumPointLightsInScene;
 	int						m_NumSpotLightsInScene;
-	bool					m_DeferredRender{ false };
+
+
+	ShadingMode				m_PendingShadingMode{ ShadingMode::Forward };
+	ShadingMode				m_ShadingMode{ ShadingMode::Forward };
+	bool					m_ShadingModePending{ false };
 
 	std::vector<DeferredPointLightInfo>	m_PointsInfo;
 };

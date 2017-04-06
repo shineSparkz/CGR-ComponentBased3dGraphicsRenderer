@@ -21,6 +21,11 @@ GBuffer::GBuffer() :
 
 GBuffer::~GBuffer()
 {
+	this->Clean();
+}
+
+void GBuffer::Clean()
+{
 	OpenGLLayer::clean_GL_buffer(&m_FBO, 1);
 	OpenGLLayer::clean_GL_texture(&m_DepthTexture, 1);
 	OpenGLLayer::clean_GL_texture(&m_FinalTexture, 1);

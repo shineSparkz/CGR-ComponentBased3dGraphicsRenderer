@@ -39,7 +39,7 @@ int OrthoScene::OnSceneLoad()
 		MeshRenderer* quadMr = quad->AddComponent<MeshRenderer>();
 		quadMr->SetMesh(MESH_ID_QUAD, Renderer::Instance()->GetNumSubMeshesInMesh(MESH_ID_QUAD));
 		quadMr->AddTexture(TEX_GRASS);
-		quadMr->m_ShaderIndex = SHADER_LIGHTING_FWD;
+		quadMr->SetShader(SHADER_LIGHTING_FWD);
 		m_GameObjects.push_back(quad);
 	}
 
@@ -53,7 +53,7 @@ int OrthoScene::OnSceneLoad()
 		MeshRenderer* cube1Mr = cube1->AddComponent<MeshRenderer>();
 		cube1Mr->SetMesh(MESH_ID_CUBE, Renderer::Instance()->GetNumSubMeshesInMesh(MESH_ID_CUBE));
 		cube1Mr->AddTexture(TEX_GRASS);
-		cube1Mr->m_ShaderIndex = SHADER_LIGHTING_FWD;
+		cube1Mr->SetShader(SHADER_LIGHTING_FWD);
 		m_GameObjects.push_back(cube1);
 	}
 

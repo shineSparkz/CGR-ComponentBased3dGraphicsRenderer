@@ -316,11 +316,17 @@ bool Mesh::InitMaterials(const aiScene* pScene, const std::string& filename)
 				std::string fullPath = "../resources/meshes/" + dir + "/" + p;
 
 				// Hack I had to put in for daft cunts that put spaces in directory paths
+				bool didWarn = false;
 				for (int i = 0; i < fullPath.length(); ++i)
 				{
 					if (fullPath[i] == ' ')
 					{
-						WRITE_LOG("NEED TO REPLACE SPACES IN PATH WITH _ for mesh " + fullPath, "warning");
+						if (!didWarn)
+						{
+							WRITE_LOG("NEED TO REPLACE SPACES IN PATH WITH _ for mesh " + fullPath, "warning");
+							didWarn = true;
+						}
+
 						fullPath[i] = '_';
 					}
 				}

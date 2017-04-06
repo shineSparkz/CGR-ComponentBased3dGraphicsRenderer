@@ -7,22 +7,24 @@
 /*
 List
 
-- Fix index issue with uniform buffer
-- Make it so can have array in block
-- Add spots and points to block
-- Update all or any shaders that canm use the block
-
-- Reimplement shadows
-- Have shadows for multiple lights
-- reimplement normal maps
-- Change all default meshes to use tangents
-
-- Tidy all shaders to share blocks
-
-- Use sub routines to toggle lighting
-
+- Tidy up terrain shader
+- Refactor Terrain stuff into mesh renderer (hopefully)
+- Reimplement normal maps
+- Reimplement shadows Directional, Have shadows for multiple lights
 - Wavy grass
-- 
+- Change shaders at runtime, reload shaders runtime
+- Materials
+- Instancing/Batching
+- Frustum
+- Better water implementation
+
+- Make all scenes nice and switch between them
+- Make a use case for a new user, creating a scene, game objects, shader and using engine functionality or write docs
+
+Extra
+- picking
+- fog
+- AA
 
 */
 

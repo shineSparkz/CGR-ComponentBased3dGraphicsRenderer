@@ -1,5 +1,8 @@
 #version 450
 
+#define MAX_SPOTS 10
+#define MAX_POINTS 10
+
 struct DirectionLight
 {
 	vec3 direction;
@@ -28,9 +31,6 @@ struct PointLight
     float   aQuadratic;
 };
 
-
-#define MAX_SPOTS 10
-#define MAX_POINTS 10
 
 layout(binding = 0, std140) uniform Lights
 {
@@ -105,10 +105,8 @@ vec4 getPointLightColor(const PointLight ptLight, vec3 p, vec3 n)
    {
 		light_dir = normalize(light_dir); 
 		vec4 colour = reflection(ptLight.intensity, ptLight.ambient_intensity, light_dir, p, n);
-		//float diffuse = max(0.0, dot(n, -light_dir)); 
 		float attenuation = max(1.0, ptLight.aConstant + ptLight.aLinear * dist + ptLight.aQuadratic * dist*dist); 
 		return colour / attenuation;
-		//return vec4(ptLight.intensity, 1.0) * (ptLight.ambient_intensity + diffuse) / attenuation; 
    }
    
    return vec4(0.0);
@@ -118,7 +116,7 @@ vec4 getSpotLightColor(const Spotlight spotLight, vec3 p)
 {
 	// If flashlight isn't turned on, return no color
 	if(spotLight.switched_on == 0)
-		return vec4(0.0, 0.0, 0.0, 0.0);
+		return vec4(0.0);
 	
 	// Distance from fragment's position
 	float dist = distance(p, spotLight.position);
@@ -163,9 +161,6 @@ void main()
 	}
 						
 	frag_colour = vec4(ambient_light, tex_colour.a) + total_light * tex_colour;
-	
-	// Sub routine for no lights
-	//frag_colour = tex_colour;
 }
 
 

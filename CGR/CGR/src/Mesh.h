@@ -23,7 +23,8 @@ struct SubMesh
 
 	unsigned int NumIndices;
 	unsigned int NumVertices;
-	unsigned int MaterialIndex;	// Should be an array for multiple textures (later)
+	// Should be an array for multiple textures (later)
+	unsigned int MaterialIndex;	
 	int BaseVertex;
 	int BaseIndex;
 };
@@ -46,17 +47,18 @@ public:
 								then the file must contain material information, currently only supports one texture per sub-mesh, that is
 								diffuse. If the texture does not exist then a pink error texture will be used from the engine
 	*/
-	bool Load(const std::string& mesh, bool withTangents, bool loadTextures);
-
-	bool InitMaterials(const aiScene* pScene, const std::string& filename);
+	bool Load(const std::string& meshFile, bool withTangents, bool loadTextures);
 
 	bool HasTextures() const
 	{
 		return m_Textures.size() > 0;
 	}
-
+	
 	size_t GetNumSubMeshes() const;
 	
+private:
+	bool InitMaterials(const aiScene* pScene, const std::string& filename);
+
 private:
 	friend class Renderer;
 	std::vector<SubMesh> m_SubMeshes;

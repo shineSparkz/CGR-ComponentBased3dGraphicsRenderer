@@ -23,6 +23,8 @@ public:
 	GBuffer();
 	~GBuffer();
 
+	void Clean();
+
 	// TODO : Make a base class for buffer object
 	bool Init();
 

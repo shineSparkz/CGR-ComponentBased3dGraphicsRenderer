@@ -72,7 +72,7 @@ void SponzaScene::createGameObjects()
 	maleMr->SetMesh(MESH_ID_MALE, Renderer::Instance()->GetNumSubMeshesInMesh(MESH_ID_MALE));
 	maleMr->AddTexture(TEX_MALE_HIGH, 0);
 	maleMr->AddTexture(TEX_MALE_LOW, 1);
-	maleMr->m_ShaderIndex = SHADER_GEOM_PASS_DEF;
+	maleMr->SetShader(SHADER_GEOM_PASS_DEF);
 	m_GameObjects.push_back(male);
 
 	// Create Sponza
@@ -82,7 +82,7 @@ void SponzaScene::createGameObjects()
 	sponzat->SetScale(Vec3(0.2f));
 	MeshRenderer* sponzaMr = sponza->AddComponent<MeshRenderer>();
 	sponzaMr->SetMesh(MESH_ID_SPONZA, Renderer::Instance()->GetNumSubMeshesInMesh(MESH_ID_SPONZA));
-	sponzaMr->m_ShaderIndex = SHADER_GEOM_PASS_DEF;
+	sponzaMr->SetShader(SHADER_GEOM_PASS_DEF);
 	m_GameObjects.push_back(sponza);
 
 	// Point Lights

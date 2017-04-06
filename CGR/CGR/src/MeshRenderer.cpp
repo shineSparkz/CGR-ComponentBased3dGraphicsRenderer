@@ -51,3 +51,8 @@ bool MeshRenderer::AddTexture(size_t texHandle)
 	m_TextureHandles.push_back(texHandle);
 	return true;
 }
+
+void MeshRenderer::SetShader(size_t shader)
+{
+	m_ShaderIndex = shader;
+}
