@@ -34,7 +34,9 @@ void SpotLightC::Update()
 {
 }
 
-bool SpotLightC::SetLight(const Vec3& position,
+bool SpotLightC::SetLight(
+	Renderer* renderer,
+	const Vec3& position,
 	const Vec3& direction,
 	const Vec3& intensity,
 	float angle,
@@ -44,8 +46,7 @@ bool SpotLightC::SetLight(const Vec3& position,
 	int switchedOn
 	)
 {
-	Renderer* ren = Renderer::Instance();
-	if (!ren)
+	if (!renderer)
 	{
 		WRITE_LOG("Can't set a spot light without a renderer", "error");
 		return false;
@@ -72,7 +73,7 @@ bool SpotLightC::SetLight(const Vec3& position,
 		return false;
 	}
 
-	m_LightIndex = ren->GetSpotLightIndex();
+	m_LightIndex = renderer->GetSpotLightIndex();
 
 	if (m_LightIndex < 0)
 	{

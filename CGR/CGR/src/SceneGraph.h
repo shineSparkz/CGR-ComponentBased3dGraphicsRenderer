@@ -6,6 +6,8 @@
 
 class IScene;
 class Renderer;
+class ResourceManager;
+class Renderer;
 
 class SceneGraph
 {
@@ -15,21 +17,19 @@ public:
 
 	// Returns the hashed string, will return GE_FATAL_ERROR if problem
 	template<typename T>
-	int AddScene(T* state);
+	int AddScene(T* state, Renderer* renderer);
 
 	bool IsEmpty() const;
 
 	void UpdateActiveScene(float dt);
-	void RenderActiveScene(Renderer* renderer);
+	void RenderActiveScene();
 	void Close();
-	void ChangeScene(int nextState);
-	void ChangeSceneByName(const std::string& nextState);
+	void ChangeScene(int nextState, ResourceManager* resManager);
+	void ChangeSceneByName(const std::string& nextState, ResourceManager* resManager);
 
 	IScene* GetActiveScene();
 	int GetActiveSceneHash() const;
 	const std::string& GetActiveSceneName();
-
-private:
 	int HashHelper(const std::string& s);
 
 private:
@@ -38,13 +38,13 @@ private:
 };
 
 template<typename T>
-int SceneGraph::AddScene(T* state)
+int SceneGraph::AddScene(T* state, Renderer* renderer)
 {
 	int hash = this->HashHelper(state->GetName());
 	if (m_Scenes.find(hash) == m_Scenes.end())
 	{
 		m_Scenes[hash] = state;
-		return m_Scenes[hash]->OnSceneCreate();
+		return m_Scenes[hash]->OnSceneCreate(renderer);
 	}
 
 	return GE_FATAL_ERROR;

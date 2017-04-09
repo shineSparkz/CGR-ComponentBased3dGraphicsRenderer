@@ -23,10 +23,8 @@ public:
 	GBuffer();
 	~GBuffer();
 
-	void Clean();
-
-	// TODO : Make a base class for buffer object
 	bool Init();
+	void Clean();
 
 	void StartFrame();
 	void BindForGeomPass();

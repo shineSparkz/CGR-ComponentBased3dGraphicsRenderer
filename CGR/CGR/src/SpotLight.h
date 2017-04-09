@@ -5,6 +5,7 @@
 #include "types.h"
 
 class UniformBlock;
+class Renderer;
 
 class SpotLightC : public Component
 {
@@ -15,7 +16,9 @@ public:
 	void Start() override;
 	void Update() override;
 
-	bool SetLight(const Vec3& position,
+	bool SetLight(
+		Renderer* renderer,
+		const Vec3& position,
 		const Vec3& direction,
 		const Vec3& intensity,
 		float angle,
@@ -35,7 +38,7 @@ public:
 
 private:
 	static int m_Id;
-	UniformBlock*	m_LightBlock;	// Weak ptr
+	UniformBlock*	m_LightBlock;	//<-- Weak ptr
 	Vec3			m_Position;
 	Vec3			m_Direction;
 	Vec3			m_Intensity;

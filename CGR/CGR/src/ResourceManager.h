@@ -10,7 +10,7 @@ class Mesh;
 class Font;
 class UniformBlockManager;
 
-class ResourceManager : public Singleton<ResourceManager>
+class ResourceManager
 {
 public:
 	bool LoadFont(const std::string& path, size_t key, int size);
@@ -18,6 +18,11 @@ public:
 	bool LoadTexture(const std::string& path, size_t key_store, int glTextureIndex);
 	bool LoadCubeMap(std::string path[6], size_t key_store, int glTextureIndex);
 	bool CreateShaderProgram(std::vector<Shader>& shaders, size_t key);
+
+	bool CheckMeshExists(size_t key);
+	bool CheckTextureExists(size_t key);
+	bool CheckShaderExists(size_t key);
+	bool CheckFontExists(size_t key);
 
 	size_t GetNumSubMeshesInMesh(size_t meshIndex) const;
 	size_t GetNumTextures() const;

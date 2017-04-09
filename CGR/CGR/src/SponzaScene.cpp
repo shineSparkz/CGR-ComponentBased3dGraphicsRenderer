@@ -26,12 +26,6 @@ SponzaScene::~SponzaScene()
 {
 }
 
-int SponzaScene::OnSceneCreate()
-{
-	// Currently Unused
-	return GE_OK;
-}
-
 void SponzaScene::createGameObjects()
 {
 	// This will be moved
@@ -69,7 +63,7 @@ void SponzaScene::createGameObjects()
 	maleT->SetPosition(Vec3(-7.0f, 0.0f, -10.0f));
 	maleT->SetScale(Vec3(14.0f));
 	MeshRenderer* maleMr = male->AddComponent<MeshRenderer>();
-	maleMr->SetMesh(MESH_ID_MALE, Renderer::Instance()->GetNumSubMeshesInMesh(MESH_ID_MALE));
+	maleMr->SetMesh(MESH_ID_MALE, m_Renderer->GetNumSubMeshesInMesh(MESH_ID_MALE));
 	maleMr->AddTexture(TEX_MALE_HIGH, 0);
 	maleMr->AddTexture(TEX_MALE_LOW, 1);
 	maleMr->SetShader(SHADER_GEOM_PASS_DEF);
@@ -81,14 +75,14 @@ void SponzaScene::createGameObjects()
 	sponzat->SetPosition(Vec3(0.0f, 0.0f, 0.0f));
 	sponzat->SetScale(Vec3(0.2f));
 	MeshRenderer* sponzaMr = sponza->AddComponent<MeshRenderer>();
-	sponzaMr->SetMesh(MESH_ID_SPONZA, Renderer::Instance()->GetNumSubMeshesInMesh(MESH_ID_SPONZA));
+	sponzaMr->SetMesh(MESH_ID_SPONZA, m_Renderer->GetNumSubMeshesInMesh(MESH_ID_SPONZA));
 	sponzaMr->SetShader(SHADER_GEOM_PASS_DEF);
 	m_GameObjects.push_back(sponza);
 
 	// Point Lights
-	GameObject* p1 = CgrEngine::CreatePointLight(Vec3(20.0f, 15.0f, -20.0f), Vec3(0.7f,0,0), 0.02f);
-	GameObject* p2 = CgrEngine::CreatePointLight(Vec3(-50.0f, 15.0f, 30.0f), Vec3(0.7f), 0.02f);
-	GameObject* p3 = CgrEngine::CreatePointLight(Vec3(70.0f, 15.0f, 10.0f), Vec3(0.7f), 0.02f);
+	GameObject* p1 = CgrEngine::CreatePointLight(m_Renderer, Vec3(20.0f, 15.0f, -20.0f), Vec3(0.7f,0,0), 0.02f);
+	GameObject* p2 = CgrEngine::CreatePointLight(m_Renderer, Vec3(-50.0f, 15.0f, 30.0f), Vec3(0.7f), 0.02f);
+	GameObject* p3 = CgrEngine::CreatePointLight(m_Renderer, Vec3(70.0f, 15.0f, 10.0f), Vec3(0.7f), 0.02f);
 	//GameObject* p4 = createPointLight(Vec3(100.0f, 35.0f, -150.0f), Vec3(0.7f, 0, 0), 0.02f);
 	//GameObject* p5 = createPointLight(Vec3(-100.0f, 25.0f, 150.0f), Vec3(0.7f), 0.02f);
 	//GameObject* p6 = createPointLight(Vec3(0.0f, 55.0f, -70.0f), Vec3(0.7f), 0.02f);
@@ -99,23 +93,15 @@ void SponzaScene::createGameObjects()
 		m_GameObjects.push_back(p2);
 	if (p3)
 		m_GameObjects.push_back(p3);
-	/*
-	if (p4)
-		m_GameObjects.push_back(p4);
-	if (p5)
-		m_GameObjects.push_back(p5);
-	if (p6)
-		m_GameObjects.push_back(p6);
-	*/
 
-	GameObject* s1 = CgrEngine::CreateSpotLight(m_Camera->Position(), Vec3(0, 1, 0), m_Camera->Forward(), 12.0f, 1);
+	GameObject* s1 = CgrEngine::CreateSpotLight(m_Renderer, m_Camera->Position(), Vec3(0, 1, 0), m_Camera->Forward(), 12.0f, 1);
 	if (s1)
 		m_GameObjects.push_back(s1);
 
 	// Directional Light
 	GameObject* dlight = new GameObject();
 	DirectionalLightC* dl = dlight->AddComponent<DirectionalLightC>();
-	dl->SetLight(Vec3(0, -1, 0), Vec3(0.7f));
+	dl->SetLight(m_Renderer, Vec3(0, -1, 0), Vec3(0.7f));
 	m_GameObjects.push_back(dlight);
 	
 	/*
@@ -164,11 +150,14 @@ void SponzaScene::createGameObjects()
 	}
 }
 
-int SponzaScene::OnSceneLoad()
+int SponzaScene::OnSceneLoad(ResourceManager* resManager)
 {
-	// Load sponza ( New resource)
-	if (!ResourceManager::Instance()->LoadMesh("sponza/sponza.obj", MESH_ID_SPONZA, false, true))
-		return GE_MAJOR_ERROR;
+	// Load sponza
+	if (!resManager->CheckMeshExists(MESH_ID_SPONZA))
+	{
+		if (!resManager->LoadMesh("sponza/sponza.obj", MESH_ID_SPONZA, false, true))
+			return GE_MAJOR_ERROR;
+	}
 
 	// Create Camera
 	GameObject* cam = new GameObject();
@@ -188,7 +177,7 @@ int SponzaScene::OnSceneLoad()
 
 	m_Camera->AddSkybox(30.0f, TEX_SKYBOX_DEFAULT);
 	// Set Pointer in renderer
-	Renderer::Instance()->SetSceneData(m_Camera, Vec3(0.1f));
+	m_Renderer->SetSceneData(m_Camera, Vec3(0.1f));
 	m_GameObjects.push_back(cam);
 
 	// Add Other Objecst
@@ -224,13 +213,13 @@ void SponzaScene::Update(float dt)
 	}
 }
 
-void SponzaScene::Render(Renderer* renderer)
+void SponzaScene::Render()
 {
-	renderer->Render(m_GameObjects);
+	m_Renderer->Render(m_GameObjects);
 
-	renderer->RenderText(FONT_COURIER, "Cam Pos: " + util::vec3_to_str(m_Camera->Position()), 8, 16);
-	renderer->RenderText(FONT_COURIER, "Cam Fwd: " + util::vec3_to_str(m_Camera->Forward()), 8, 32);
-	renderer->RenderText(FONT_COURIER, "Cam Up: " + util::vec3_to_str(m_Camera->Up()), 8, 48);
-	renderer->RenderText(FONT_COURIER, "Num Verts: " + util::to_str(Mesh::NumVerts), 8, 96, FontAlign::Left, Colour::Green());
-	renderer->RenderText(FONT_COURIER, "Num Meshes: " + util::to_str(Mesh::NumMeshes), 8, 128, FontAlign::Left, Colour::Green());
+	m_Renderer->RenderText(FONT_COURIER, "Cam Pos: " + util::vec3_to_str(m_Camera->Position()), 8, 16);
+	m_Renderer->RenderText(FONT_COURIER, "Cam Fwd: " + util::vec3_to_str(m_Camera->Forward()), 8, 32);
+	m_Renderer->RenderText(FONT_COURIER, "Cam Up: " + util::vec3_to_str(m_Camera->Up()), 8, 48);
+	m_Renderer->RenderText(FONT_COURIER, "Num Verts: " + util::to_str(Mesh::NumVerts), 8, 96, FontAlign::Left, Colour::Green());
+	m_Renderer->RenderText(FONT_COURIER, "Num Meshes: " + util::to_str(Mesh::NumMeshes), 8, 128, FontAlign::Left, Colour::Green());
 }

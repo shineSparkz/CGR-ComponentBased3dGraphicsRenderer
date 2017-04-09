@@ -17,15 +17,16 @@ public:
 	Terrain();
 	~Terrain();
 
-	bool LoadFromHeightMap(const std::string& heightmapPath, ShaderProgram* mat, unsigned textures[5], const Vec3& scale);
-	bool LoadFromHeightMapWithBillboards(const std::string& heightmapPath, ShaderProgram* mat, unsigned textures[5], const Vec3& scale, std::vector<Vec3>& billboardPositionsOut, int maxBillboards);
-
-	void Render(Renderer* renderer, BaseCamera* camera, const Vec3& colour);
+	bool LoadFromHeightMap(const std::string& heightmapPath, ShaderProgram* mat, unsigned textures[5], const Vec3& scale, const Vec3& colour);
+	bool LoadFromHeightMapWithBillboards(const std::string& heightmapPath, ShaderProgram* mat, unsigned textures[5], const Vec3& scale, const Vec3& colour, std::vector<Vec3>& billboardPositionsOut, int maxBillboards);
 
 private:
-	ShaderProgram* m_Material;
+	void setStaticShaderUniforms(const Vec3& scale, const Vec3& colour);
+
+private:
+	friend class Renderer;
 	unsigned m_TextureIds[5];
-	Vec3 m_Scale;
+	ShaderProgram* m_Material;
 	GLuint m_VAO;
 	GLuint m_VertexVBO;
 	GLuint m_IndexVBO;

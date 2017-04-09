@@ -10,7 +10,10 @@
 BillboardList::BillboardList() :
 	m_Material(nullptr),
 	m_TextureIndex(INVALID_TEXTURE_LOCATION),
-	m_VBO(0)
+	m_NumInstances(0),
+	m_VBO(0),
+	m_VAO(0),
+	m_BillboardScale(0)
 {
 }
 

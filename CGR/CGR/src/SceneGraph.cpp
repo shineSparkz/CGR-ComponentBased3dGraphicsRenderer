@@ -31,17 +31,24 @@ void SceneGraph::UpdateActiveScene(float dt)
 	m_Scenes[m_ActiveScene]->Update(dt);
 }
 
-void SceneGraph::RenderActiveScene(Renderer* renderer)
+void SceneGraph::RenderActiveScene()
 {
-	m_Scenes[m_ActiveScene]->Render(renderer);
+	m_Scenes[m_ActiveScene]->Render();
 }
 
-void SceneGraph::ChangeScene(int newState)
+void SceneGraph::ChangeScene(int newState, ResourceManager* resManager)
 {
 	if (m_Scenes.find(newState) == m_Scenes.end())
 	{
-		std::string er = "StateStack could not set state because it doesn't exist.";
+		std::string er = "Scene Graph could not set scene because it doesn't exist.";
 		WRITE_LOG(er, "error");
+		return;
+	}
+
+	if (newState == this->GetActiveSceneHash())
+	{
+		std::string warn = "Tried to change into the current scene in scene graph, call ignored.";
+		WRITE_LOG(warn, "warning");
 		return;
 	}
 
@@ -55,22 +62,21 @@ void SceneGraph::ChangeScene(int newState)
 		m_Scenes[m_ActiveScene]->OnSceneExit();
 		m_ActiveScene = newState;
 
-		if(Renderer::Instance())
-			Renderer::Instance()->SceneChange();
+		EventManager::Instance()->SendEvent(EVENT_SCENE_CHANGE, nullptr);
 	}
 
-	if (m_Scenes[m_ActiveScene]->OnSceneLoad() != GE_OK)
+	if (m_Scenes[m_ActiveScene]->OnSceneLoad(resManager) != GE_OK)
 	{
 		// Error event
-		std::string err = "Error: scene : " + m_Scenes[m_ActiveScene]->GetName() + " load failed";
-		//EventManager::Instance()->SendEvent(events::EventID::ErrorEvent, &err);
+		WRITE_LOG("Scene load failed for: " + m_Scenes[m_ActiveScene]->GetName(), "error");
+		EventManager::Instance()->SendEvent(EVENT_SHUTDOWN, nullptr);
 	}
 }
 
-void SceneGraph::ChangeSceneByName(const std::string& nextStateStr)
+void SceneGraph::ChangeSceneByName(const std::string& nextStateStr, ResourceManager* rm)
 {
 	int newState =  util::str_hash(nextStateStr);
-	this->ChangeScene(newState);
+	this->ChangeScene(newState, rm);
 }
 
 int SceneGraph::GetActiveSceneHash() const

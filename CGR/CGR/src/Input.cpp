@@ -194,7 +194,7 @@ void Input::GetMousePosition(double& x, double& y)
 void Input::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	KeyEvent kev{ key, action };
-	EventManager::Instance()->SendEvent(KEY_EVENT, &kev);
+	EventManager::Instance()->SendEvent(EVENT_KEY, &kev);
 	Keys[key] = action;
 }
 

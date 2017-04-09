@@ -15,7 +15,6 @@
 #include "ShaderProgram.h"
 
 Terrain::Terrain() :
-	m_Scale(1.0,1.0,1.0),
 	m_VAO(0),
 	m_Rows(0),
 	m_Cols(0)
@@ -29,7 +28,7 @@ Terrain::~Terrain()
 	OpenGLLayer::clean_GL_buffer(&m_IndexVBO, 1);
 }
 
-bool Terrain::LoadFromHeightMap(const std::string& heightmapPath, ShaderProgram* mat, unsigned textures[5], const Vec3& scale)
+bool Terrain::LoadFromHeightMap(const std::string& heightmapPath, ShaderProgram* mat, unsigned textures[5], const Vec3& scale, const Vec3& colour)
 {
 	if (!mat)
 	{
@@ -43,7 +42,6 @@ bool Terrain::LoadFromHeightMap(const std::string& heightmapPath, ShaderProgram*
 	}
 
 	m_Material = mat;
-	m_Scale = scale;
 
 	Image heightmap;
 	if (!heightmap.LoadImg(heightmapPath.c_str()))
@@ -213,10 +211,12 @@ bool Terrain::LoadFromHeightMap(const std::string& heightmapPath, ShaderProgram*
 	// End
 	glBindVertexArray(0);
 
+	this->setStaticShaderUniforms(scale, colour);
+
 	return true;
 }
 
-bool Terrain::LoadFromHeightMapWithBillboards(const std::string& heightmapPath, ShaderProgram* mat, unsigned textures[5], const Vec3& scale, std::vector<Vec3>& billboardPositionsOut, int maxBillboards)
+bool Terrain::LoadFromHeightMapWithBillboards(const std::string& heightmapPath, ShaderProgram* mat, unsigned textures[5], const Vec3& scale, const Vec3& colour, std::vector<Vec3>& billboardPositionsOut, int maxBillboards)
 {
 	// TODO :: Refactor
 	if (!mat)
@@ -231,7 +231,6 @@ bool Terrain::LoadFromHeightMapWithBillboards(const std::string& heightmapPath, 
 	}
 
 	m_Material = mat;
-	m_Scale = scale;
 
 	Image heightmap;
 	if (!heightmap.LoadImg(heightmapPath.c_str()))
@@ -416,7 +415,7 @@ bool Terrain::LoadFromHeightMapWithBillboards(const std::string& heightmapPath, 
 
 	for (int i = 0; i < usedList.size(); ++i)
 	{
-		billboardPositionsOut.push_back(vertices[usedList[i]].position * m_Scale);
+		billboardPositionsOut.push_back(vertices[usedList[i]].position * scale);
 	}
 
 	// Create GL Buffers
@@ -446,36 +445,24 @@ bool Terrain::LoadFromHeightMapWithBillboards(const std::string& heightmapPath, 
 	// End
 	glBindVertexArray(0);
 
+	this->setStaticShaderUniforms(scale, colour);
+
 	return true;
 }
 
-void Terrain::Render(Renderer* renderer, BaseCamera* cam, const Vec3& colour)
+void Terrain::setStaticShaderUniforms(const Vec3& scale, const Vec3& colour)
 {
-	// Use Program
-	m_Material->Use();
-
-	for(int i = 0; i <  5; ++i)
+	if (m_Material)
 	{
-		renderer->GetTexture(m_TextureIds[i])->Bind();
+		float u = 0.1f * (float)m_Cols;
+		float v = 0.1f * (float)m_Rows;
+
+		m_Material->Use();
+
+		m_Material->SetUniformValue<Mat4>("u_height_map_scale_xform", &(glm::scale(Mat4(1.0f), scale)));
+		m_Material->SetUniformValue<float>("u_RenderHeight", &scale.y);
+		m_Material->SetUniformValue<float>("u_MaxTexU", &u);
+		m_Material->SetUniformValue<float>("u_MaxTexV", &v);
+		m_Material->SetUniformValue<Vec3>("u_Colour", &colour);
 	}
-
-	float u = 0.1f * (float)m_Cols;
-	float v = 0.1f * (float)m_Rows;
-
-	// Set uniforms per terrain
-	m_Material->SetUniformValue<Mat4>("u_world_xform", &(Mat4(1.0f)));
-	m_Material->SetUniformValue<Mat4>("u_height_map_scale_xform", &(glm::scale(Mat4(1.0f), m_Scale)));
-	m_Material->SetUniformValue<float>("u_RenderHeight", &m_Scale.y);
-	m_Material->SetUniformValue<float>("u_MaxTexU", &u);
-	m_Material->SetUniformValue<float>("u_MaxTexV", &v);
-	m_Material->SetUniformValue<Vec3>("u_Colour", &colour);
-
-	glBindVertexArray(m_VAO);
-	glEnable(GL_PRIMITIVE_RESTART);	// Do we need to disable this?
-	glPrimitiveRestartIndex(m_Rows*m_Cols);
-
-	int numIndices = (m_Rows - 1)*m_Cols * 2 + m_Rows - 1;
-
-	glDrawElements(GL_TRIANGLE_STRIP, numIndices, GL_UNSIGNED_INT, 0);
-	glDisable(GL_PRIMITIVE_RESTART);
 }

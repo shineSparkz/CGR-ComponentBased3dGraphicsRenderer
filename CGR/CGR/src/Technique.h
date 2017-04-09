@@ -54,9 +54,6 @@ public:
 	void setShadowSampler(unsigned int sampler);
 	void setNormalSampler(unsigned int sampler);
 
-	void setDirectionalLight(const DirectionalLight& light);
-	void setPointLights(unsigned int numLights, const PointLight* pLights);
-	void setSpotLights(unsigned int numLights, const SpotLight* pLights);
 	void setEyeWorldPos(const Vec3& eyeWorldPos);
 	void setMatSpecularIntensity(float intensity);
 	void setMatSpecularPower(float power);
@@ -204,7 +201,6 @@ public:
 	
 	void setTexSampler(int arrayIndex, int textureIndex);
 	void setColour(const Vec4& colour);
-	void setDirectionalLight(const DirectionalLight& light);
 	
 	void setHeightMapScaleXform(const Mat4& vp);
 	void setRenderHeight(float val);
@@ -310,7 +306,6 @@ public:
 	DSDirLightPassTech();
 
 	bool Init();
-	void setDirectionalLight(const DirectionalLight& Light);
 
 private:
 	struct 
@@ -328,7 +323,6 @@ public:
 	DSPointLightPassTech();
 
 	bool Init();
-	void setPointLight(const PointLight& Lights);
 
 private:
 	struct

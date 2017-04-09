@@ -9,6 +9,7 @@
 #include "math_utils.h"
 #include "utils.h"
 #include "Renderer.h"
+#include "EventManager.h"
 
 RenderWindow::RenderWindow() :
 	m_Window(nullptr),
@@ -144,7 +145,9 @@ void RenderWindow::window_size_callback(GLFWwindow* window, int width, int heigh
 	{
 		screen->m_ScreenWidth = width;
 		screen->m_ScreenHeight = height;
-		Renderer::Instance()->WindowSizeChanged(width, height);
+
+		Vec2 screen_params((float)width, (float)height);
+		EventManager::Instance()->SendEvent(EVENT_WINDOW_SIZE_CHANGE, &screen_params);
 		WRITE_LOG("window size callback: width:" + util::to_str(width) + " height:" + util::to_str(height), "normal");
 	}
 }
@@ -183,6 +186,10 @@ void RenderWindow::window_focus_callback(GLFWwindow* window, int focused)
 {
 	WRITE_LOG("window iconify callback: focused:" + util::to_str(focused), "normal");
 
+	int focusParam = focused;
+	EventManager::Instance()->SendEvent(EVENT_WINDOW_FOCUS, &focusParam);
+
+	/*
 	if (focused)
 	{
 		// The window gained input focus
@@ -191,6 +198,7 @@ void RenderWindow::window_focus_callback(GLFWwindow* window, int focused)
 	{
 		// The window lost input focus
 	}
+	*/
 }
 
 void RenderWindow::window_refresh_callback(GLFWwindow* window)

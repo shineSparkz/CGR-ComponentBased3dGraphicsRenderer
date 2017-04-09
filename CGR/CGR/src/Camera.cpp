@@ -18,7 +18,6 @@ BaseCamera::BaseCamera(GameObject* go) :
 	view(IDENTITY),
 	perspectiveSettings(),
 	skyboxSettings(nullptr),
-	//position(0.0f),
 	up(0.0f),
 	forward(0.0f),
 	right(0.0f)
@@ -97,7 +96,6 @@ void BaseCamera::SetFOV(float fov)
 void BaseCamera::SetPosition(const Vec3& p)
 {
 	m_Transform->SetPosition(p);
-	//this->position = p;
 }
 
 void BaseCamera::SetDirection(const Vec3& p)
@@ -164,12 +162,20 @@ FlyCamera::FlyCamera(GameObject* go) :
 
 	if (ev)
 	{
-		ev->AttachEvent(KEY_EVENT, *this);
+		ev->AttachEvent(EVENT_KEY, *this);
+		ev->AttachEvent(EVENT_WINDOW_FOCUS, *this);
 	}
 }
 
 FlyCamera::~FlyCamera()
 {
+	EventManager* ev = EventManager::Instance();
+
+	if (ev)
+	{ 
+		ev->RemoveEvent(EVENT_KEY, *this);
+		ev->RemoveEvent(EVENT_WINDOW_FOCUS, *this);
+	}
 }
 
 void FlyCamera::Start()
@@ -179,51 +185,54 @@ void FlyCamera::Start()
 
 void FlyCamera::Update()
 {
-	const float& dt = Time::DeltaTime();
-	const float hscreenWidth = (float)Screen::Instance()->ScreenWidth() * 0.5f;
-	const float hscreenHeight = (float)Screen::Instance()->ScreenHeight() * 0.5f;
-	velocity = Vec3(0.0f);
-
-	int num_dirs_pressed = ((rk ^ lk) ? 1 : 0) +
-		((fk ^ bk) ? 1 : 0);
-
-	if (lk ^ rk)
+	if (this->windowFocused)
 	{
-		velocity = lk ? velocity - (right * speed) : velocity + (right * speed);
+		const float& dt = Time::DeltaTime();
+		const float hscreenWidth = (float)Screen::Instance()->ScreenWidth() * 0.5f;
+		const float hscreenHeight = (float)Screen::Instance()->ScreenHeight() * 0.5f;
+		velocity = Vec3(0.0f);
+
+		int num_dirs_pressed = ((rk ^ lk) ? 1 : 0) +
+			((fk ^ bk) ? 1 : 0);
+
+		if (lk ^ rk)
+		{
+			velocity = lk ? velocity - (right * speed) : velocity + (right * speed);
+		}
+
+		if (fk ^ bk)
+		{
+			velocity = fk ?
+				velocity + forward * speed :
+				velocity - forward * speed;
+		}
+
+		float mouseX = (float)Mouse::Instance()->PosX();
+		float mouseY = (float)Mouse::Instance()->PosY();
+
+		// Mouse orient
+		m_Transform->RotateY(mouseSpeed * dt * (hscreenWidth - mouseX));
+		m_Transform->RotateX(mouseSpeed * dt * (hscreenHeight - mouseY));
+
+		Vec3 rot = m_Transform->Euler();
+		this->forward = Vec3(cosf(rot.x) * sinf(rot.y), sinf(rot.x), cosf(rot.x) * cosf(rot.y));
+		this->right = Vec3(sinf(rot.y - 3.14f / 2.0f), 0, cosf(rot.y - 3.14f / 2.0f));
+		this->up = glm::cross(right, forward);
+
+		// Update position
+		m_Transform->MovePosition(this->velocity * dt);
+
+		// Call base class
+		BaseCamera::Update();
+		Mouse::Instance()->SetMousePosition(hscreenWidth, hscreenHeight);
 	}
-
-	if (fk ^ bk)
-	{
-		velocity = fk ?
-			velocity + forward * speed :
-			velocity - forward * speed;
-	}
-	
-	float mouseX = (float)Mouse::Instance()->PosX();
-	float mouseY = (float)Mouse::Instance()->PosY();
-
-	// Mouse orient
-	m_Transform->RotateY(mouseSpeed * dt * (hscreenWidth - mouseX));
-	m_Transform->RotateX(mouseSpeed * dt * (hscreenHeight - mouseY));
-
-	Vec3 rot = m_Transform->Euler();
-	this->forward = Vec3(cosf(rot.x) * sinf(rot.y), sinf(rot.x), cosf(rot.x) * cosf(rot.y));
-	this->right = Vec3(sinf(rot.y - 3.14f / 2.0f), 0, cosf(rot.y - 3.14f / 2.0f));
-	this->up = glm::cross(right, forward);
-	
-	// Update position
-	m_Transform->MovePosition(this->velocity * dt);
-	
-	// Call base class
-	BaseCamera::Update();
-	Mouse::Instance()->SetMousePosition(hscreenWidth, hscreenHeight);
 }
 
 void FlyCamera::HandleEvent(Event* e)
 {
 	switch (e->GetID())
 	{
-		case KEY_EVENT:
+		case EVENT_KEY:
 		{
 			KeyEvent* ke = (KeyEvent*)e->GetData();
 
@@ -269,6 +278,17 @@ void FlyCamera::HandleEvent(Event* e)
 					rk = false;
 				}
 			}
+
+			break;
+		}
+		case EVENT_WINDOW_FOCUS:
+		{
+			int* param = (int*)e->GetData();
+			if (param)
+			{
+				this->windowFocused = *param;
+			}
+			break;
 		}
 	}
 }
@@ -281,7 +301,7 @@ ChaseCamera2D::ChaseCamera2D(GameObject* go) :
 
 	if (ev)
 	{
-		ev->AttachEvent(KEY_EVENT, *this);
+		ev->AttachEvent(EVENT_KEY, *this);
 	}
 }
 
@@ -325,7 +345,7 @@ void ChaseCamera2D::HandleEvent(Event* e)
 {
 	switch (e->GetID())
 	{
-	case KEY_EVENT:
+	case EVENT_KEY:
 	{
 		KeyEvent* ke = (KeyEvent*)e->GetData();
 

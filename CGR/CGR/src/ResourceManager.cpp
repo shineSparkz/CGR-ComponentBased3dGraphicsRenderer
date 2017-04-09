@@ -460,6 +460,46 @@ bool ResourceManager::CreateShaderProgram(std::vector<Shader>& shaders, size_t k
 	return success;
 }
 
+bool ResourceManager::CheckMeshExists(size_t key)
+{
+	if (m_Meshes.find(key) != m_Meshes.end())
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool ResourceManager::CheckTextureExists(size_t key)
+{
+	if (m_Textures.find(key) != m_Textures.end())
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool ResourceManager::CheckShaderExists(size_t key)
+{
+	if (m_Shaders.find(key) != m_Shaders.end())
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool ResourceManager::CheckFontExists(size_t key)
+{
+	if (m_Fonts.find(key) != m_Fonts.end())
+	{
+		return true;
+	}
+
+	return false;
+}
+
 size_t ResourceManager::GetNumSubMeshesInMesh(size_t meshIndex) const
 {
 	auto r = m_Meshes.find(meshIndex);

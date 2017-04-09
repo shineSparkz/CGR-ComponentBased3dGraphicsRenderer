@@ -29,9 +29,9 @@ public:
 
 private:
 	friend class Renderer;
-	std::map<GLchar, Character> m_Characters;
-	GLuint m_Vao;
-	GLuint m_Vbo;
+	std::map<GLchar, Character>		m_Characters;
+	GLuint							m_Vao;
+	GLuint							m_Vbo;
 };
 
 #endif

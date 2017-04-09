@@ -12,11 +12,10 @@ public:
 	SponzaScene(const std::string& name);
 	virtual ~SponzaScene();
 
-	virtual int  OnSceneCreate() override;
-	virtual int  OnSceneLoad() override;
+	virtual int  OnSceneLoad(ResourceManager* resManager) override;
 	virtual void OnSceneExit() override;
 	virtual void Update(float dt) override;
-	virtual void Render(Renderer* renderer) override;
+	virtual void Render() override;
 
 private:
 	void createGameObjects();

@@ -44,8 +44,6 @@ bool Import3DFromFile(const std::string& pFile)
 		);
 		//aiProcess_JoinIdenticalVertices);
 
-	
-
 	// If the import failed, report it
 	if (!scene)
 	{
@@ -64,7 +62,6 @@ SubMesh::SubMesh() :
 	NumVertices(0),
 	BaseIndex(0),
 	BaseVertex(0)
-	//TextureIndices()
 {
 };
 
@@ -141,7 +138,6 @@ Mesh::Mesh() :
 	m_IndexVBO(0),
 	m_VAO(0),
 	m_SubMeshes(),
-	//m_TextureHandles(),
 	m_VertexVBO(0)
 {
 }
@@ -367,32 +363,3 @@ bool Mesh::InitMaterials(const aiScene* pScene, const std::string& filename)
 
 	return true;
 }
-
-/*
-bool Mesh::AddTexture(size_t texHandle, unsigned int meshIndex)
-{
-	if (meshIndex >= m_MeshLayouts.size())
-	{
-		WRITE_LOG("Tried to load texture with out of bounds mesh index", "error");
-		return false;
-	}
-
-	//m_MeshLayouts[meshIndex].TextureIndex = m_TextureHandles.size();
-	m_MeshLayouts[meshIndex].TextureIndices.push_back(m_TextureHandles.size());
-
-	m_TextureHandles.push_back(texHandle);
-	return true;
-}
-
-bool Mesh::AddTexture(size_t texHandle)
-{
-	for (auto m = m_MeshLayouts.begin(); m != m_MeshLayouts.end(); ++m)
-	{
-		//m->TextureIndex = m_TextureHandles.size();
-		m->TextureIndices.push_back(m_TextureHandles.size());
-	}
-
-	m_TextureHandles.push_back(texHandle);
-	return true;
-}
-*/

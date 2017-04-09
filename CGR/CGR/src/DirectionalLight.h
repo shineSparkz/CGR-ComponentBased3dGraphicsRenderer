@@ -5,6 +5,7 @@
 #include "types.h"
 
 class UniformBlock;
+class Renderer;
 
 class DirectionalLightC : public Component
 {
@@ -15,7 +16,7 @@ public:
 	void Start() override;
 	void Update() override;
 
-	bool SetLight(const Vec3& direction, const Vec3& intensity);
+	bool SetLight(Renderer* renderer, const Vec3& direction, const Vec3& intensity);
 	
 	void SetDirection(const Vec3& newDir);
 	void SetDirectionX(float x);

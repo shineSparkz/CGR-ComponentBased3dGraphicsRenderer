@@ -5,7 +5,6 @@
 #include "IScene.h"
 
 class GameObject;
-class BillboardList;
 
 class IndoorLevelScene: public IScene
 {
@@ -13,15 +12,14 @@ public:
 	IndoorLevelScene(const std::string& name);
 	virtual ~IndoorLevelScene();
 
-	virtual int  OnSceneCreate() override;
-	virtual int  OnSceneLoad() override;
+	virtual int  OnSceneLoad(ResourceManager* resManager) override;
 	virtual void OnSceneExit() override;
 	virtual void Update(float dt) override;
-	virtual void Render(Renderer* renderer) override;
+	virtual void Render() override;
 
 private:
 	std::vector<GameObject*>	m_GameObjects;
-	BillboardList*				m_TreeBillboardList;
+	float m_TimeNow{ 0 };
 };
 
 #endif

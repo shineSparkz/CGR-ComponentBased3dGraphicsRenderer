@@ -9,6 +9,7 @@
 #include "math_utils.h"
 #include "KeyEvent.h"
 #include "Screen.h"
+#include "ResId.h"
 
 Application::Application() :
 	m_SceneGraph(nullptr),
@@ -16,7 +17,8 @@ Application::Application() :
 	m_ResourceManager(nullptr),
 	m_Renderer(nullptr),
 	m_Input(nullptr),
-	m_ShouldClose(GE_FALSE)
+	m_ShouldClose(GE_FALSE),
+	m_PendingSceneChange(GE_FALSE)
 {
 	// Create Logger first
 	if (!DebugLogFile::Instance())
@@ -76,10 +78,6 @@ bool Application::Init(int width, int height, bool windowed, const char* title, 
 	std::string glewVersion = "GLEW_VERSION : " + (std::string)version;
 	WRITE_LOG(glewVersion, "none");
 
-	// TODO : Create a Screen Singleton class, that can talk to the render window
-
-	// Important to set this initially
-
 	//glViewport(0, 0, s_FrameBuffWidth, s_FrameBuffHeight);
 	glfwSwapInterval(Maths::Clamp(vsync, 0, 1));
 
@@ -94,8 +92,6 @@ bool Application::Init(int width, int height, bool windowed, const char* title, 
 		WRITE_LOG("Error: Input init failed", "error");
 		return GE_FATAL_ERROR;
 	}
-
-	// Set GL STATES should be done by user, or default values set here
 
 	// Event System (Singleton)
 	EventManager* em = new EventManager();
@@ -114,20 +110,6 @@ bool Application::Init(int width, int height, bool windowed, const char* title, 
 		}
 	}
 	
-	// TODO : Load default resources once I have created this system
-
-	/*
-	if (!m_ResourceManager)
-	{
-		m_ResourceManager = new ResourceManager();
-
-		if (m_ResourceManager->LoadAllResources() != GE_OK)
-		{
-			return GE_FATAL_ERROR;
-		}
-	}
-	*/
-
 	// Create Renderer 
 	if (!m_Renderer)
 	{
@@ -139,21 +121,14 @@ bool Application::Init(int width, int height, bool windowed, const char* title, 
 		return false;
 	}
 
-	// Call On Scene Create
-
 	return true;
 }
 
-int Application::ChangeScene(const std::string& firstState)
+int Application::ChangeScene(const std::string& state)
 {
-	if (m_SceneGraph && !m_SceneGraph->IsEmpty())
-	{
-		m_SceneGraph->ChangeSceneByName(firstState);
-		return GE_OK;
-	}
-
-	WRITE_LOG("Error: Can't set all states when state manager is null.", "error");
-	return GE_MAJOR_ERROR;
+	m_PendingSceneChange = GE_TRUE;
+	m_PendingSceneHash = m_SceneGraph->HashHelper(state);
+	return GE_OK;
 }
 
 void Application::Close()
@@ -161,8 +136,6 @@ void Application::Close()
 	// TODO : Detach all events
 
 	SAFE_DELETE(m_Input);
-
-	//SAFE_CLOSE(m_ResourceManager);
 	SAFE_CLOSE(m_Renderer);
 	SAFE_CLOSE(m_SceneGraph);
 	SAFE_CLOSE(m_RenderWindow);
@@ -199,6 +172,17 @@ void Application::Run()
 	// Update loop
 	while (m_RenderWindow->IsOpen() && m_ShouldClose != GE_TRUE)
 	{
+		// See if the scene needs changing, make sure everything has been set first
+		if (m_PendingSceneChange == GE_TRUE)
+		{
+			m_PendingSceneChange = GE_FALSE;
+
+			if (m_SceneGraph && !m_SceneGraph->IsEmpty())
+			{
+				m_SceneGraph->ChangeScene(m_PendingSceneHash, m_Renderer->GetResourceManager());
+			}
+		}
+
 		timer.Update();
 
 		frame_count = 0;
@@ -214,8 +198,11 @@ void Application::Run()
 			frame_count++;
 		}
 
-		m_SceneGraph->RenderActiveScene(m_Renderer);
-		//m_Renderer->Render();
+		m_SceneGraph->RenderActiveScene();
+		
+		// TODO : Need a #define or something round this
+		m_Renderer->RenderText(FONT_COURIER, m_SceneGraph->GetActiveSceneName() + " scene example", 8, (float)Screen::Instance()->FrameBufferHeight() - 64.0f, FontAlign::Left, Colour::Blue());
+
 		m_RenderWindow->SwapBuffers();
 		glfwPollEvents();
 	}
@@ -238,7 +225,7 @@ void Application::HandleEvent(Event* e)
 {
 	switch (e->GetID())
 	{
-	case KEY_EVENT:
+	case EVENT_KEY:
 	{
 		KeyEvent* ke = (KeyEvent*)e->GetData();
 
@@ -248,21 +235,32 @@ void Application::HandleEvent(Event* e)
 			{
 				this->m_ShouldClose = GE_TRUE;
 			}
+
+			// Indoor
 			else if (ke->key == GLFW_KEY_F1 && ke->action == GLFW_RELEASE)
 			{
-				//this->ChangeScene("shadow");
+				this->ChangeScene("indoor");
 			}
+			// Outdoor
 			else if (ke->key == GLFW_KEY_F2 && ke->action == GLFW_RELEASE)
 			{
-				//this->ChangeScene("normalmap");
+				this->ChangeScene("outdoor");
+			}
+			else if (ke->key == GLFW_KEY_F3 && ke->action == GLFW_RELEASE)
+			{
+				this->ChangeScene("sponza");
+			}
+			else if (ke->key == GLFW_KEY_F4 && ke->action == GLFW_RELEASE)
+			{
+				this->ChangeScene("ortho");
 			}
 		}
 		// else pass this event on to current state
 		break;
 	}
-	case WINDOW_FOCUS_EVENT:
+	case EVENT_WINDOW_FOCUS:
 		break;
-	case SHUTDOWN_EVENT:
+	case EVENT_SHUTDOWN:
 		m_ShouldClose = GE_TRUE;
 		break;
 	}

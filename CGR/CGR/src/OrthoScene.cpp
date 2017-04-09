@@ -20,24 +20,18 @@ OrthoScene::~OrthoScene()
 {
 }
 
-int OrthoScene::OnSceneCreate()
+int OrthoScene::OnSceneLoad(ResourceManager* resManager)
 {
-	return GE_OK;
-}
-
-int OrthoScene::OnSceneLoad()
-{
-
 	// BG Quad
-	bool withWuad = !false;
-	if (withWuad)
+	bool withQuad = !false;
+	if (withQuad)
 	{
 		GameObject* quad = new GameObject();
 		Transform* quadT = quad->AddComponent<Transform>();
 		quadT->SetPosition(Vec3(0.0f, 0.0f, -50.0f));
 		quadT->SetScale(Vec3(850, 600, 1));
 		MeshRenderer* quadMr = quad->AddComponent<MeshRenderer>();
-		quadMr->SetMesh(MESH_ID_QUAD, Renderer::Instance()->GetNumSubMeshesInMesh(MESH_ID_QUAD));
+		quadMr->SetMesh(MESH_ID_QUAD, m_Renderer->GetNumSubMeshesInMesh(MESH_ID_QUAD));
 		quadMr->AddTexture(TEX_GRASS);
 		quadMr->SetShader(SHADER_LIGHTING_FWD);
 		m_GameObjects.push_back(quad);
@@ -51,7 +45,7 @@ int OrthoScene::OnSceneLoad()
 		cubet->SetPosition(Vec3(i*64, 0.0f, -1.0f));
 		cubet->SetScale(Vec3(32.0f, 32, 1));
 		MeshRenderer* cube1Mr = cube1->AddComponent<MeshRenderer>();
-		cube1Mr->SetMesh(MESH_ID_CUBE, Renderer::Instance()->GetNumSubMeshesInMesh(MESH_ID_CUBE));
+		cube1Mr->SetMesh(MESH_ID_CUBE, m_Renderer->GetNumSubMeshesInMesh(MESH_ID_CUBE));
 		cube1Mr->AddTexture(TEX_GRASS);
 		cube1Mr->SetShader(SHADER_LIGHTING_FWD);
 		m_GameObjects.push_back(cube1);
@@ -76,7 +70,7 @@ int OrthoScene::OnSceneLoad()
 	//m_Camera->AddSkybox(30.0f, SKYBOX_TEX);
 	
 	// Set Pointer in renderer
-	Renderer::Instance()->SetSceneData(m_Camera, Vec3(0.1f));
+	m_Renderer->SetSceneData(m_Camera, Vec3(0.1f));
 	m_GameObjects.push_back(cam);
 	return GE_OK;
 }
@@ -104,12 +98,12 @@ void OrthoScene::Update(float dt)
 	}
 }
 
-void OrthoScene::Render(Renderer* renderer)
+void OrthoScene::Render()
 {
-	renderer->Render(m_GameObjects);
+	m_Renderer->Render(m_GameObjects);
 
-	renderer->RenderText(FONT_COURIER, "Cam Pos: " + util::vec3_to_str(m_Camera->Position()), 8, 16);
-	renderer->RenderText(FONT_COURIER, "Cam Fwd: " + util::vec3_to_str(m_Camera->Forward()), 8, 32);
-	renderer->RenderText(FONT_COURIER, "Cam Up: " + util::vec3_to_str(m_Camera->Up()), 8, 48);
+	m_Renderer->RenderText(FONT_COURIER, "Cam Pos: " + util::vec3_to_str(m_Camera->Position()), 8, 16);
+	m_Renderer->RenderText(FONT_COURIER, "Cam Fwd: " + util::vec3_to_str(m_Camera->Forward()), 8, 32);
+	m_Renderer->RenderText(FONT_COURIER, "Cam Up: " + util::vec3_to_str(m_Camera->Up()), 8, 48);
 	
 }

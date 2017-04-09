@@ -5,6 +5,7 @@
 #include "types.h"
 
 class UniformBlock;
+class Renderer;
 
 class PointLightC : public Component
 {
@@ -15,7 +16,9 @@ public:
 	void Start() override;
 	void Update() override;
 
-	bool SetLight(const Vec3& position,
+	bool SetLight(
+		Renderer* renderer,
+		const Vec3& position,
 		const Vec3& intensity,
 		float ambIntensity,
 		float aConstant,
@@ -39,7 +42,8 @@ private:
 
 private:
 	static int		m_Id;
-	UniformBlock*	m_LightBlock;	// Weak ptr
+	Renderer*		m_Renderer;		// <-- Weak ptr
+	UniformBlock*	m_LightBlock;	// <-- Weak ptr
 	Vec3			m_Position;
 	Vec3			m_Intensity;
 	float			m_AmbientIntensity;

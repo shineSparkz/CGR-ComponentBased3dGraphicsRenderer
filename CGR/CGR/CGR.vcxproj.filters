@@ -330,6 +330,9 @@
     <ClCompile Include="src\CgrEngine.cpp">
       <Filter>Application</Filter>
     </ClCompile>
+    <ClCompile Include="src\IScene.cpp">
+      <Filter>Application</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\bin\resources\shaders\billboard_fs.glsl">

@@ -40,6 +40,8 @@ private:
 	Input* m_Input;
 
 	int m_ShouldClose;
+	int m_PendingSceneChange;
+	int m_PendingSceneHash;
 };
 
 inline RenderWindow* Application::GetRenderWindow()
@@ -50,12 +52,12 @@ inline RenderWindow* Application::GetRenderWindow()
 template<typename T>
 int Application::AddScene(T* state)
 {
-	if (!m_SceneGraph)
+	if (!m_SceneGraph || !m_Renderer)
 	{
 		return GE_MAJOR_ERROR;
 	}
 
-	return m_SceneGraph->AddScene(state);
+	return m_SceneGraph->AddScene(state, m_Renderer);
 }
 
 #endif

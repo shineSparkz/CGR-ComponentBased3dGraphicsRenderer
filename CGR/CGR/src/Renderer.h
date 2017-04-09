@@ -1,25 +1,22 @@
 #ifndef __RENDERER_H__
 #define __RENDERER_H__
 
-#include "Time.h"
-#include "gl_headers.h"
-#include "types.h"
-#include "Lights.h"
-#include "Colour.h"
-#include "Vertex.h"
-#include "FontAlign.h"
 #include <vector>
 #include <map>
-#include "Queery.h"
-#include "Singleton.h"//remove this and use evnts
 
+#include "gl_headers.h"
+#include "types.h"
+#include "Time.h"
+#include "Colour.h"
+#include "FontAlign.h"
+#include "Queery.h"
+#include "EventHandler.h"
+
+// Forward
 class ResourceManager;
 class Mesh;
 class MeshRenderer;
-class LightTechnique;
-class BasicDiffuseTechnique;
 class BaseCamera;
-class FlyCamera;
 class Font;
 class Texture;
 class BillboardList;
@@ -30,8 +27,7 @@ class ShaderProgram;
 class ShadowFrameBuffer;
 class UniformBlockManager;
 
-// Get rid
-class ShadowMapTechnique;
+
 
 struct DeferredPointLightInfo
 {
@@ -44,50 +40,57 @@ enum ShadingMode
 	Forward, Deferred
 };
 
-class Renderer : public Singleton<Renderer>
+class Renderer : public EventHandler
 {
 public:
 	Renderer();
 
-	bool Init();
-	void SceneChange();
-	bool SetSceneData(BaseCamera* camera, const Vec3& ambientLight);
-	void Close();
+	bool					Init();
+	void					Close();
+	bool					SetSceneData(BaseCamera* camera, const Vec3& ambientLight);
 
-	void WindowSizeChanged(int w, int h);
-	
-	void Render(std::vector<GameObject*>& gameObjects);
-	void RenderText(size_t fontId, const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White());
+	// Public Rendering
+	void					Render(std::vector<GameObject*>& gameObjects);
+	void					RenderText(size_t fontId, const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White());
+	void					RenderBillboardList(BillboardList* billboard);
+	void					RenderTerrain(Terrain* terrain);
 
-	// Render a billboard (forward rendering only)
-	void RenderBillboardList(BillboardList* billboard);
+	// Get Resources
+	size_t					GetNumSubMeshesInMesh(size_t meshIndex) const;
+	size_t					GetNumTextures() const;
+	Texture*				GetTexture(size_t index) const;
+	ResourceManager* const	GetResourceManager() const;
 
-	size_t GetNumSubMeshesInMesh(size_t meshIndex) const;
-	size_t GetNumTextures() const;
-	Texture* GetTexture(size_t index) const;
+	// Get Light info
+	int						GetDirLightIndex();
+	int						GetSpotLightIndex();
+	int						GetPointLightIndex();
+	void					UpdatePointLight(int index, const Vec3& position, float range);
 
-	int GetDirLightIndex();
-	int GetSpotLightIndex();
-	int GetPointLightIndex();
-
-	void UpdatePointLight(int index, const Vec3& position, float range);
-
-	void ToggleShadingMode();
-	void SetShadingMode(ShadingMode mode);
-	ShadingMode GetShadingMode() const;
-	std::string GetShadingModeStr() const;
+	// Shading Mode
+	void					ToggleShadingMode();
+	void					SetShadingMode(ShadingMode mode);
+	ShadingMode				GetShadingMode() const;
+	std::string				GetShadingModeStr() const;
 
 private:
+	// Rendering
 	void forwardRender(std::vector<GameObject*>& gameObjects);
 	void deferredRender(std::vector<GameObject*>& gameObjects);
 	void renderMesh(Mesh* mesh);
 	void renderMesh(MeshRenderer* mesh);
 	void renderSkybox(BaseCamera* cam);
+
+	// Events
+	void HandleEvent(Event* ev) override;
+	void sceneChange();
+	void windowSizeChanged(int w, int h);
+
+	// Private init
 	bool setFrameBuffers();
 	bool setStaticDefaultShaderValues();
-	float getFrameTime(TimeMeasure tm);
-
 	bool createUniformBlocks();
+	float getFrameTime(TimeMeasure tm);
 
 private:
 	UniformBlockManager*	m_UniformBlockManager;
@@ -98,14 +101,9 @@ private:
 	uint64					m_Frames;
 	Query					m_Query;
 
-	// Remove these
-	Terrain*				m_Terrain;
-
-
 	int						m_NumDirLightsInScene;
 	int						m_NumPointLightsInScene;
 	int						m_NumSpotLightsInScene;
-
 
 	ShadingMode				m_PendingShadingMode{ ShadingMode::Forward };
 	ShadingMode				m_ShadingMode{ ShadingMode::Forward };
@@ -113,6 +111,11 @@ private:
 
 	std::vector<DeferredPointLightInfo>	m_PointsInfo;
 };
+
+INLINE ResourceManager* const Renderer::GetResourceManager() const
+{
+	return m_ResManager;
+}
 
 
 /*

@@ -302,14 +302,6 @@ void LightTechnique::setNormalSampler(unsigned int sampler)
 	this->setInt_(&m_Ufm_NormalSampler, sampler);
 }
 
-void LightTechnique::setDirectionalLight(const DirectionalLight& light)
-{
-	//this->setVec3_(&m_Ufm_DirLight.colour, light.Color);
-	//this->setVec3_(&m_Ufm_DirLight.direction, glm::normalize(light.Direction));
-	//this->setFloat_(&m_Ufm_DirLight.ambientIntensity, light.AmbientIntensity);
-	//this->setFloat_(&m_Ufm_DirLight.diffuseIntensity, light.DiffuseIntensity);
-}
-
 void LightTechnique::setEyeWorldPos(const Vec3& eyeWorldPos)
 {
 	this->setVec3_(&m_Ufm_EyeWorldPos, eyeWorldPos);
@@ -323,52 +315,6 @@ void LightTechnique::setMatSpecularIntensity(float intensity)
 void LightTechnique::setMatSpecularPower(float power)
 {
 	this->setFloat_(&m_Ufm_MatSpecularPower, power);
-}
-
-void LightTechnique::setPointLights(unsigned int numLights, const PointLight* pLights)
-{
-	this->setInt_(&m_Ufm_NumPointLights, numLights);
-	
-	if (pLights)
-	{
-		for (unsigned int i = 0; i < numLights; ++i)
-		{
-			/*
-			this->setVec3_(&m_Ufm_PointLights[i].colour, pLights[i].Color);
-			this->setVec3_(&m_Ufm_PointLights[i].position, pLights[i].Position);
-
-			this->setFloat_(&m_Ufm_PointLights[i].ambientIntensity, pLights[i].AmbientIntensity);
-			this->setFloat_(&m_Ufm_PointLights[i].diffuseIntensity, pLights[i].DiffuseIntensity);
-			this->setFloat_(&m_Ufm_PointLights[i].Atten.constant, pLights[i].Attenuation.Constant);
-			this->setFloat_(&m_Ufm_PointLights[i].Atten.linear, pLights[i].Attenuation.Linear);
-			this->setFloat_(&m_Ufm_PointLights[i].Atten.exp, pLights[i].Attenuation.Exp);
-			*/
-		}
-	}
-}
-
-void LightTechnique::setSpotLights(unsigned int numLights, const SpotLight* pLights)
-{
-	this->setInt_(&m_Ufm_NumSpotLights, numLights);
-
-	if (pLights)
-	{
-		for (unsigned int i = 0; i < numLights; ++i)
-		{
-			/*
-			this->setVec3_(&m_Ufm_SpotLights[i].colour, pLights[i].Color);
-			this->setVec3_(&m_Ufm_SpotLights[i].position, pLights[i].Position);
-			this->setVec3_(&m_Ufm_SpotLights[i].direction, glm::normalize(pLights[i].Direction));
-
-			this->setFloat_(&m_Ufm_SpotLights[i].diffuseIntensity, pLights[i].DiffuseIntensity);
-			this->setFloat_(&m_Ufm_SpotLights[i].ambientIntensity, pLights[i].AmbientIntensity);
-			this->setFloat_(&m_Ufm_SpotLights[i].cutoff, pLights[i].Cutoff);
-			this->setFloat_(&m_Ufm_SpotLights[i].Atten.constant, pLights[i].Attenuation.Constant);
-			this->setFloat_(&m_Ufm_SpotLights[i].Atten.linear, pLights[i].Attenuation.Linear);
-			this->setFloat_(&m_Ufm_SpotLights[i].Atten.exp, pLights[i].Attenuation.Exp);
-			*/
-		}
-	}
 }
 
 
@@ -785,13 +731,6 @@ void TerrainTechnique::setColour(const Vec4& colour)
 	this->setVec4_(&m_Ufm_Colour, colour);
 }
 
-void TerrainTechnique::setDirectionalLight(const DirectionalLight& light)
-{
-	//this->setVec3_(&m_Ufm_DirLight.colour, light.Color);
-	//this->setVec3_(&m_Ufm_DirLight.direction, glm::normalize(light.Direction));
-	//this->setFloat_(&m_Ufm_DirLight.ambientIntensity, light.AmbientIntensity);
-}
-
 void TerrainTechnique::setRenderHeight(float val)
 {
 	this->setFloat_(&m_Ufm_RenderHeight, val);
@@ -1058,15 +997,6 @@ bool DSDirLightPassTech::Init()
 	return DSLightPassTech::Init();
 }
 
-void DSDirLightPassTech::setDirectionalLight(const DirectionalLight& light)
-{
-	//this->setVec3_(&m_DirLightLocation.colour, light.Color);
-	//this->setVec3_(&m_DirLightLocation.direction, glm::normalize(light.Direction));
-	//this->setFloat_(&m_DirLightLocation.ambientIntensity, light.AmbientIntensity);
-	//this->setFloat_(&m_DirLightLocation.diffuseIntensity, light.DiffuseIntensity);
-}
-
-
 DSPointLightPassTech::DSPointLightPassTech()
 {
 }
@@ -1112,19 +1042,6 @@ bool DSPointLightPassTech::Init()
 	if (!GetLocation(m_PointLightLocation.Atten.linear, "u_PointLight.Atten.Linear")) { return false; }
 
 	return DSLightPassTech::Init();
-}
-
-void DSPointLightPassTech::setPointLight(const PointLight& light)
-{
-	/*
-	this->setVec3_(&m_PointLightLocation.colour, light.Color);
-	this->setVec3_(&m_PointLightLocation.position, light.Position);
-	this->setFloat_(&m_PointLightLocation.ambientIntensity, light.AmbientIntensity);
-	this->setFloat_(&m_PointLightLocation.diffuseIntensity, light.DiffuseIntensity);
-	this->setFloat_(&m_PointLightLocation.Atten.constant, light.Attenuation.Constant);
-	this->setFloat_(&m_PointLightLocation.Atten.exp, light.Attenuation.Exp);
-	this->setFloat_(&m_PointLightLocation.Atten.linear, light.Attenuation.Linear);
-	*/
 }
 
 NullTechnique::NullTechnique() :

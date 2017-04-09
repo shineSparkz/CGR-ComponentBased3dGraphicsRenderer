@@ -9,23 +9,22 @@ class Screen : public Singleton<Screen>
 public:
 	Screen() {}
 
-	int ScreenWidth() const;
-	int ScreenHeight() const;
-	int FrameBufferWidth() const;
-	int FrameBufferHeight() const;
-	bool IsFullScreen() const;
+	int		ScreenWidth()		const;
+	int		ScreenHeight()		const;
+	int		FrameBufferWidth()	const;
+	int		FrameBufferHeight() const;
+	bool	IsFullScreen()		const;
 
 	// TODO Later : screen resolution stuff
 
 private:
-	friend class RenderWindow;
-	int m_ScreenWidth{ 0 };
-	int m_ScreenHeight{ 0 };
-	int m_FrameBuffWidth{ 0 };
-	int m_FrameBuffHeight{ 0 };
-	size_t m_VideoModeHandle{ 0 };
-	
-	bool m_FullScreen{ 0 };
+	friend class	RenderWindow;
+	int				m_ScreenWidth{ 0 };
+	int				m_ScreenHeight{ 0 };
+	int				m_FrameBuffWidth{ 0 };
+	int				m_FrameBuffHeight{ 0 };
+	size_t			m_VideoModeHandle{ 0 };
+	bool			m_FullScreen{ 0 };
 };
 
 INLINE int Screen::ScreenWidth() const

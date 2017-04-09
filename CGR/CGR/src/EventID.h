@@ -1,10 +1,12 @@
 #ifndef __EVENT_ID_H__
 #define __EVENT_ID_H__
 
-#define KEY_EVENT			0
-#define WINDOW_FOCUS_EVENT	1
-#define SHUTDOWN_EVENT		2
-#define NUM_ENGINE_EVENTS	3
+#define EVENT_KEY						0
+#define EVENT_WINDOW_FOCUS				1
+#define EVENT_SHUTDOWN					2
+#define EVENT_WINDOW_SIZE_CHANGE		3
+#define EVENT_SCENE_CHANGE				4
+#define NUM_ENGINE_EVENTS				5
 
 namespace events
 {

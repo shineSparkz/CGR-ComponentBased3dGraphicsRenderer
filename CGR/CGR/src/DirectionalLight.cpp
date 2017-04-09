@@ -24,10 +24,9 @@ void DirectionalLightC::Start()
 {
 }
 
-bool DirectionalLightC::SetLight(const Vec3& direction, const Vec3& intensity)
+bool DirectionalLightC::SetLight(Renderer* renderer, const Vec3& direction, const Vec3& intensity)
 {
-	Renderer* ren = Renderer::Instance();
-	if (!ren)
+	if (!renderer)
 	{
 		WRITE_LOG("Can't set a directional light without a renderer", "error");
 		return false;
@@ -56,7 +55,7 @@ bool DirectionalLightC::SetLight(const Vec3& direction, const Vec3& intensity)
 		return false;
 	}
 
-	if (ren->GetDirLightIndex() < 0)
+	if (renderer->GetDirLightIndex() < 0)
 	{
 		WRITE_LOG("Dirctional light not set because there is aready one in scene", "warning");
 		m_LightBlock = nullptr;

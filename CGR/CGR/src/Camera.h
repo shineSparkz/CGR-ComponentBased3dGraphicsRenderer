@@ -3,10 +3,6 @@
 
 #include "types.h"
 #include "gl_headers.h"
-
-// TODO : Should be a component
-
-//temp as fuck
 #include "EventHandler.h"
 #include "Component.h"
 
@@ -47,6 +43,7 @@ struct SkyboxSettings
 	float scale = 0.0f;
 	unsigned textureIndex;
 };
+
 
 class BaseCamera : public Component
 {
@@ -116,10 +113,12 @@ public:
 private:
 	void HandleEvent(Event* ev) override;
 
+private:
 	Vec3 velocity;
 	bool fk, bk, lk, rk;
 	float speed = 45.0f;
 	float mouseSpeed = 1.4f;
+	int windowFocused = 1;
 };
 
 class ChaseCamera2D : public EventHandler, public BaseCamera
