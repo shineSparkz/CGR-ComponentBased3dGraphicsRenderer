@@ -22,6 +22,11 @@ public:
 	bool Create(Image* images[6]);
 	void Bind();
 
+	const std::string& Name() const
+	{
+		return name;
+	}
+
 private:
 	std::string name;
 	int m_ActiveTexture;

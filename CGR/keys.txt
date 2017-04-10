@@ -1,0 +1,14 @@
+Keys
+================
+
+From Any Scene
+----------------
+Esc : Close
+F11	: Toggle Info Strings
+F10 : Toggle Frame Queery
+F1 	: Change to Indoor Scene
+F2 	: Change to Ourdoor Scene
+F3 	: Change to Sponza Scene
+F4 	: Change to Ortho Scene
+
+

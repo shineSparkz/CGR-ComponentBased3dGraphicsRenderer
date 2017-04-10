@@ -35,6 +35,8 @@ public:
 	// Ask renderer class to render scene here
 	virtual void Render() = 0;
 
+	virtual void RenderUI() = 0;
+
 	BaseCamera* GetActiveCamera();
 	const std::string& GetName() const;
 

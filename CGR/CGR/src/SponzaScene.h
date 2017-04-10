@@ -5,6 +5,7 @@
 #include <vector>
 
 class GameObject;
+class MeshRenderer;
 
 class SponzaScene : public IScene
 {
@@ -12,17 +13,19 @@ public:
 	SponzaScene(const std::string& name);
 	virtual ~SponzaScene();
 
-	virtual int  OnSceneLoad(ResourceManager* resManager) override;
-	virtual void OnSceneExit() override;
-	virtual void Update(float dt) override;
-	virtual void Render() override;
+	int  OnSceneLoad(ResourceManager* resManager) override;
+	void OnSceneExit() override;
+	void Update(float dt) override;
+	void Render() override;
+	void RenderUI() override;
 
 private:
 	void createGameObjects();
 
 private:
-	std::vector<GameObject*> m_GameObjects;
-
+	std::vector<GameObject*>	m_GameObjects;
+	MeshRenderer*				m_SponzaPtr;	// <-- Weak Ptr
+	float						m_TimeNow{ 0 };
 };
 
 #endif

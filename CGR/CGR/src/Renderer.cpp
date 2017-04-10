@@ -3,6 +3,7 @@
 // Other Graphics
 #include "Screen.h"
 #include "Mesh.h"
+#include "Material.h"
 #include "ShadowFrameBuffer.h"
 #include "BillboardList.h"
 #include "Terrain.h"
@@ -38,7 +39,6 @@ Renderer::Renderer() :
 	m_CameraPtr(nullptr),
 	m_Query(),
 	m_QueryTime(0),
-	m_Frames(0),
 	m_Gbuffer(nullptr),
 	m_UniformBlockManager(nullptr),
 	m_NumDirLightsInScene(-1),
@@ -49,6 +49,10 @@ Renderer::Renderer() :
 
 bool Renderer::Init()
 {
+#ifdef _DEBUG
+	m_ShouldQueryFrames = true;
+#endif // _DEBUG
+
 	// Log Info
 	{
 		const GLubyte* rendererS = glGetString(GL_RENDERER);
@@ -57,6 +61,10 @@ bool Renderer::Init()
 		std::stringstream ss;
 		ss << "Renderer started..... system using: " << rendererS << ",  " << vendorS << ", GL Version: " << versionS;
 		WRITE_LOG(ss.str(), "info");
+
+		std::stringstream sss;
+		sss << rendererS << " : " << vendorS << " : " << versionS;
+		m_HardwareStr = sss.str();
 	}
 
 	// Attach events
@@ -119,9 +127,15 @@ bool Renderer::SetSceneData(BaseCamera* camera, const Vec3& ambient_light)
 	return true;
 }
 
+const std::string& Renderer::GetHardwareStr() const
+{
+	return m_HardwareStr;
+}
+
 void Renderer::Render(std::vector<GameObject*>& gameObjects)
 {
-	m_Query.Start();
+	if(m_ShouldQueryFrames)
+		m_Query.Start();
 
 	// Update Uniform blocks for wither rendering mode
 	UniformBlock* scene = m_UniformBlockManager->GetBlock("scene");
@@ -143,16 +157,12 @@ void Renderer::Render(std::vector<GameObject*>& gameObjects)
 	else
 		forwardRender(gameObjects);
 
-	m_Query.End();
-
-	if (++m_Frames > 2)
+	if (m_ShouldQueryFrames)
 	{
+		m_Query.End();
 		m_QueryTime = m_Query.Result(false);
-		m_Frames = 0;
+		RenderText(FONT_COURIER, "Frm Time: " + util::to_str(getFrameTime(TimeMeasure::Seconds)), 8, Screen::Instance()->FrameBufferHeight() - 32.0f, FontAlign::Left, Colour::Red());
 	}
-
-	// -- Render Text ----
-	RenderText(FONT_COURIER, "Frm Time: " + util::to_str(getFrameTime(TimeMeasure::Seconds)), 8, Screen::Instance()->FrameBufferHeight() - 16.0f, FontAlign::Left, Colour::Red());
 
 	// Wait until everything is drawn first
 	if (m_ShadingModePending)
@@ -376,7 +386,44 @@ ShadingMode Renderer::GetShadingMode() const
 
 std::string Renderer::GetShadingModeStr() const
 {
-	return m_ShadingMode == ShadingMode::Forward ? "Renderer Shading mode set to : Forward" : "Renderer Shading mode set to: Deferred";
+	return m_ShadingMode == ShadingMode::Forward ? "Shading mode: Forward" : "Shading mode: Deferred";
+}
+
+std::string Renderer::GetPolygonModeStr() const
+{
+	return m_PolyMode == PolygonMode::Filled? "Polygon mode: Filled" : "Polygon mode: Wireframe";
+}
+
+void Renderer::SetPolygonMode(PolygonMode mode)
+{
+	if (mode == PolygonMode::Filled)
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
+	else if (mode == PolygonMode::WireFrame)
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
+}
+
+void Renderer::DisplayNormals(bool shouldDisplay)
+{
+	m_ShouldDisplayNormals = shouldDisplay;
+}
+
+bool Renderer::IsDisplayingNormals() const
+{
+	return m_ShouldDisplayNormals;
+}
+
+bool Renderer::IsQueeryingFrames() const
+{
+	return m_ShouldQueryFrames;
+}
+
+void Renderer::ToggleFrameQueeryMode()
+{
+	m_ShouldQueryFrames = !m_ShouldQueryFrames;
 }
 
 
@@ -398,10 +445,9 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 	
 	// TODO : need to use the shader program that was set to each mesh or batch them 
 	ShaderProgram* sp = m_ResManager->m_Shaders[SHADER_LIGHTING_FWD]; //m_Shaders[mr->m_ShaderIndex];
-	if (sp)
-	{
-		sp->Use();
-	}
+	ShaderProgram* np = nullptr;	
+	if(m_ShouldDisplayNormals)
+		np = m_ResManager->m_Shaders[SHADER_NORMAL_DISP_FWD];
 
 	// Render Mesh Renderers
 	for (auto i = gameObjects.begin(); i != gameObjects.end(); ++i)
@@ -412,12 +458,25 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 		if (!t || !mr)
 			continue;
 
+		const Mat4& model_xform = t->GetModelXform();
+
 		if (sp)
 		{
-			sp->SetUniformValue<Mat4>("u_world_xform", &(t->GetModelXform()));
+			// Render Mesh normally
+			sp->Use();
+			sp->SetUniformValue<Mat4>("u_world_xform", &(model_xform));
+			sp->SetUniformValue<int>("u_use_bumpmap", &(mr->m_HasBumpMaps));
 
-			// Render Mesh here
 			this->renderMesh(mr);
+
+			// Do a normal pass if required
+			if (m_ShouldDisplayNormals)
+			{
+				np->Use();
+				np->SetUniformValue<Mat4>("u_wvp", &(m_CameraPtr->ProjXView() * model_xform));
+				np->SetUniformValue<Mat4>("u_world_xform", &(model_xform));
+				this->renderMesh(mr, GL_POINTS);
+			}
 		}
 	}
 }
@@ -441,6 +500,12 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 		glEnable(GL_DEPTH_TEST);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		ShaderProgram* sp = m_ResManager->m_Shaders[SHADER_GEOM_PASS_DEF];
+
+		ShaderProgram* np = nullptr;
+		if (m_ShouldDisplayNormals)
+			np = m_ResManager->m_Shaders[SHADER_NORMAL_DISP_FWD];
+
 		// Render Mesh Renderers
 		for (auto i = gameObjects.begin(); i != gameObjects.end(); ++i)
 		{
@@ -450,13 +515,23 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 			if (!t || !mr)
 				continue;
 
-			ShaderProgram* sp = m_ResManager->m_Shaders[SHADER_GEOM_PASS_DEF];
+			const Mat4& model_xform = t->GetModelXform();
+
 			if (sp)
 			{
-				sp->Use();
-				sp->SetUniformValue<Mat4>("u_world_xform", &(t->GetModelXform()));
 				// Render Mesh here
+				sp->Use();
+				sp->SetUniformValue<Mat4>("u_world_xform", &(model_xform));
 				this->renderMesh(mr);
+			}
+
+			// Do a normal pass if required
+			if (m_ShouldDisplayNormals && np)
+			{
+				np->Use();
+				np->SetUniformValue<Mat4>("u_wvp", &(m_CameraPtr->ProjXView() * model_xform));
+				np->SetUniformValue<Mat4>("u_world_xform", &(model_xform));
+				this->renderMesh(mr, GL_POINTS);
 			}
 		}
 
@@ -580,9 +655,9 @@ void Renderer::renderMesh(Mesh* thisMesh)
 	glBindVertexArray(0);
 }
 
-void Renderer::renderMesh(MeshRenderer* meshInstance)
+void Renderer::renderMesh(MeshRenderer* meshRenderer, GLenum renderMode)
 {
-	Mesh* thisMesh = m_ResManager->m_Meshes[meshInstance->MeshIndex];
+	Mesh* thisMesh = m_ResManager->m_Meshes[meshRenderer->MeshIndex];
 	if (!thisMesh)
 		return;
 
@@ -593,12 +668,26 @@ void Renderer::renderMesh(MeshRenderer* meshInstance)
 	{
 		SubMesh subMesh = (*j);
 
-		if (thisMesh->HasTextures())
+		const size_t	MaterialSet = meshRenderer->m_MaterialIndex;
+		const unsigned	MaterialIndex = subMesh.MaterialIndex;
+
+		if (m_ResManager->MaterialSetExists(MaterialSet))
+		{
+			auto& materials = m_ResManager->m_Materials[MaterialSet];
+
+			if (materials[MaterialIndex])
+			{
+				materials[MaterialIndex]->Bind();
+			}
+		}
+
+		/*
+		if (thisMesh->HasMaterials())
 		{
 			const unsigned int MaterialIndex = subMesh.MaterialIndex;
-			if(thisMesh->m_Textures[MaterialIndex])
-			{
-				thisMesh->m_Textures[MaterialIndex]->Bind();
+			if(thisMesh->m_Materials[MaterialIndex])
+			{			
+				thisMesh->m_Materials[MaterialIndex]->Bind();
 			}
 		}
 		else
@@ -610,10 +699,12 @@ void Renderer::renderMesh(MeshRenderer* meshInstance)
 				m_ResManager->m_Textures[meshInstance->m_TextureHandles[(*tex)]]->Bind();
 			}
 		}
+		*/
 
 		if (subMesh.NumIndices > 0)
 		{
-			glDrawElementsBaseVertex(GL_TRIANGLES,
+			glDrawElementsBaseVertex(
+				renderMode,
 				subMesh.NumIndices,
 				GL_UNSIGNED_INT,
 				(void*)(sizeof(unsigned int) * subMesh.BaseIndex),
@@ -621,7 +712,7 @@ void Renderer::renderMesh(MeshRenderer* meshInstance)
 		}
 		else
 		{
-			glDrawArrays(GL_TRIANGLES, 0, subMesh.NumVertices);
+			glDrawArrays(renderMode, 0, subMesh.NumVertices);
 		}
 
 		++meshIndex;
@@ -750,10 +841,16 @@ bool Renderer::setFrameBuffers()
 bool Renderer::setStaticDefaultShaderValues()
 {
 	// Set Light Uniforms
+	// Should make these engine constants
 	int sampler = 0;
+	int normal_sampler = 2;
 	ShaderProgram* lsp = m_ResManager->GetShader(SHADER_LIGHTING_FWD);
-	lsp->Use();
-	lsp->SetUniformValue<int>("u_sampler", &sampler);
+	if (lsp)
+	{
+		lsp->Use();
+		lsp->SetUniformValue<int>("u_sampler", &sampler);
+		lsp->SetUniformValue<int>("u_normal_sampler", &normal_sampler);
+	}
 
 	//--------------------------------------------------------------------------------
 

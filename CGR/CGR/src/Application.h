@@ -22,6 +22,9 @@ public:
 	void Run();
 	void Close();
 
+	bool IsRenderingInfoStrings() const;
+	void ShouldRenderInfoStrings(bool should);
+
 	RenderWindow* GetRenderWindow();
 
 	// Event and Scene Management
@@ -30,18 +33,21 @@ public:
 
 private:
 	void HandleEvent(Event* ev) override;
+	void renderInfo();
 	static void glfw_error_callback(int error, const char* description);
 
 private:
-	SceneGraph* m_SceneGraph;
-	RenderWindow* m_RenderWindow;
-	ResourceManager* m_ResourceManager;
-	Renderer* m_Renderer;
-	Input* m_Input;
+	SceneGraph*			m_SceneGraph;
+	RenderWindow*		m_RenderWindow;
+	ResourceManager*	m_ResourceManager;
+	Renderer*			m_Renderer;
+	Input*				m_Input;
 
-	int m_ShouldClose;
-	int m_PendingSceneChange;
-	int m_PendingSceneHash;
+	int					m_ShouldClose;
+	int					m_PendingSceneChange;
+	int					m_PendingSceneHash;
+	int					m_ShouldRendedInfoStrings;
+	int					m_ShouldRenderSceneUI;
 };
 
 inline RenderWindow* Application::GetRenderWindow()

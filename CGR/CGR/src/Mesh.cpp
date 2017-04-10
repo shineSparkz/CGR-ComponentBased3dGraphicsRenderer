@@ -1,20 +1,20 @@
 #include "Mesh.h"
 
-// assimp include files. These three are usually needed.
-#include "assimp\Importer.hpp"	//OO version Header!
-#include "assimp\postprocess.h"
-#include "assimp\scene.h"
-#include "assimp\DefaultLogger.hpp"
-#include "assimp\LogStream.hpp"
-
 #include <fstream>
 #include "LogFile.h"
 #include "Vertex.h"
 #include "OpenGlLayer.h"
 #include "Texture.h"
-
+#include "Material.h"
 #include "Image.h"
+#include "ResourceManager.h"
 
+// Assimp
+#include "assimp\Importer.hpp"
+#include "assimp\postprocess.h"
+#include "assimp\scene.h"
+#include "assimp\DefaultLogger.hpp"
+#include "assimp\LogStream.hpp"
 
 uint64 Mesh::NumVerts = 0;
 uint64 Mesh::NumMeshes = 0;
@@ -147,16 +147,9 @@ Mesh::~Mesh()
 	OpenGLLayer::clean_GL_vao(&this->m_VAO, 1);
 	OpenGLLayer::clean_GL_buffer(&this->m_VertexVBO, 1);
 	OpenGLLayer::clean_GL_buffer(&this->m_IndexVBO, 1);
-
-	for (size_t i = 0; i < m_Textures.size(); ++i)
-	{
-		SAFE_DELETE(m_Textures[i]);
-	}
-
-	m_Textures.clear();
 }
 
-bool Mesh::Load(const std::string& mesh, bool withTangents, bool loadTextures)
+bool Mesh::Load(const std::string& mesh, bool withTangents, bool loadTextures, unsigned textureSet, ResourceManager* resMan)
 {
 	// Will pass path here and have scene local
 	if (!Import3DFromFile("../resources/meshes/" + mesh))
@@ -175,7 +168,6 @@ bool Mesh::Load(const std::string& mesh, bool withTangents, bool loadTextures)
 
 	// Load here
 	m_SubMeshes.resize(scene->mNumMeshes);
-	// Textures
 
 	// Static data
 	Mesh::NumMeshes += scene->mNumMeshes;
@@ -189,6 +181,10 @@ bool Mesh::Load(const std::string& mesh, bool withTangents, bool loadTextures)
 		if (loadTextures)
 		{
 			m_SubMeshes[i].MaterialIndex = scene->mMeshes[i]->mMaterialIndex;
+		}
+		else
+		{
+			m_SubMeshes[i].MaterialIndex = i;
 		}
 		
 		m_SubMeshes[i].NumIndices = scene->mMeshes[i]->mNumFaces * 3;
@@ -263,18 +259,22 @@ bool Mesh::Load(const std::string& mesh, bool withTangents, bool loadTextures)
 
 	if (loadTextures)
 	{
-		m_Textures.resize(scene->mNumMaterials);
-		return InitMaterials(scene, mesh);
+		//m_Materials.resize(scene->mNumMaterials);
+		return InitMaterials(scene, mesh, textureSet, resMan);
 	}
 
 	return true;
 }
 
-bool Mesh::InitMaterials(const aiScene* pScene, const std::string& filename)
+bool Mesh::InitMaterials(const aiScene* pScene, const std::string& filename, unsigned textureSet, ResourceManager* resMan)
 {
+	std::map<unsigned, Material*> materials;
+
 	// Extract the directory part from the file name
 	std::string::size_type slashIndex = filename.find_last_of("/");
 	std::string dir;
+
+	bool return_value = true;
 
 	if (slashIndex == std::string::npos)
 	{
@@ -289,12 +289,45 @@ bool Mesh::InitMaterials(const aiScene* pScene, const std::string& filename)
 		dir = filename.substr(0, slashIndex);
 	}
 
+	// Hack I had to put in for daft cunts that put spaces in directory paths
+	bool didWarn = false;
+
 	// Initialize the materials
 	for (unsigned int i = 0; i < pScene->mNumMaterials; i++)
 	{
 		const aiMaterial* pMaterial = pScene->mMaterials[i];
 
-		m_Textures[i] = nullptr;
+		materials[i] = nullptr;
+
+		/*
+		{
+			unsigned diff_count = 0;
+			unsigned spec_count = 0;
+			unsigned amb_count = 0;
+			unsigned emis_count = 0;
+			unsigned height_count = 0;
+			unsigned norm_count = 0;
+			unsigned shine_count = 0;
+			unsigned opac_count = 0;
+			unsigned disp_count = 0;
+			unsigned lightmap_count = 0;
+			unsigned reflect_count = 0;
+			unsigned unknown_count = 0;
+
+			diff_count += pMaterial->GetTextureCount(aiTextureType_DIFFUSE);
+			spec_count += pMaterial->GetTextureCount(aiTextureType_SPECULAR);
+			amb_count += pMaterial->GetTextureCount(aiTextureType_AMBIENT);
+			emis_count += pMaterial->GetTextureCount(aiTextureType_EMISSIVE);
+			height_count += pMaterial->GetTextureCount(aiTextureType_HEIGHT);
+			norm_count += pMaterial->GetTextureCount(aiTextureType_NORMALS);
+			shine_count += pMaterial->GetTextureCount(aiTextureType_SHININESS);
+			opac_count += pMaterial->GetTextureCount(aiTextureType_OPACITY);
+			disp_count += pMaterial->GetTextureCount(aiTextureType_DISPLACEMENT);
+			lightmap_count += pMaterial->GetTextureCount(aiTextureType_LIGHTMAP);
+			reflect_count += pMaterial->GetTextureCount(aiTextureType_REFLECTION);
+			unknown_count += pMaterial->GetTextureCount(aiTextureType_UNKNOWN);
+		}
+		*/
 
 		if (pMaterial->GetTextureCount(aiTextureType_DIFFUSE) > 0)
 		{
@@ -311,8 +344,6 @@ bool Mesh::InitMaterials(const aiScene* pScene, const std::string& filename)
 
 				std::string fullPath = "../resources/meshes/" + dir + "/" + p;
 
-				// Hack I had to put in for daft cunts that put spaces in directory paths
-				bool didWarn = false;
 				for (int i = 0; i < fullPath.length(); ++i)
 				{
 					if (fullPath[i] == ' ')
@@ -330,14 +361,19 @@ bool Mesh::InitMaterials(const aiScene* pScene, const std::string& filename)
 				Image img;
 				if (!img.LoadImg(fullPath.c_str()))
 				{
-					return false;
+					return_value = false;
+					break;
 				}
 
-				m_Textures[i] = new Texture(fullPath, GL_TEXTURE_2D, GL_TEXTURE0);			
+				if(!materials[i])
+					materials[i] = new Material();
+
+				materials[i]->diffuse_map = new Texture(fullPath, GL_TEXTURE_2D, GL_TEXTURE0);
 				
-				if (!m_Textures[i]->Create(&img))
+				if (!materials[i]->diffuse_map->Create(&img))
 				{
-					return false;
+					return_value = false;
+					break;
 				}
 			}
 		}
@@ -349,17 +385,108 @@ bool Mesh::InitMaterials(const aiScene* pScene, const std::string& filename)
 			Image img;
 			if (!img.LoadImg(fullPath.c_str()))
 			{
-				return false;
+				return_value = false;
+				break;
 			}
 
-			m_Textures[i] = new Texture(fullPath, GL_TEXTURE_2D, GL_TEXTURE0);
-			if (!m_Textures[i]->Create(&img))
+			if (!materials[i])
+				materials[i] = new Material;
+
+			materials[i]->diffuse_map = new Texture(fullPath, GL_TEXTURE_2D, GL_TEXTURE0);
+			
+			if (!materials[i]->diffuse_map->Create(&img))
 			{
-				return false;
+				return_value = false;
+			}
+		}
+		
+		if (pMaterial->GetTextureCount(aiTextureType_HEIGHT) > 0)
+		{
+			aiString path;
+
+			if (pMaterial->GetTexture(aiTextureType_HEIGHT, 0, &path, NULL, NULL, NULL, NULL, NULL) == AI_SUCCESS)
+			{
+				std::string p(path.data);
+
+				if (p.substr(0, 2) == ".\\")
+				{
+					p = p.substr(2, p.size() - 2);
+				}
+
+				std::string fullPath = "../resources/meshes/" + dir + "/" + p;
+
+				for (int i = 0; i < fullPath.length(); ++i)
+				{
+					if (fullPath[i] == ' ')
+					{
+						if (!didWarn)
+						{
+							WRITE_LOG("NEED TO REPLACE SPACES IN PATH WITH _ for mesh " + fullPath, "warning");
+							didWarn = true;
+						}
+
+						fullPath[i] = '_';
+					}
+				}
+
+				Image img;
+				if (!img.LoadImg(fullPath.c_str()))
+				{
+					return_value = false;
+					break;
+				}
+
+				if (!materials[i])
+					materials[i] = new Material();
+
+				materials[i]->normal_map = new Texture(fullPath, GL_TEXTURE_2D, GL_TEXTURE2);
+
+				if (!materials[i]->normal_map->Create(&img))
+				{
+					return_value = false;
+					break;
+				}
+			}
+		}
+		else
+		{
+			// Use fake normal
+			std::string fullPath = "../resources/textures/default_normal_map.tga";
+
+			Image img;
+			if (!img.LoadImg(fullPath.c_str()))
+			{
+				return_value = false;
+				break;
 			}
 
+			if (!materials[i])
+				materials[i] = new Material;
+
+			materials[i]->normal_map = new Texture(fullPath, GL_TEXTURE_2D, GL_TEXTURE2);
+			if (!materials[i]->normal_map->Create(&img))
+			{
+				return_value = false;
+				break;
+			}
 		}
 	}
 
-	return true;
+	if (!return_value)
+	{
+		// Clean
+		for (auto i = materials.begin(); i != materials.end(); ++i)
+		{
+			i->second->Clean();
+			SAFE_DELETE(i->second);
+		}
+
+		materials.clear();
+	}
+	else
+	{
+		resMan->AddMaterialSet(textureSet, materials);
+	}
+
+	return return_value;
 }

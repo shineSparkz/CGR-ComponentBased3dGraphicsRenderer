@@ -11,6 +11,7 @@
 #include "GBuffer.h"
 #include "Font.h"
 #include "UniformBlockManager.h"
+#include "Material.h"
 
 const ShaderAttrib POS_ATTR{ 0, "vertex_position" };
 const ShaderAttrib NORM_ATTR{ 1, "vertex_normal" };
@@ -122,6 +123,28 @@ bool ResourceManager::loadDefaultForwardShaders()
 		shaders.push_back(frag);
 
 		if (!this->CreateShaderProgram(shaders, SHADER_BILLBOARD_FWD))
+		{
+			return false;
+		}
+	}
+
+	// ---- Normal Display (Fwd) ----
+	{
+		Shader vert(GL_VERTEX_SHADER);
+		Shader geom(GL_GEOMETRY_SHADER);
+		Shader frag(GL_FRAGMENT_SHADER);
+		if (!vert.LoadShader("../resources/shaders/normal_debug/normal_display_vs.glsl")) { return false; }
+		if (!geom.LoadShader("../resources/shaders/normal_debug/normal_display_gs.glsl")) { return false; }
+		if (!frag.LoadShader("../resources/shaders/normal_debug/normal_display_fs.glsl")) { return false; }
+		vert.AddAttribute(POS_ATTR);
+		vert.AddAttribute(NORM_ATTR);
+
+		std::vector<Shader> shaders;
+		shaders.push_back(vert);
+		shaders.push_back(geom);
+		shaders.push_back(frag);
+
+		if (!this->CreateShaderProgram(shaders, SHADER_NORMAL_DISP_FWD))
 		{
 			return false;
 		}
@@ -282,16 +305,91 @@ bool ResourceManager::loadDefaultDeferredShaders()
 	return true;
 }
 
+void ResourceManager::AddMaterialSet(size_t key, const std::map<unsigned, Material*> materials)
+{
+	if (m_Materials.find(key) != m_Materials.end())
+	{
+		return;
+	}
+	else
+	{
+		m_Materials[key] = materials;
+	}
+}
+
+bool ResourceManager::MaterialSetExists(size_t key) const
+{
+	if (m_Materials.find(key) != m_Materials.end())
+	{
+		return true;
+	}
+
+	return false;
+}
+
+Texture* ResourceManager::LoadTexture(const std::string& textureFile, int textureSampler)
+{
+	Image i;
+	if (!i.LoadImg(textureFile.c_str()))
+	{
+		WRITE_LOG("Failed to load texture: " + textureFile, "error");
+		return nullptr;
+	}
+
+	Texture* t = new Texture(textureFile, GL_TEXTURE_2D, textureSampler);
+
+	if (!t->Create(&i))
+	{
+		WRITE_LOG("Failed to create texture: " + textureFile, "error");
+		return nullptr;
+	}
+
+	return t;
+}
+
 bool ResourceManager::loadDefaultTextures()
 {
 	bool success = true;
-	success &= this->LoadTexture("../resources/textures/male_body_low_albedo.tga", TEX_MALE_LOW, GL_TEXTURE0);
-	success &= this->LoadTexture("../resources/textures/male_body_high_albedo.tga", TEX_MALE_HIGH, GL_TEXTURE0);
-	success &= this->LoadTexture("../resources/textures/dino_diffuse.tga", TEX_DINO, GL_TEXTURE0);
-	success &= this->LoadTexture("../resources/textures/terrain.tga", TEX_GRASS, GL_TEXTURE0);
-	success &= this->LoadTexture("../resources/textures/bricks/bricks.tga", TEX_BRICKS, GL_TEXTURE0);
-	success &= this->LoadTexture("../resources/textures/bricks/bricks_normal.tga", TEX_BRICKS_NORMAL, GL_TEXTURE2);
-	success &= this->LoadTexture("../resources/textures/default_normal_map.tga", TEX_FAKE_NORMAL, GL_TEXTURE2);
+
+	// Load Male mesh material set
+	{
+		Texture* male_low_diff = this->LoadTexture("../resources/textures/male_body_low_albedo.tga", GL_TEXTURE0);
+		Texture* male_high_diff = this->LoadTexture("../resources/textures/male_body_high_albedo.tga", GL_TEXTURE0);
+		if (male_low_diff && male_high_diff)
+		{
+			m_Materials[MATERIALS_MALE][0] = new Material();
+			m_Materials[MATERIALS_MALE][1] = new Material();
+
+			m_Materials[MATERIALS_MALE][0]->diffuse_map = male_high_diff;
+			m_Materials[MATERIALS_MALE][1]->diffuse_map = male_low_diff;
+		}
+	}
+
+	// Load Grass material set
+	{
+		Texture* grass_diff = this->LoadTexture("../resources/textures/terrain.tga", GL_TEXTURE0);
+		if (grass_diff)
+		{
+			m_Materials[MATERIALS_GRASS][0] = new Material();
+
+			m_Materials[MATERIALS_GRASS][0]->diffuse_map = grass_diff;
+		}
+	}
+
+	// Load Brick material set
+	{
+		Texture* brick_diff = this->LoadTexture("../resources/textures/bricks/bricks.tga", GL_TEXTURE0);
+		Texture* brick_norm = this->LoadTexture("../resources/textures/bricks/bricks_normal.tga", GL_TEXTURE2);
+
+		if (brick_diff && brick_norm)
+		{
+			m_Materials[MATERIALS_BRICKS][0] = new Material();
+			m_Materials[MATERIALS_BRICKS][0]->diffuse_map = brick_diff;
+			m_Materials[MATERIALS_BRICKS][0]->normal_map = brick_norm;
+		}
+	}
+
+	// From Loaded Scene
 	success &= this->LoadTexture("../resources/textures/billboards/grass.tga", TEX_GRASS_BILLBOARD, GL_TEXTURE0);
 
 	success &= this->LoadTexture("../resources/textures/terrain/fungus.tga", TEX_TERRAIN1, GL_TEXTURE0);
@@ -299,6 +397,7 @@ bool ResourceManager::loadDefaultTextures()
 	success &= this->LoadTexture("../resources/textures/terrain/rock.tga", TEX_TERRAIN3, GL_TEXTURE2);
 	success &= this->LoadTexture("../resources/textures/terrain/sand.tga", TEX_TERRAIN4, GL_TEXTURE3);
 	success &= this->LoadTexture("../resources/textures/terrain/path.tga", TEX_TERRAIN5, GL_TEXTURE4);
+
 	success &= this->LoadTexture("../resources/textures/noise.tga", TEX_NOISE, GL_TEXTURE0);
 
 	std::string s[6] =
@@ -319,11 +418,10 @@ bool ResourceManager::loadDefaultTextures()
 bool ResourceManager::loadDefaultMeshes()
 {
 	bool success = true;
-	success &= LoadMesh("cube.obj", MESH_ID_CUBE, false, false);
-	success &= LoadMesh("quad.obj", MESH_ID_QUAD, false, false);
-	success &= LoadMesh("sphere.obj", MESH_ID_SPHERE, false, false);
-	success &= LoadMesh("male.obj", MESH_ID_MALE, false, false);
-	success &= LoadMesh("dino.obj", MESH_ID_DINO, false, false);
+	success &= LoadMesh("cube.obj", MESH_ID_CUBE, true, false, 0);
+	success &= LoadMesh("quad.obj", MESH_ID_QUAD, false, false, 0);
+	success &= LoadMesh("sphere.obj", MESH_ID_SPHERE, false, false, 0);
+	success &= LoadMesh("male.obj", MESH_ID_MALE, false, false, 0);
 	return success;
 }
 
@@ -353,7 +451,7 @@ bool ResourceManager::LoadFont(const std::string& path, size_t key, int size)
 	return true;
 }
 
-bool ResourceManager::LoadMesh(const std::string& path, size_t key_store, bool tangents, bool withTextures)
+bool ResourceManager::LoadMesh(const std::string& path, size_t key_store, bool tangents, bool withTextures, unsigned materialSet)
 {
 	if (m_Meshes.find(key_store) != m_Meshes.end())
 	{
@@ -363,7 +461,7 @@ bool ResourceManager::LoadMesh(const std::string& path, size_t key_store, bool t
 
 	Mesh* mesh = new Mesh();
 	m_Meshes[key_store] = mesh;
-	if (!mesh->Load(path, tangents, withTextures))
+	if (!mesh->Load(path, tangents, withTextures, materialSet, this))
 	{
 		WRITE_LOG("Failed to load mesh: " + path, "error");
 		return false;
@@ -570,9 +668,36 @@ void ResourceManager::Close()
 	}
 	m_Textures.clear();
 
+	// Clean Materials
+	for (auto i = m_Materials.begin(); i != m_Materials.end(); ++i)
+	{
+		for (auto j = i->second.begin(); j != i->second.end(); ++j)
+		{
+			j->second->Clean();
+			SAFE_DELETE(j->second);
+		}
+	}
+
+	m_Materials.clear();
+
+	// Clean Fonts
 	for (auto i = m_Fonts.begin(); i != m_Fonts.end(); ++i)
 	{
 		SAFE_CLOSE(i->second);
 	}
 	m_Fonts.clear();
+}
+
+Mesh* ResourceManager::GetMesh(size_t index) const
+{
+	auto m = m_Meshes.find(index);
+	if (m != m_Meshes.end())
+	{
+		return m->second;
+	}
+	else
+	{
+		WRITE_LOG("error invalid texture", "error");
+		return nullptr;
+	}
 }

@@ -12,10 +12,11 @@ public:
 	OrthoScene(const std::string& name);
 	virtual ~OrthoScene();
 
-	virtual int  OnSceneLoad(ResourceManager* resManager) override;
-	virtual void OnSceneExit() override;
-	virtual void Update(float dt) override;
-	virtual void Render() override;
+	int  OnSceneLoad(ResourceManager* resManager) override;
+	void OnSceneExit() override;
+	void Update(float dt) override;
+	void Render() override;
+	void RenderUI() override;
 
 private:
 	std::vector<GameObject*> m_GameObjects;

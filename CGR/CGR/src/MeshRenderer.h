@@ -12,27 +12,25 @@ class MeshRenderer : public Component
 public:
 	MeshRenderer(GameObject* go);
 	static int GetId();
-	virtual ~MeshRenderer();
+	virtual	~MeshRenderer();
 
 	void Start() override;
 	void Update() override;
 
-	void SetMesh(size_t meshIndex, size_t numSubMeshes);
+	void SetMesh(size_t meshIndex);
 	void SetShader(size_t texture);
-	bool AddTexture(size_t texHandle, size_t meshIndex);
-	bool AddTexture(size_t texHandle);
+	void SetMaterialSet(size_t handle);
+
+	void SetToUseBumpMaps(bool shouldUse);
+	bool UsingBumpMaps() const;
 
 private:
-	friend class Renderer;
-	static int m_Id;
-
-	// Key for resource in hash table
-	size_t MeshIndex;
-	size_t m_ShaderIndex;
-
-	// Keys for textures in resource hash table
-	std::vector<size_t> m_TextureHandles;
-	std::vector<std::vector<size_t>> m_SubMeshTextures;
+	friend class						Renderer;
+	static int							m_Id;
+	size_t								MeshIndex;
+	size_t								m_MaterialIndex;
+	size_t								m_ShaderIndex;
+	int									m_HasBumpMaps{ GE_FALSE };
 };
 
 INLINE int MeshRenderer::GetId()

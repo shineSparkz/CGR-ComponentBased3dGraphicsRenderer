@@ -20,39 +20,30 @@ void MeshRenderer::Update()
 {
 }
 
-void MeshRenderer::SetMesh(size_t meshIndex, size_t numSubMeshes)
+void MeshRenderer::SetMesh(size_t meshIndex)
 {
 	this->MeshIndex = meshIndex;
-	m_SubMeshTextures.resize(numSubMeshes);
 }
 
-bool MeshRenderer::AddTexture(size_t texHandle, size_t meshIndex)
+void MeshRenderer::SetMaterialSet(size_t handle)
 {
-	if (meshIndex >= m_SubMeshTextures.size())
-	{
-		WRITE_LOG("Tried to load texture with out of bounds mesh index", "error");
-		return false;
-	}
-
-	m_SubMeshTextures[meshIndex].push_back(m_TextureHandles.size());
-
-	m_TextureHandles.push_back(texHandle);
-
-	return true;
-}
-
-bool MeshRenderer::AddTexture(size_t texHandle)
-{
-	for (auto m = m_SubMeshTextures.begin(); m != m_SubMeshTextures.end(); ++m)
-	{
-		m->push_back(m_TextureHandles.size());
-	}
-
-	m_TextureHandles.push_back(texHandle);
-	return true;
+	m_MaterialIndex = handle;
 }
 
 void MeshRenderer::SetShader(size_t shader)
 {
 	m_ShaderIndex = shader;
+}
+
+void MeshRenderer::SetToUseBumpMaps(bool shouldUse)
+{
+	if (shouldUse)
+		m_HasBumpMaps = GE_TRUE;
+	else
+		m_HasBumpMaps = GE_FALSE;
+}
+
+bool MeshRenderer::UsingBumpMaps() const
+{
+	return m_HasBumpMaps == GE_TRUE;
 }

@@ -149,6 +149,9 @@ void OutDoorScene::Render()
 	m_Renderer->Render(m_GameObjects);
 	m_Renderer->RenderTerrain(m_Terrain);
 	m_Renderer->RenderBillboardList(m_TreeBillboardList);
+}
 
-	m_Renderer->RenderText(FONT_COURIER, m_Renderer->GetShadingModeStr(), 8, 32);
+void OutDoorScene::RenderUI()
+{
+
 }

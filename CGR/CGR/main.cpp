@@ -7,7 +7,6 @@
 
 /*
 List
-- Reimplement normal maps
 - Reimplement shadows Directional, Have shadows for multiple lights
 - Wavy grass
 - Change shaders at runtime, reload shaders runtime
@@ -28,6 +27,9 @@ Extra
 Done
 - Tidy up terrain shader
 - Switch scenes
+- Normal display tool
+- Specular
+- Reimplement normal maps
 
 */
 
@@ -65,7 +67,7 @@ int main(void)
 		}
 
 
-		if (app->ChangeScene("indoor") != GE_OK)
+		if (app->ChangeScene("sponza") != GE_OK)
 		{
 			SAFE_CLOSE(app);
 			return -1;

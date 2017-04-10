@@ -1,5 +1,6 @@
 #include "Application.h"
 
+#include "utils.h"
 #include "LogFile.h"
 #include "EventManager.h"
 #include "Time.h"
@@ -10,6 +11,7 @@
 #include "KeyEvent.h"
 #include "Screen.h"
 #include "ResId.h"
+#include "Mesh.h"
 
 Application::Application() :
 	m_SceneGraph(nullptr),
@@ -18,7 +20,9 @@ Application::Application() :
 	m_Renderer(nullptr),
 	m_Input(nullptr),
 	m_ShouldClose(GE_FALSE),
-	m_PendingSceneChange(GE_FALSE)
+	m_PendingSceneChange(GE_FALSE),
+	m_ShouldRendedInfoStrings(GE_FALSE),
+	m_ShouldRenderSceneUI(GE_FALSE)
 {
 	// Create Logger first
 	if (!DebugLogFile::Instance())
@@ -26,6 +30,11 @@ Application::Application() :
 		new DebugLogFile();
 		DebugLogFile::Instance()->CreateLogFile("../resources/log/", "logfile.html");
 	}
+
+#ifdef  _DEBUG
+	m_ShouldRendedInfoStrings = GE_TRUE;
+#endif //  _DEBUG
+
 }
 
 bool Application::Init(int width, int height, bool windowed, const char* title, int vsync, int aspX, int aspY, int major, int minor)
@@ -198,16 +207,44 @@ void Application::Run()
 			frame_count++;
 		}
 
-		m_SceneGraph->RenderActiveScene();
+		m_SceneGraph->RenderActiveScene(m_ShouldRenderSceneUI);
 		
-		// TODO : Need a #define or something round this
-		m_Renderer->RenderText(FONT_COURIER, m_SceneGraph->GetActiveSceneName() + " scene example", 8, (float)Screen::Instance()->FrameBufferHeight() - 64.0f, FontAlign::Left, Colour::Blue());
+		if (m_ShouldRendedInfoStrings)
+			renderInfo();
 
 		m_RenderWindow->SwapBuffers();
 		glfwPollEvents();
 	}
 
 	glfwSetWindowShouldClose(glfwGetCurrentContext(), GLFW_TRUE);
+}
+
+void Application::renderInfo()
+{
+	int numItems = 1;
+	const float divider = 32.0f;
+	const float top = static_cast<float>(Screen::Instance()->FrameBufferHeight());
+
+	if(!m_ShouldRenderSceneUI)
+		m_Renderer->RenderText(FONT_COURIER, "Press [Tab] to toggle scene UI layer", 8, 32);
+	
+	m_Renderer->RenderText(FONT_COURIER, m_Renderer->GetHardwareStr(),		8, top - (++numItems * divider), FontAlign::Left, Colour::Blue());
+	m_Renderer->RenderText(FONT_COURIER, m_Renderer->GetShadingModeStr(),	8, top - (++numItems * divider), FontAlign::Left, Colour::Blue());
+	m_Renderer->RenderText(FONT_COURIER, "Displaying Normals: " + util::bool_to_str(m_Renderer->IsDisplayingNormals()), 8, top - (++numItems * divider), FontAlign::Left, Colour::Blue());
+	m_Renderer->RenderText(FONT_COURIER, "Num Verts: " + util::to_str(Mesh::NumVerts) + ", Num Meshes: " + util::to_str(Mesh::NumMeshes), 8, top - (++numItems * divider), FontAlign::Left, Colour::Green());
+	m_Renderer->RenderText(FONT_COURIER, m_SceneGraph->GetActiveSceneName() + " scene example", 8, top - (++numItems * divider), FontAlign::Left, Colour::Red());
+}
+
+void Application::ShouldRenderInfoStrings(bool should)
+{
+	should ? m_ShouldRendedInfoStrings = GE_TRUE : m_ShouldRendedInfoStrings = GE_FALSE;
+}
+
+bool Application::IsRenderingInfoStrings() const
+{
+	if (m_ShouldRendedInfoStrings == GE_TRUE)
+		return true;
+	return false;
 }
 
 void Application::glfw_error_callback(int error, const char* description)
@@ -253,6 +290,21 @@ void Application::HandleEvent(Event* e)
 			else if (ke->key == GLFW_KEY_F4 && ke->action == GLFW_RELEASE)
 			{
 				this->ChangeScene("ortho");
+			}
+			else if (ke->key == GLFW_KEY_F10 && ke->action == GLFW_RELEASE)
+			{
+				this->m_Renderer->ToggleFrameQueeryMode();
+			}
+			else if (ke->key == GLFW_KEY_F11 && ke->action == GLFW_RELEASE)
+			{
+				this->ShouldRenderInfoStrings(!this->IsRenderingInfoStrings());
+			}
+			else if (ke->key == GLFW_KEY_TAB && ke->action == GLFW_RELEASE)
+			{
+				if (m_ShouldRenderSceneUI)
+					m_ShouldRenderSceneUI = GE_FALSE;
+				else
+					m_ShouldRenderSceneUI = GE_TRUE;
 			}
 		}
 		// else pass this event on to current state

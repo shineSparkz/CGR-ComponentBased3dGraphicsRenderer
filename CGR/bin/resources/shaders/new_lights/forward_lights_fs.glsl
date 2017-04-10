@@ -50,11 +50,15 @@ layout (binding = 1, std140) uniform scene
 };
 
 // TODO : This will go in material block
-uniform sampler2D u_sampler;
+uniform sampler2D 	u_sampler;
+uniform sampler2D 	u_normal_sampler;
+uniform int			u_use_bumpmap;
 
 in  vec3    N;
 in  vec3 	P;
 in  vec2    varying_texcoord;   //!< The interpolated co-ordinate to use for the texture sampler.
+in 	vec3 	varying_tangent;
+
 out vec4    frag_colour; 		//!< The calculated colour of the fragment.
 
 vec4 reflection(vec3 light_intensity, float light_ambient_intensity, vec3 light_dir, vec3 p, vec3 n)
@@ -143,9 +147,26 @@ vec4 getSpotLightColor(const Spotlight spotLight, vec3 p)
 	return vec4(0.0, 0.0, 0.0, 0.0);
 }
 
+vec3 calcBumpedNormal()
+{
+	vec3 normal = normalize(N);
+	vec3 tangent = normalize(varying_tangent);
+	
+	tangent = normalize(tangent - dot(tangent, normal) * normal);
+	vec3 biTan = cross(tangent, normal);
+	vec3 bumpNorm = texture(u_normal_sampler, varying_texcoord).xyz;
+	
+	bumpNorm = 2.0 * bumpNorm - vec3(1.0, 1.0, 1.0);                              
+    vec3 newNormal;                                                                         
+    mat3 TBN = mat3(tangent, biTan, normal);                                            
+    newNormal = TBN * bumpNorm;                                                        
+    newNormal = normalize(newNormal);                                                       
+    return newNormal;   
+}
+
 void main()
 {
-	vec3 n = normalize(N);
+	vec3 n = (u_use_bumpmap == 1) ? calcBumpedNormal() : normalize(N);
 	vec4 tex_colour = texture(u_sampler, varying_texcoord);
 	
 	vec4 total_light =  getDirectionalLightColour(n);

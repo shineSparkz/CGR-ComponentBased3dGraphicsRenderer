@@ -22,7 +22,8 @@ public:
 	bool IsEmpty() const;
 
 	void UpdateActiveScene(float dt);
-	void RenderActiveScene();
+	void RenderActiveScene(int renderUI);
+
 	void Close();
 	void ChangeScene(int nextState, ResourceManager* resManager);
 	void ChangeSceneByName(const std::string& nextState, ResourceManager* resManager);

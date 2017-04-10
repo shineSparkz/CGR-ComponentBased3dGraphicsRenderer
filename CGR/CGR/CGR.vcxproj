@@ -231,6 +231,7 @@
     <ClInclude Include="src\KeyEvent.h" />
     <ClInclude Include="src\Lights.h" />
     <ClInclude Include="src\LogFile.h" />
+    <ClInclude Include="src\Material.h" />
     <ClInclude Include="src\math_utils.h" />
     <ClInclude Include="src\Mesh.h" />
     <ClInclude Include="src\MeshRenderer.h" />

@@ -201,6 +201,9 @@
     <ClInclude Include="src\CgrEngine.h">
       <Filter>Application</Filter>
     </ClInclude>
+    <ClInclude Include="src\Material.h">
+      <Filter>Render</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />

@@ -40,6 +40,12 @@ enum ShadingMode
 	Forward, Deferred
 };
 
+enum PolygonMode
+{
+	Filled,
+	WireFrame
+};
+
 class Renderer : public EventHandler
 {
 public:
@@ -48,6 +54,7 @@ public:
 	bool					Init();
 	void					Close();
 	bool					SetSceneData(BaseCamera* camera, const Vec3& ambientLight);
+	const std::string&		GetHardwareStr() const;
 
 	// Public Rendering
 	void					Render(std::vector<GameObject*>& gameObjects);
@@ -67,18 +74,26 @@ public:
 	int						GetPointLightIndex();
 	void					UpdatePointLight(int index, const Vec3& position, float range);
 
-	// Shading Mode
+	// Modes
 	void					ToggleShadingMode();
 	void					SetShadingMode(ShadingMode mode);
 	ShadingMode				GetShadingMode() const;
 	std::string				GetShadingModeStr() const;
+
+	std::string				GetPolygonModeStr() const;
+	void					SetPolygonMode(PolygonMode mode);
+	void					DisplayNormals(bool shouldDisplay);
+	bool					IsDisplayingNormals() const;
+
+	bool					IsQueeryingFrames() const;
+	void					ToggleFrameQueeryMode();
 
 private:
 	// Rendering
 	void forwardRender(std::vector<GameObject*>& gameObjects);
 	void deferredRender(std::vector<GameObject*>& gameObjects);
 	void renderMesh(Mesh* mesh);
-	void renderMesh(MeshRenderer* mesh);
+	void renderMesh(MeshRenderer* mesh, GLenum renderMode = GL_TRIANGLES);
 	void renderSkybox(BaseCamera* cam);
 
 	// Events
@@ -93,23 +108,27 @@ private:
 	float getFrameTime(TimeMeasure tm);
 
 private:
-	UniformBlockManager*	m_UniformBlockManager;
-	ResourceManager*		m_ResManager;
-	BaseCamera*				m_CameraPtr;
-	GBuffer*				m_Gbuffer;
-	GLuint					m_QueryTime;
-	uint64					m_Frames;
-	Query					m_Query;
+	std::vector<DeferredPointLightInfo>		m_PointsInfo;
+	UniformBlockManager*					m_UniformBlockManager;
+	ResourceManager*						m_ResManager;
+	BaseCamera*								m_CameraPtr;
+	GBuffer*								m_Gbuffer;
+	GLuint									m_QueryTime;
+	Query									m_Query;
+	std::string								m_HardwareStr;
 
-	int						m_NumDirLightsInScene;
-	int						m_NumPointLightsInScene;
-	int						m_NumSpotLightsInScene;
+	int										m_NumDirLightsInScene;
+	int										m_NumPointLightsInScene;
+	int										m_NumSpotLightsInScene;
 
-	ShadingMode				m_PendingShadingMode{ ShadingMode::Forward };
-	ShadingMode				m_ShadingMode{ ShadingMode::Forward };
-	bool					m_ShadingModePending{ false };
+	PolygonMode								m_PolyMode{ PolygonMode::Filled };
+	ShadingMode								m_PendingShadingMode{ ShadingMode::Forward };
+	ShadingMode								m_ShadingMode{ ShadingMode::Forward };
+	bool									m_ShadingModePending{ false };
 
-	std::vector<DeferredPointLightInfo>	m_PointsInfo;
+	bool									m_ShouldDisplayNormals{ false };
+	bool									m_ShouldQueryFrames{ false };
+
 };
 
 INLINE ResourceManager* const Renderer::GetResourceManager() const

@@ -31,9 +31,12 @@ void SceneGraph::UpdateActiveScene(float dt)
 	m_Scenes[m_ActiveScene]->Update(dt);
 }
 
-void SceneGraph::RenderActiveScene()
+void SceneGraph::RenderActiveScene(int withUI)
 {
 	m_Scenes[m_ActiveScene]->Render();
+
+	if (withUI)
+		m_Scenes[m_ActiveScene]->RenderUI();
 }
 
 void SceneGraph::ChangeScene(int newState, ResourceManager* resManager)

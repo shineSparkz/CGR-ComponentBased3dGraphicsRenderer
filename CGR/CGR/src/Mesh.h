@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 #include "gl_headers.h"
 #include "types.h"
@@ -12,6 +13,7 @@
 
 struct aiMesh;
 struct aiScene;
+class ResourceManager;
 
 struct SubMesh
 {
@@ -23,7 +25,6 @@ struct SubMesh
 
 	unsigned int NumIndices;
 	unsigned int NumVertices;
-	// Should be an array for multiple textures (later)
 	unsigned int MaterialIndex;	
 	int BaseVertex;
 	int BaseIndex;
@@ -47,25 +48,19 @@ public:
 								then the file must contain material information, currently only supports one texture per sub-mesh, that is
 								diffuse. If the texture does not exist then a pink error texture will be used from the engine
 	*/
-	bool Load(const std::string& meshFile, bool withTangents, bool loadTextures);
+	bool Load(const std::string& meshFile, bool withTangents, bool loadTexturesFromMtlFile, unsigned textureSet, ResourceManager* resMan);
 
-	bool HasTextures() const
-	{
-		return m_Textures.size() > 0;
-	}
-	
 	size_t GetNumSubMeshes() const;
 	
 private:
-	bool InitMaterials(const aiScene* pScene, const std::string& filename);
+	bool InitMaterials(const aiScene* pScene, const std::string& filename, unsigned textureSet, ResourceManager* resMan);
 
 private:
 	friend class Renderer;
-	std::vector<SubMesh>	m_SubMeshes;
-	std::vector<Texture*>	m_Textures;
-	GLuint					m_VAO;
-	GLuint					m_VertexVBO;
-	GLuint					m_IndexVBO;
+	std::vector<SubMesh>			m_SubMeshes;
+	GLuint							m_VAO;
+	GLuint							m_VertexVBO;
+	GLuint							m_IndexVBO;
 };
 
 INLINE size_t Mesh::GetNumSubMeshes() const

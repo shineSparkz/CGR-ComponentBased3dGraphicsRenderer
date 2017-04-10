@@ -34,7 +34,7 @@ int IndoorLevelScene::OnSceneLoad(ResourceManager* resManager)
 	// Load Mesh for level
 	if (!resManager->CheckMeshExists(MESH_ID_LEVEL))
 	{
-		if (!resManager->LoadMesh("cs_assault/cs_assault.obj", MESH_ID_LEVEL, false, true))
+		if (!resManager->LoadMesh("cs_assault/cs_assault.obj", MESH_ID_LEVEL, false, true, MATERIALS_LEVEL))
 			return GE_MAJOR_ERROR;
 	}
 
@@ -66,10 +66,35 @@ int IndoorLevelScene::OnSceneLoad(ResourceManager* resManager)
 	levelt->SetPosition(Vec3(0.0f, -180.0f, 0.0f));
 	levelt->SetScale(Vec3(0.1f));
 	MeshRenderer* levelMr = level->AddComponent<MeshRenderer>();
-	levelMr->SetMesh(MESH_ID_LEVEL, m_Renderer->GetNumSubMeshesInMesh(MESH_ID_LEVEL));
-	levelMr->AddTexture(TEX_BRICKS);
+	levelMr->SetMesh(MESH_ID_LEVEL);
+	levelMr->SetMaterialSet(MATERIALS_LEVEL);
 	levelMr->SetShader(SHADER_GEOM_PASS_DEF);
 	m_GameObjects.push_back(level);
+
+	// Create Bumped cube at origin
+	{
+		GameObject* cube = new GameObject();
+		Transform* ct = cube->AddComponent<Transform>();
+		ct->SetPosition(Vec3(0.0f));
+		ct->SetScale(Vec3(5.0f));
+		MeshRenderer* cmr = cube->AddComponent<MeshRenderer>();
+		cmr->SetMesh(MESH_ID_CUBE);
+		cmr->SetMaterialSet(MATERIALS_BRICKS);
+		cmr->SetToUseBumpMaps(true);
+		m_GameObjects.push_back(cube);
+	}
+
+	{
+		GameObject* cube = new GameObject();
+		Transform* ct = cube->AddComponent<Transform>();
+		ct->SetPosition(Vec3(10.0f, 0, 0));
+		ct->SetScale(Vec3(5.0f));
+		MeshRenderer* cmr = cube->AddComponent<MeshRenderer>();
+		cmr->SetMesh(MESH_ID_CUBE);
+		cmr->SetMaterialSet(MATERIALS_BRICKS);
+		cmr->SetToUseBumpMaps(false);
+		m_GameObjects.push_back(cube);
+	}
 
 	// Point Lights
 	GameObject* p1 = CgrEngine::CreatePointLight(m_Renderer, Vec3(20.0f, 15.0f, -20.0f), Vec3(0.7f, 0, 0), 0.02f);
@@ -104,9 +129,31 @@ void IndoorLevelScene::OnSceneExit()
 
 void IndoorLevelScene::Update(float dt)
 {
-	if (Input::Keys[GLFW_KEY_P] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	// Change Mode (defered/forward)
+	if (Input::Keys[GLFW_KEY_M] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
 	{
 		m_Renderer->ToggleShadingMode();
+		m_TimeNow = Time::ElapsedTime();
+	}
+
+	// Display Normals
+	if (Input::Keys[GLFW_KEY_N] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		m_Renderer->DisplayNormals(!m_Renderer->IsDisplayingNormals());
+		m_TimeNow = Time::ElapsedTime();
+	}
+
+	// Set Wireframe mode
+	if (Input::Keys[GLFW_KEY_P] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		m_Renderer->SetPolygonMode(PolygonMode::WireFrame);
+		m_TimeNow = Time::ElapsedTime();
+	}
+
+	// Set Fill mode
+	if (Input::Keys[GLFW_KEY_O] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		m_Renderer->SetPolygonMode(PolygonMode::Filled);
 		m_TimeNow = Time::ElapsedTime();
 	}
 
@@ -121,8 +168,12 @@ void IndoorLevelScene::Update(float dt)
 void IndoorLevelScene::Render()
 {
 	m_Renderer->Render(m_GameObjects);
+}
 
-	m_Renderer->RenderText(FONT_COURIER, "Cam Pos: " + util::vec3_to_str(m_Camera->Position()), 8, 16);
-	m_Renderer->RenderText(FONT_COURIER, m_Renderer->GetShadingModeStr(), 8, 32);
-
+void IndoorLevelScene::RenderUI()
+{
+	m_Renderer->RenderText(FONT_COURIER, "Toggle Deferred/Forward shading [M]", 8, 64);
+	m_Renderer->RenderText(FONT_COURIER, "Toggle Normal display [N]", 8, 96);
+	m_Renderer->RenderText(FONT_COURIER, "Wire frame mode [P]", 8, 128);
+	m_Renderer->RenderText(FONT_COURIER, "Fill mode [O]", 8, 160);
 }
