@@ -28,6 +28,8 @@ public:
 	void SetColG(float g);
 	void SetColB(float b);
 
+	const Vec3& GetDir() const;
+
 	static int GetId();
 
 private:

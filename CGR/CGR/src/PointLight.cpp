@@ -193,3 +193,8 @@ float PointLightC::calcPointLightBSphere()
 	float maxChannel = fmax(fmax(m_Intensity.x, m_Intensity.y), m_Intensity.z);
 	return (-m_aLinear + sqrtf(m_aLinear * m_aLinear -	4 * m_aQuadratic * (m_aQuadratic - 256 * maxChannel * m_AmbientIntensity))) / (2 * m_aQuadratic);
 }
+
+const Vec3& PointLightC::GetPosition() const
+{
+	return this->m_Position;
+}

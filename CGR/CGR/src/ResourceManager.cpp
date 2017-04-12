@@ -150,18 +150,13 @@ bool ResourceManager::loadDefaultForwardShaders()
 		}
 	}
 
-	return true;
-}
-
-bool ResourceManager::loadDefaultDeferredShaders()
-{
-	Vec2 screenSize((float)Screen::Instance()->FrameBufferWidth(), (float)Screen::Instance()->FrameBufferHeight());
-
-	// ---- Terrain (Def) ----
+	// ---- Terrain (Fwd) ----
 	{
 		Shader vert(GL_VERTEX_SHADER);
 		Shader frag(GL_FRAGMENT_SHADER);
-		if (!vert.LoadShader("../resources/shaders/terrain/terrain_vs.glsl")) { return false; }
+		if (!vert.LoadShader("../resources/shaders/new_lights/forward_geom_vs.glsl")) { return false; }
+		//if (!vert.LoadShader("../resources/shaders/terrain/terrain_vs.glsl")) { return false; }
+
 		if (!frag.LoadShader("../resources/shaders/terrain/terrain_fs.glsl")) { return false; }
 		vert.AddAttribute(POS_ATTR);
 		vert.AddAttribute(NORM_ATTR);
@@ -181,6 +176,28 @@ bool ResourceManager::loadDefaultDeferredShaders()
 		}
 	}
 
+	// ---- Frustum (Fwd) ----
+	{
+		Shader vert(GL_VERTEX_SHADER);
+		Shader frag(GL_FRAGMENT_SHADER);
+		if (!vert.LoadShader("../resources/shaders/frustum/frustum.vs.glsl")) { return false; }
+		if (!frag.LoadShader("../resources/shaders/frustum/frustum_fs.glsl")) { return false; }
+		vert.AddAttribute(POS_ATTR);
+
+		std::vector<Shader> shaders;
+		shaders.push_back(vert);
+		shaders.push_back(frag);
+
+		if (!this->CreateShaderProgram(shaders, SHADER_FRUSTUM))
+			return false;
+	}
+
+	return true;
+}
+
+bool ResourceManager::loadDefaultDeferredShaders()
+{
+	Vec2 screenSize((float)Screen::Instance()->FrameBufferWidth(), (float)Screen::Instance()->FrameBufferHeight());
 
 	// ---- Lava Shader (Def) ----
 	{
@@ -389,15 +406,35 @@ bool ResourceManager::loadDefaultTextures()
 		}
 	}
 
+	// Load Terrain material set
+	{
+		Texture* low =			this->LoadTexture("../resources/textures/terrain/fungus.tga",		GL_TEXTURE0);
+		Texture* med =			this->LoadTexture("../resources/textures/terrain/sand_grass.tga",	GL_TEXTURE1);
+		Texture* high =			this->LoadTexture("../resources/textures/terrain/rock.tga",			GL_TEXTURE2);
+		Texture* path =			this->LoadTexture("../resources/textures/terrain/sand.tga",			GL_TEXTURE3);
+		Texture* path_samp =	this->LoadTexture("../resources/textures/terrain/path.tga",			GL_TEXTURE4);
+
+		if (low && med && high && path && path_samp)
+		{
+			m_Materials[MATERIALS_TERRAIN][0] = new Material();
+			m_Materials[MATERIALS_TERRAIN][0]->diffuse_map = low;
+
+			m_Materials[MATERIALS_TERRAIN][1] = new Material();
+			m_Materials[MATERIALS_TERRAIN][1]->diffuse_map = med;
+
+			m_Materials[MATERIALS_TERRAIN][2] = new Material();
+			m_Materials[MATERIALS_TERRAIN][2]->diffuse_map = high;
+
+			m_Materials[MATERIALS_TERRAIN][3] = new Material();
+			m_Materials[MATERIALS_TERRAIN][3]->diffuse_map = path;
+
+			m_Materials[MATERIALS_TERRAIN][4] = new Material();
+			m_Materials[MATERIALS_TERRAIN][4]->diffuse_map = path_samp;
+		}
+	}
+
 	// From Loaded Scene
 	success &= this->LoadTexture("../resources/textures/billboards/grass.tga", TEX_GRASS_BILLBOARD, GL_TEXTURE0);
-
-	success &= this->LoadTexture("../resources/textures/terrain/fungus.tga", TEX_TERRAIN1, GL_TEXTURE0);
-	success &= this->LoadTexture("../resources/textures/terrain/sand_grass.tga", TEX_TERRAIN2, GL_TEXTURE1);
-	success &= this->LoadTexture("../resources/textures/terrain/rock.tga", TEX_TERRAIN3, GL_TEXTURE2);
-	success &= this->LoadTexture("../resources/textures/terrain/sand.tga", TEX_TERRAIN4, GL_TEXTURE3);
-	success &= this->LoadTexture("../resources/textures/terrain/path.tga", TEX_TERRAIN5, GL_TEXTURE4);
-
 	success &= this->LoadTexture("../resources/textures/noise.tga", TEX_NOISE, GL_TEXTURE0);
 
 	std::string s[6] =

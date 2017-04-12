@@ -12,8 +12,9 @@
 
 // Material Set IDs
 #define MATERIALS_MALE					0
-#define MATERIALS_GRASS					2
-#define MATERIALS_BRICKS				3
+#define MATERIALS_GRASS					1
+#define MATERIALS_BRICKS				2
+#define MATERIALS_TERRAIN				3
 // "User Defined"
 #define MATERIALS_SPONZA				4
 #define MATERIALS_LEVEL					5
@@ -22,11 +23,6 @@
 // Texture ID's -- for now
 #define TEX_SKYBOX_DEFAULT				1
 #define TEX_GRASS_BILLBOARD				5
-#define TEX_TERRAIN1					6
-#define TEX_TERRAIN2					7
-#define TEX_TERRAIN3					8
-#define TEX_TERRAIN4					9
-#define TEX_TERRAIN5					10
 #define TEX_NOISE						11
 
 // Shader ID's -- for now
@@ -41,7 +37,8 @@
 #define SHADER_STENCIL_PASS_DEF		    9
 #define SHADER_LIGHTING_FWD			    10
 #define SHADER_NORMAL_DISP_FWD			11
-#define SHADER_ID_COUNT					11
+#define SHADER_FRUSTUM					12
+#define SHADER_ID_COUNT					12
 
 #define FONT_COURIER					0
 #define FONT_ID_COUNT					0

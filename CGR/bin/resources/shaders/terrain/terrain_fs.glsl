@@ -31,7 +31,6 @@ struct PointLight
     float   aQuadratic;
 };
 
-
 layout(binding = 0, std140) uniform Lights
 {
 	DirectionLight directionLight;
@@ -137,18 +136,18 @@ void main()
 //---------------------------------
 //Forward rendering
 in vec2 varying_texcoord;
-in vec3 varying_normal;
-in vec3 varying_position;
+in vec3 N;
+in vec3 P;
 
 out vec4 frag_colour;
                                                                                
-uniform sampler2D u_Sampler0;
-uniform sampler2D u_Sampler1;
-uniform sampler2D u_Sampler2;
-uniform sampler2D u_Sampler3;
-uniform sampler2D u_Sampler4;
-uniform vec4 u_Colour;
-uniform float u_RenderHeight;
+uniform sampler2D u_LowHeightMap;
+uniform sampler2D u_MediumHeightMap;
+uniform sampler2D u_HighHeightMap;
+uniform sampler2D u_PathMap;
+uniform sampler2D u_PathSampler;
+
+uniform float u_MaxHeight;
 uniform float u_MaxTexU;
 uniform float u_MaxTexV;
 
@@ -240,9 +239,9 @@ vec4 getSpotLightColor(const Spotlight spotLight, vec3 p)
 
 void main()
 {	
-	vec3 n = normalize(varying_normal);
+	vec3 n = normalize(N);
 	vec4 vTexColor = vec4(0.0);
-	float fScale = varying_position.y / u_RenderHeight;
+	float fScale = P.y / u_MaxHeight;
 
 	const float fRange1 = 0.15f;
 	const float fRange2 = 0.3f;
@@ -251,7 +250,7 @@ void main()
 
 	if(fScale >= 0.0 && fScale <= fRange1)
 	{
-		vTexColor = texture2D(u_Sampler0, varying_texcoord);
+		vTexColor = texture2D(u_LowHeightMap, varying_texcoord);
 	}
 	else if(fScale <= fRange2)
 	{
@@ -261,12 +260,12 @@ void main()
 		float fScale2 = fScale;
 		fScale = 1.0-fScale; 
 		
-		vTexColor += texture2D(u_Sampler0, varying_texcoord)*fScale;
-		vTexColor += texture2D(u_Sampler1, varying_texcoord)*fScale2;
+		vTexColor += texture2D(u_LowHeightMap, varying_texcoord) * fScale;
+		vTexColor += texture2D(u_MediumHeightMap, varying_texcoord) * fScale2;
 	}
 	else if(fScale <= fRange3)
 	{
-		vTexColor = texture2D(u_Sampler1, varying_texcoord);
+		vTexColor = texture2D(u_MediumHeightMap, varying_texcoord);
 	}
 	else if(fScale <= fRange4)
 	{
@@ -276,34 +275,33 @@ void main()
 		float fScale2 = fScale;
 		fScale = 1.0-fScale; 
 		
-		vTexColor += texture2D(u_Sampler1, varying_texcoord)*fScale;
-		vTexColor += texture2D(u_Sampler2, varying_texcoord)*fScale2;		
+		vTexColor += texture2D(u_MediumHeightMap, varying_texcoord) * fScale;
+		vTexColor += texture2D(u_HighHeightMap, varying_texcoord) * fScale2;		
 	}
 	else 
 	{
-		vTexColor = texture2D(u_Sampler2, varying_texcoord);
+		vTexColor = texture2D(u_HighHeightMap, varying_texcoord);
 	}
-
+	
 	vec2 vPathCoord = vec2(varying_texcoord.x / u_MaxTexU, varying_texcoord.y / u_MaxTexV);
-	vec4 vPathIntensity = texture2D(u_Sampler4, vPathCoord);
+	vec4 vPathIntensity = texture2D(u_PathSampler, vPathCoord);
 	fScale = vPathIntensity.x;
   
-	vec4 vPathColor = texture2D(u_Sampler3, varying_texcoord); // Black color means there is a path
-	vec4 vFinalTexColor = fScale * vTexColor+(1-fScale)*vPathColor;
-
-	vec4 vMixedColor = vFinalTexColor * u_Colour;
+	// Black color means there is a path
+	vec4 vPathColor = texture2D(u_PathMap, varying_texcoord); 
+	vec4 vFinalTexColor = fScale * vTexColor + ((1-fScale) * vPathColor);
 	
 	vec4 total_light =  getDirectionalLightColour(n);
 	
 	for(int i = 0; i < numSpots; ++i)
 	{
-		total_light += getSpotLightColor(spotLights[i], varying_position);
+		total_light += getSpotLightColor(spotLights[i], P);
 	}
 						
 	for(int i = 0; i < numPoints; ++i)
 	{
-		total_light += getPointLightColor(pointLights[i], varying_position, n);
+		total_light += getPointLightColor(pointLights[i], P, n);
 	}
 
-	frag_colour = vec4(ambient_light, vMixedColor.a) + total_light * vMixedColor;
+	frag_colour = vec4(ambient_light, vFinalTexColor.a) + total_light * vFinalTexColor;
 }      

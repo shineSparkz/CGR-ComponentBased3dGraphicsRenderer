@@ -20,14 +20,13 @@ class BaseCamera;
 class Font;
 class Texture;
 class BillboardList;
-class Terrain;
 class GBuffer;
 class GameObject;
 class ShaderProgram;
 class ShadowFrameBuffer;
 class UniformBlockManager;
-
-
+class SurfaceMesh;
+class Frustum;
 
 struct DeferredPointLightInfo
 {
@@ -60,7 +59,7 @@ public:
 	void					Render(std::vector<GameObject*>& gameObjects);
 	void					RenderText(size_t fontId, const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White());
 	void					RenderBillboardList(BillboardList* billboard);
-	void					RenderTerrain(Terrain* terrain);
+	void					RenderSurface(SurfaceMesh* surface, const Vec3& position);
 
 	// Get Resources
 	size_t					GetNumSubMeshesInMesh(size_t meshIndex) const;
@@ -88,12 +87,18 @@ public:
 	bool					IsQueeryingFrames() const;
 	void					ToggleFrameQueeryMode();
 
+	void					ToggleFrustumCulling();
+	void					SetFrustumCulling(bool should);
+
+	void					ToggleDisplayInfo();
+	void					SetDisplayInfo(bool should);
+
 private:
 	// Rendering
 	void forwardRender(std::vector<GameObject*>& gameObjects);
 	void deferredRender(std::vector<GameObject*>& gameObjects);
 	void renderMesh(Mesh* mesh);
-	void renderMesh(MeshRenderer* mesh, GLenum renderMode = GL_TRIANGLES);
+	void renderMesh(MeshRenderer* mesh, const Mat4& world, GLenum renderMode = GL_TRIANGLES);
 	void renderSkybox(BaseCamera* cam);
 
 	// Events
@@ -113,6 +118,7 @@ private:
 	ResourceManager*						m_ResManager;
 	BaseCamera*								m_CameraPtr;
 	GBuffer*								m_Gbuffer;
+	Frustum*								m_Frustum;
 	GLuint									m_QueryTime;
 	Query									m_Query;
 	std::string								m_HardwareStr;
@@ -128,6 +134,9 @@ private:
 
 	bool									m_ShouldDisplayNormals{ false };
 	bool									m_ShouldQueryFrames{ false };
+	bool									m_ShouldFrustumCull{ !true };
+	bool									m_ShouldDisplayInfo{ true };
+	int										m_CullCount = 0;
 
 };
 

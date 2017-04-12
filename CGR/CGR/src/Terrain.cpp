@@ -14,455 +14,763 @@
 #include "Shader.h"
 #include "ShaderProgram.h"
 
-Terrain::Terrain() :
-	m_VAO(0),
-	m_Rows(0),
-	m_Cols(0)
+
+float Noise(int x, int y)
+{
+	// Seed random noise
+	int n = x + y * 47;
+	n = (n >> 13) ^ n;
+	int nn = (n * (n * n * 60493 + 19990303) + 1376312589) & 0x7fffffff;
+	return 1.0f - ((float)nn / 1073741824.0f);
+}
+
+float CosineLerp(float a, float b, float x)
+{
+	float ft = x * 3.1415927f;
+	float f = (1.0f - cos(ft))* 0.5f;
+	return a*(1.0f - f) + b*f;
+}
+
+float KenPerlin(float xPos, float zPos)
+{
+	float s, t, u, v;
+	s = Noise((int)xPos, (int)zPos);
+	t = Noise((int)xPos + 1, (int)zPos);
+	u = Noise((int)xPos, (int)zPos + 1);
+	v = Noise((int)xPos + 1, (int)zPos + 1);
+	float c1 = CosineLerp(s, t, xPos);
+	float c2 = CosineLerp(u, v, xPos);
+
+	return CosineLerp(c1, c2, zPos);//Here we use y-yPos, to get the 2nd dimension.
+}
+
+glm::vec3 Brownian(const glm::vec3& p, float grid_height, int octaves, float lacunarity, float gain)
+{
+	/*
+	To control and improve the Perlin noise function.
+	fruqency: is how many points fit into a provided space
+	amplitude: is how tall
+	lacunarity: is the rate in which the freq grows
+	octaves: is the number of layers and the amount of detail
+	*/
+
+	float total = 0.0f;
+	float frequency = 1.0f / grid_height;
+	float amplitude = gain;
+
+	for (int i = 0; i < octaves; ++i)
+	{
+		total += KenPerlin((float)p.x * frequency, (float)p.z * frequency) * amplitude;
+		frequency *= lacunarity;
+		amplitude *= gain;
+	}
+
+	//now that we have the value, put it in
+	return glm::vec3(p.x, total, p.z);
+}
+
+glm::vec3 CalculateBezier(const std::vector<glm::vec3>& cps, float t)
+{
+	/*
+	Bilinear Bzier to be used with 4 control points, we create a temp curve in the BezSurface function
+	from the 4 control points that are passed in, the control points are generated from the global UV co-ordinates of the
+	terrain mesh, the 4 temp values give us a curve using the u tex coord, we then pass that curve to this function with the value
+	along the V tex coord and get the displaced pixel on the curve
+	*/
+	float temps[4];
+
+	temps[0] = (1 - t) * (1 - t) * (1 - t);
+	temps[1] = 3 * t * (1 - t) * (1 - t);
+	temps[2] = 3 * (1 - t) * t * t;
+	temps[3] = t * t * t;
+
+	return (
+		cps[0] * temps[0] +
+		cps[1] * temps[1] +
+		cps[2] * temps[2] +
+		cps[3] * temps[3]
+		);
+}
+
+glm::vec3 BezierSurface_16(float u, float v, const std::vector<glm::vec3>& Points)
+{
+	std::vector<glm::vec3> Pu{ 4 };
+	// compute 4 control points along u direction
+	for (int i = 0; i < 4; ++i)
+	{
+		std::vector<glm::vec3> curveP{ 4 };
+		curveP[0] = Points[i * 4];
+		curveP[1] = Points[i * 4 + 1];
+		curveP[2] = Points[i * 4 + 2];
+		curveP[3] = Points[i * 4 + 3];
+		Pu[i] = CalculateBezier(curveP, u);
+	}
+	// compute final position on the surface using v
+	return CalculateBezier(Pu, v);
+}
+
+glm::vec3 BezierSurface_4(const std::vector<glm::vec3>& cps, float u, float v)
+{
+	/*
+	Bilinear Bzier to be used with 16 control points, we create a temp curve in the BezSurface function
+	from the 16 control points that are passed in, the control points are generated from the global UV co-ordinates of the
+	terrain mesh, the 4 temp values give us a curve using the u tex coord, we then pass that curve to this function with the value
+	along the V tex coord and get the displaced pixel on the curve
+	*/
+	std::vector<glm::vec3> curve{ 4 };
+
+	for (size_t j = 0; j < curve.size(); ++j)
+	{
+		curve[j] = CalculateBezier(cps, u);
+	}
+
+	return CalculateBezier(curve, v);
+}
+
+
+SurfaceMesh::SurfaceMesh()
 {
 }
 
-Terrain::~Terrain()
+SurfaceMesh::~SurfaceMesh()
 {
-	OpenGLLayer::clean_GL_vao(&this->m_VAO, 1);
-	OpenGLLayer::clean_GL_buffer(&m_VertexVBO, 1);
-	OpenGLLayer::clean_GL_buffer(&m_IndexVBO, 1);
 }
 
-bool Terrain::LoadFromHeightMap(const std::string& heightmapPath, ShaderProgram* mat, unsigned textures[5], const Vec3& scale, const Vec3& colour)
+void SurfaceMesh::Create(ShaderProgram* mat, size_t materialId, float sizeX, float sizeY, float sizeZ, dword subU, dword subV, int texTileX, int texTileZ, const std::string& heightmap)
 {
-	if (!mat)
-	{
-		WRITE_LOG("Material not set for terrain", "error");
-		return false;
-	}
-
-	for (int i = 0; i < 5; ++i)
-	{
-		m_TextureIds[i] = textures[i];
-	}
-
 	m_Material = mat;
 
-	Image heightmap;
-	if (!heightmap.LoadImg(heightmapPath.c_str()))
+	if (!m_Material)
 	{
-		WRITE_LOG("Height map load failed: " + heightmapPath, "error");
-		return false;
+		WRITE_LOG("Material null for surface mesh", "error");
+		return;
 	}
-
-	m_Rows = static_cast<int>(heightmap.Height());
-	m_Cols = static_cast<int>(heightmap.Width());
-
-	std::vector<std::vector<Vec3>> vVertexData(m_Rows, std::vector<Vec3>(m_Cols));
-	std::vector<std::vector<Vec2>> vCoordsData(m_Rows, std::vector<Vec2>(m_Cols));
-	std::vector<unsigned> indices;
-
-	float fTextureU = float(m_Cols)*0.1f;
-	float fTextureV = float(m_Rows)*0.1f;
-
-	for(int z = 0; z <  m_Rows; ++z)
+	else
 	{
-		for(int x = 0; x < m_Cols; ++x)
-		{
-			float fScaleC = float(x) / float(m_Cols - 1);
-			float fScaleR = float(z) / float(m_Rows - 1);
-			//float fVertexHeight = float(*(bDataPointer + row_step*z + x*ptr_inc)) / 255.0f;
-			float fVertexHeight = static_cast<float>(*heightmap.GetPixel(x, z)) / 255.0f;
-
-			vVertexData[z][x] = glm::vec3(-0.5f + fScaleC, fVertexHeight, -0.5f + fScaleR);
-			vCoordsData[z][x] = glm::vec2(fTextureU*fScaleC, fTextureV*fScaleR);
-		}
-	}
-
-	// Normals are here - the heightmap contains ( (iRows-1)*(iCols-1) quads, each one containing 2 triangles, therefore array of we have 3D array)
-	std::vector<std::vector<Vec3>> vNormals[2];
-	for (int i = 0; i < 2; ++i)
-		vNormals[i] = std::vector<std::vector<Vec3>>(m_Rows - 1, std::vector<Vec3>(m_Cols - 1));
-
-	for(int i = 0; i < m_Rows - 1; ++i)
-	{
-		for(int j = 0; j < m_Cols - 1; ++j)
-		{
-			Vec3 vTriangle0[] =
-			{
-				vVertexData[i][j],
-				vVertexData[i + 1][j],
-				vVertexData[i + 1][j + 1]
-			};
-
-			Vec3 vTriangle1[] =
-			{
-				vVertexData[i + 1][j + 1],
-				vVertexData[i][j + 1],
-				vVertexData[i][j]
-			};
-
-			Vec3 vTriangleNorm0 = glm::cross(vTriangle0[0] - vTriangle0[1], vTriangle0[1] - vTriangle0[2]);
-			Vec3 vTriangleNorm1 = glm::cross(vTriangle1[0] - vTriangle1[1], vTriangle1[1] - vTriangle1[2]);
-
-			vNormals[0][i][j] = glm::normalize(vTriangleNorm0);
-			vNormals[1][i][j] = glm::normalize(vTriangleNorm1);
-		}
-	}
-
-	// Final normals
-	std::vector<std::vector<Vec3>> vFinalNormals = std::vector<std::vector<Vec3>>(m_Rows, std::vector<Vec3>(m_Cols));
-
-	for (int i = 0; i < m_Rows; ++i)
-	{
-		for (int j = 0; j < m_Cols; ++j)
-		{
-			// Now we wanna calculate final normal for [i][j] vertex. We will have a look at all triangles this vertex is part of, and then we will make average vector
-			// of all adjacent triangles' normals
-			Vec3 vFinalNormal = Vec3(0.0f);
-
-			// Look for upper-left triangles
-			if (j != 0 && i != 0)
-			{
-				for (int k = 0; k < 2; ++k)
-				{
-					vFinalNormal += vNormals[k][i - 1][j - 1];
-				}
-			}
-
-			// Look for upper-right triangles
-			if (i != 0 && j != m_Cols - 1)
-			{
-				vFinalNormal += vNormals[0][i - 1][j];
-			}
-
-			// Look for bottom-right triangles
-			if (i != m_Rows - 1 && j != m_Cols - 1)
-			{
-				for (int k = 0; k < 2; ++k)
-				{
-					vFinalNormal += vNormals[k][i][j];
-				}
-			}
-
-			// Look for bottom-left triangles
-			if (i != m_Rows - 1 && j != 0)
-			{
-				vFinalNormal += vNormals[1][i][j - 1];
-			}
-
-			vFinalNormal = glm::normalize(vFinalNormal);
-			vFinalNormals[i][j] = vFinalNormal; // Store final normal of j-th vertex in i-th row
-		}
-	}
-
-	// Indices
-	int iPrimitiveRestartIndex = m_Rows*m_Cols;
-	for(int i = 0; i < m_Rows - 1; ++i)
-	{
-		for(int j = 0; j < m_Cols; ++j)
-		{
-			for(int k = 0; k < 2; ++k)
-			{
-				int iRow = i + (1 - k);
-				int iIndex = iRow*m_Cols + j;
-				//vboHeightmapIndices.AddData(&iIndex, sizeof(int));
-				indices.push_back(iIndex);
-			}
-		}
-
-		// Restart triangle strips
-		indices.push_back(iPrimitiveRestartIndex);
-		//vboHeightmapIndices.AddData(&iPrimitiveRestartIndex, sizeof(int));
-	}
-
-	std::vector<Vertex> vertices;
-	for(int i = 0; i < m_Rows; ++i)
-	{
-		for (int j = 0; j < m_Cols; ++j)
-		{
-			Vertex v;
-			v.position = vVertexData[i][j];
-			v.normal = vFinalNormals[i][j];
-			v.texcoord = vCoordsData[i][j];
-			vertices.push_back(v);
-		}
-	}
-
-	// Create GL Buffers
-	// Create the VAO
-	glGenVertexArrays(1, &m_VAO);
-	glBindVertexArray(m_VAO);
-
-	// Create the buffers for the vertices atttributes
-	glGenBuffers(1, &m_VertexVBO);
-	glGenBuffers(1, &m_IndexVBO);
-
-	// Generate and populate the buffers with vertex attributes and the indices
-	glBindBuffer(GL_ARRAY_BUFFER, m_VertexVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)12);
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)24);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_IndexVBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned) * indices.size(), indices.data(), GL_STATIC_DRAW);
-
-	// End
-	glBindVertexArray(0);
-
-	this->setStaticShaderUniforms(scale, colour);
-
-	return true;
-}
-
-bool Terrain::LoadFromHeightMapWithBillboards(const std::string& heightmapPath, ShaderProgram* mat, unsigned textures[5], const Vec3& scale, const Vec3& colour, std::vector<Vec3>& billboardPositionsOut, int maxBillboards)
-{
-	// TODO :: Refactor
-	if (!mat)
-	{
-		WRITE_LOG("Material not set for terrain", "error");
-		return false;
-	}
-
-	for (int i = 0; i < 5; ++i)
-	{
-		m_TextureIds[i] = textures[i];
-	}
-
-	m_Material = mat;
-
-	Image heightmap;
-	if (!heightmap.LoadImg(heightmapPath.c_str()))
-	{
-		WRITE_LOG("Height map load failed: " + heightmapPath, "error");
-		return false;
-	}
-
-	m_Rows = static_cast<int>(heightmap.Height());
-	m_Cols = static_cast<int>(heightmap.Width());
-
-	std::vector<std::vector<Vec3>> vVertexData(m_Rows, std::vector<Vec3>(m_Cols));
-	std::vector<std::vector<Vec2>> vCoordsData(m_Rows, std::vector<Vec2>(m_Cols));
-	std::vector<unsigned> indices;
-
-	float fTextureU = float(m_Cols)*0.1f;
-	float fTextureV = float(m_Rows)*0.1f;
-
-	int numbills = 0;
-
-	for (int z = 0; z < m_Rows; ++z)
-	{
-		for (int x = 0; x < m_Cols; ++x)
-		{
-			float fScaleC = float(x) / float(m_Cols - 1);
-			float fScaleR = float(z) / float(m_Rows - 1);
-			//float fVertexHeight = float(*(bDataPointer + row_step*z + x*ptr_inc)) / 255.0f;
-			float fVertexHeight = static_cast<float>(*heightmap.GetPixel(x, z)) / 255.0f;
-
-			vVertexData[z][x] = glm::vec3(-0.5f + fScaleC, fVertexHeight, -0.5f + fScaleR);
-			vCoordsData[z][x] = glm::vec2(fTextureU*fScaleC, fTextureV*fScaleR);
-		}
-	}
-
-	// Normals are here - the heightmap contains ( (iRows-1)*(iCols-1) quads, each one containing 2 triangles, therefore array of we have 3D array)
-	std::vector<std::vector<Vec3>> vNormals[2];
-	for (int i = 0; i < 2; ++i)
-		vNormals[i] = std::vector<std::vector<Vec3>>(m_Rows - 1, std::vector<Vec3>(m_Cols - 1));
-
-	for (int i = 0; i < m_Rows - 1; ++i)
-	{
-		for (int j = 0; j < m_Cols - 1; ++j)
-		{
-			Vec3 vTriangle0[] =
-			{
-				vVertexData[i][j],
-				vVertexData[i + 1][j],
-				vVertexData[i + 1][j + 1]
-			};
-
-			Vec3 vTriangle1[] =
-			{
-				vVertexData[i + 1][j + 1],
-				vVertexData[i][j + 1],
-				vVertexData[i][j]
-			};
-
-			Vec3 vTriangleNorm0 = glm::cross(vTriangle0[0] - vTriangle0[1], vTriangle0[1] - vTriangle0[2]);
-			Vec3 vTriangleNorm1 = glm::cross(vTriangle1[0] - vTriangle1[1], vTriangle1[1] - vTriangle1[2]);
-
-			vNormals[0][i][j] = glm::normalize(vTriangleNorm0);
-			vNormals[1][i][j] = glm::normalize(vTriangleNorm1);
-		}
-	}
-
-	// Final normals
-	std::vector<std::vector<Vec3>> vFinalNormals = std::vector<std::vector<Vec3>>(m_Rows, std::vector<Vec3>(m_Cols));
-
-	for (int i = 0; i < m_Rows; ++i)
-	{
-		for (int j = 0; j < m_Cols; ++j)
-		{
-			// Now we wanna calculate final normal for [i][j] vertex. We will have a look at all triangles this vertex is part of, and then we will make average vector
-			// of all adjacent triangles' normals
-			Vec3 vFinalNormal = Vec3(0.0f);
-
-			// Look for upper-left triangles
-			if (j != 0 && i != 0)
-			{
-				for (int k = 0; k < 2; ++k)
-				{
-					vFinalNormal += vNormals[k][i - 1][j - 1];
-				}
-			}
-
-			// Look for upper-right triangles
-			if (i != 0 && j != m_Cols - 1)
-			{
-				vFinalNormal += vNormals[0][i - 1][j];
-			}
-
-			// Look for bottom-right triangles
-			if (i != m_Rows - 1 && j != m_Cols - 1)
-			{
-				for (int k = 0; k < 2; ++k)
-				{
-					vFinalNormal += vNormals[k][i][j];
-				}
-			}
-
-			// Look for bottom-left triangles
-			if (i != m_Rows - 1 && j != 0)
-			{
-				vFinalNormal += vNormals[1][i][j - 1];
-			}
-
-			vFinalNormal = glm::normalize(vFinalNormal);
-			vFinalNormals[i][j] = vFinalNormal; // Store final normal of j-th vertex in i-th row
-		}
-	}
-
-	// Indices
-	int iPrimitiveRestartIndex = m_Rows*m_Cols;
-	for (int i = 0; i < m_Rows - 1; ++i)
-	{
-		for (int j = 0; j < m_Cols; ++j)
-		{
-			for (int k = 0; k < 2; ++k)
-			{
-				int iRow = i + (1 - k);
-				int iIndex = iRow*m_Cols + j;
-				//vboHeightmapIndices.AddData(&iIndex, sizeof(int));
-				indices.push_back(iIndex);
-			}
-		}
-
-		// Restart triangle strips
-		indices.push_back(iPrimitiveRestartIndex);
-		//vboHeightmapIndices.AddData(&iPrimitiveRestartIndex, sizeof(int));
-	}
-
-	std::vector<Vertex> vertices;
-	for (int i = 0; i < m_Rows; ++i)
-	{
-		for (int j = 0; j < m_Cols; ++j)
-		{
-			Vertex v;
-			v.position = vVertexData[i][j];
-			v.normal = vFinalNormals[i][j];
-			v.texcoord = vCoordsData[i][j];
-			vertices.push_back(v);
-		}
-	}
-
-	std::vector<int32> usedList;
-	// Create some random billboards (like trees, plants etc)
-	for (int i = 0; i < maxBillboards; ++i)
-	{
-		int32 randomPosition = 0;
-
-		if (usedList.empty())
-		{
-			randomPosition = random::RandomRange(0, (int32)vertices.size());
-			usedList.push_back(randomPosition);
-		}
-		else
-		{
-			bool gotNewPos = false;
-			while (!gotNewPos)
-			{
-				randomPosition = random::RandomRange(0, (int32)vertices.size());
-
-				bool same = false;
-				for (int j = 0; j < usedList.size(); ++j)
-				{
-					if (randomPosition == usedList[j])
-					{
-						same = true;
-						break;
-					}
-				}
-
-				if (!same)
-				{
-					usedList.push_back(randomPosition);
-					gotNewPos = true;
-				}
-			}
-		}
-	
-	}
-
-	for (int i = 0; i < usedList.size(); ++i)
-	{
-		billboardPositionsOut.push_back(vertices[usedList[i]].position * scale);
-	}
-
-	// Create GL Buffers
-	// Create the VAO
-	glGenVertexArrays(1, &m_VAO);
-	glBindVertexArray(m_VAO);
-
-	// Create the buffers for the vertices atttributes
-	glGenBuffers(1, &m_VertexVBO);
-	glGenBuffers(1, &m_IndexVBO);
-
-	// Generate and populate the buffers with vertex attributes and the indices
-	glBindBuffer(GL_ARRAY_BUFFER, m_VertexVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
-
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)12);
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)24);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_IndexVBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned) * indices.size(), indices.data(), GL_STATIC_DRAW);
-
-	// End
-	glBindVertexArray(0);
-
-	this->setStaticShaderUniforms(scale, colour);
-
-	return true;
-}
-
-void Terrain::setStaticShaderUniforms(const Vec3& scale, const Vec3& colour)
-{
-	if (m_Material)
-	{
-		float u = 0.1f * (float)m_Cols;
-		float v = 0.1f * (float)m_Rows;
-
 		m_Material->Use();
 
-		m_Material->SetUniformValue<Mat4>("u_height_map_scale_xform", &(glm::scale(Mat4(1.0f), scale)));
-		m_Material->SetUniformValue<float>("u_RenderHeight", &scale.y);
-		m_Material->SetUniformValue<float>("u_MaxTexU", &u);
-		m_Material->SetUniformValue<float>("u_MaxTexV", &v);
-		m_Material->SetUniformValue<Vec3>("u_Colour", &colour);
+		int i = 0;
+		m_Material->SetUniformValue<int>("u_LowHeightMap", &i);
+
+		i = 1;
+		m_Material->SetUniformValue<int>("u_MediumHeightMap", &i);
+
+		i = 2;
+		m_Material->SetUniformValue<int>("u_HighHeightMap", &i);
+
+		i = 3;
+		m_Material->SetUniformValue<int>("u_PathMap", &i);
+
+		i = 4;
+		m_Material->SetUniformValue<int>("u_PathSampler", &i);
+	}
+
+	std::vector<Vertex>		m_Vertices;
+	std::vector<unsigned>	m_Indices;
+
+	// Gen Vertices
+	{
+		bool clampUV = false;
+		int x_verts = subU + 1;
+		int z_verts = subV + 1;
+
+		float U, V;
+
+		for (int z = 0; z < z_verts; ++z)
+		{
+			for (int x = 0; x < x_verts; ++x)
+			{
+				// Evenly spaces displacement values in terms of the size of the terrain and the number of sub divisions
+				float x_pos = (sizeX / subU) * x;
+				float z_pos = (sizeZ / subV) * z;
+
+				U = ((float)x / x_verts) * (clampUV ? 1.0f : texTileX);
+				V = ((float)z / z_verts) * (clampUV ? 1.0f : texTileZ);
+
+				m_Vertices.push_back(
+				Vertex
+				{
+					Vec3(static_cast<float>(x_pos), 0.0f, -static_cast<float>(z_pos)),
+					Vec3(0.0f),
+					Vec2(U, V)
+				}
+				);
+			}
+		}
+	}
+
+	// Gen Heightmap
+	{
+		if (!heightmap.empty())
+		{
+			Image height_map;
+
+			if (!height_map.LoadImg(heightmap.c_str()))
+			{
+				return;
+			}
+
+			if (m_Vertices.empty())
+			{
+				WRITE_LOG("Can't create height map with no vertices for surface mesh", "error");
+				return;
+			}
+
+			int num_x = subU + 1;
+			int num_z = subV + 1;
+
+			for (int z = 0; z < num_z; ++z)
+			{
+				for (int x = 0; x < num_x; ++x)
+				{
+					size_t offset = x + z * num_x;
+					float height_map_val = static_cast<float>(*(byte*)height_map.GetPixel(x, z));
+					//float y_pos = (height_map_val / 1.0f) * sizeY;
+					float y_pos = ((1.0f / 255) * height_map_val) * sizeY;
+
+
+					m_Vertices[offset].position.y = y_pos;
+				}
+			}
+		}
+	}
+
+	// Gen Indices
+	{
+		for (dword j = 0; j < subV; ++j)
+		{
+			dword K = j * (subV + 1);
+
+			for (dword i = 0; i < subU; ++i)
+			{
+				if (j % 2 == 0)
+				{
+					if (i % 2 == 0)
+					{
+						m_Indices.push_back(K + i + subU + 1);
+						m_Indices.push_back(K + i);
+						m_Indices.push_back(K + i + 1);
+						m_Indices.push_back(K + i + subU + 1);
+						m_Indices.push_back(K + i + 1);
+						m_Indices.push_back(K + i + subU + 2);
+					}
+					else
+					{
+						m_Indices.push_back(K + i);
+						m_Indices.push_back(K + i + 1);
+						m_Indices.push_back(K + i + subU + 2);
+						m_Indices.push_back(K + i + subU + 1);
+						m_Indices.push_back(K + i);
+						m_Indices.push_back(K + i + subU + 2);
+					}
+				}
+				else
+				{
+					if (i % 2 != 0)
+					{
+						m_Indices.push_back(K + i + subU + 1);
+						m_Indices.push_back(K + i);
+						m_Indices.push_back(K + i + 1);
+						m_Indices.push_back(K + i + subU + 1);
+						m_Indices.push_back(K + i + 1);
+						m_Indices.push_back(K + i + subU + 2);
+					}
+					else
+					{
+						m_Indices.push_back(K + i);
+						m_Indices.push_back(K + i + 1);
+						m_Indices.push_back(K + i + subU + 2);
+						m_Indices.push_back(K + i + subU + 1);
+						m_Indices.push_back(K + i);
+						m_Indices.push_back(K + i + subU + 2);
+					}
+				}
+			}
+		}
+	}
+
+	// Gen Normals
+	{
+		glm::vec3 temp_norm;
+
+		for (dword i = 0; i < m_Indices.size(); i += 3)
+		{
+			// Get the vertices for each triangle in the element array
+			Vec3 p1 = m_Vertices[m_Indices[i]].position;
+			Vec3 p2 = m_Vertices[m_Indices[i + 1]].position;
+			Vec3 p3 = m_Vertices[m_Indices[i + 2]].position;
+
+			Vec3 u = p2 - p1;
+			Vec3 v = p3 - p1;
+
+			temp_norm = glm::cross(u, v);
+
+			// change the new values of normal in the interleaved vertex
+			m_Vertices[m_Indices[i]].normal += temp_norm;
+			m_Vertices[m_Indices[i + 1]].normal += temp_norm;
+			m_Vertices[m_Indices[i + 2]].normal += temp_norm;
+
+		}
+
+		for (size_t v = 0; v < m_Vertices.size(); ++v)
+		{
+			m_Vertices[v].normal = glm::normalize(m_Vertices[v].normal);
+		}
+	}
+
+	// Set Buffers
+	{
+		glGenVertexArrays(1, &m_VAO);
+		glBindVertexArray(m_VAO);
+
+		// Create the buffers for the vertices atttributes
+		glGenBuffers(1, &m_VertexVBO);
+		glGenBuffers(1, &m_IndexVBO);
+
+		// Generate and populate the buffers with vertex attributes and the indices
+		glBindBuffer(GL_ARRAY_BUFFER, m_VertexVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * m_Vertices.size(), m_Vertices.data(), GL_STATIC_DRAW);
+
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)12);
+		glEnableVertexAttribArray(2);
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)24);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_IndexVBO);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned) * m_Indices.size(), m_Indices.data(), GL_STATIC_DRAW);
+
+		// End
+		glBindVertexArray(0);
+	}
+
+	m_NumIndices = m_Indices.size();
+	m_MaxHeight = sizeY;
+	m_TexU = texTileX;
+	m_MaterialId = materialId;
+	m_TexV = texTileZ;
+}
+
+void SurfaceMesh::CreateBez(
+	ShaderProgram* mat,
+	size_t materialId,
+	const std::string& heightmap,
+	float heightmapSizeY,
+	float sizeX,
+	float sizeZ,
+	dword subU,
+	dword subV,
+	float tileU,
+	float tileV,
+	bool withBrowian
+	)
+{
+	m_Material = mat;
+	if (!m_Material)
+	{
+		WRITE_LOG("Material null for surface mesh", "error");
+		return;
+	}
+
+	Image i;
+	if (!i.LoadImg(heightmap.c_str()))
+		return;
+
+	std::vector<Vertex> height_map_verts;
+	uint32 height_subs = i.Width() - 1;
+	float height_x = i.Width();
+	float height_z = i.Height();
+	float height_y = heightmapSizeY;
+	float height_subu = height_x - 1;
+	float height_subv = height_z - 1;
+
+	// Create HeightMap Low res
+	{
+		std::vector<unsigned> height_map_indices;
+
+		// Gen Vertices
+		{
+			bool clampUV = false;
+			int x_verts = height_subu + 1;
+			int z_verts = height_subv + 1;
+
+			float U, V;
+
+			for (int z = 0; z < z_verts; ++z)
+			{
+				for (int x = 0; x < x_verts; ++x)
+				{
+					// Evenly spaces displacement values in terms of the size of the terrain and the number of sub divisions
+					float x_pos = (height_x / height_subu) * x;
+					float z_pos = (height_z / height_subv) * z;
+
+					U = ((float)x / x_verts) * (clampUV ? 1.0f : tileU);
+					V = ((float)z / z_verts) * (clampUV ? 1.0f : tileV);
+
+					height_map_verts.push_back(
+					Vertex
+					{
+						Vec3(static_cast<float>(x_pos), 0.0f, -static_cast<float>(z_pos)),
+						Vec3(0.0f),
+						Vec2(U, V)
+					}
+					);
+				}
+			}
+		}
+
+		// Gen Heightmap
+		{
+
+			if (height_map_verts.empty())
+			{
+				WRITE_LOG("Can't create height map with no vertices for surface mesh", "error");
+				return;
+			}
+
+			int num_x = height_subu + 1;
+			int num_z = height_subv + 1;
+
+			for (int z = 0; z < num_z; ++z)
+			{
+				for (int x = 0; x < num_x; ++x)
+				{
+					size_t offset = x + z * num_x;
+					float height_map_val = static_cast<float>(*(byte*)i.GetPixel(x, z));
+					float y_pos = ((1.0f / 255) * height_map_val) * heightmapSizeY;
+
+					height_map_verts[offset].position.y = y_pos;
+				}
+			}
+		}
+
+		// Gen Indices
+		{
+			for (dword j = 0; j < height_subv; ++j)
+			{
+				dword K = j * (height_subv + 1);
+
+				for (dword i = 0; i < height_subu; ++i)
+				{
+					if (j % 2 == 0)
+					{
+						if (i % 2 == 0)
+						{
+							height_map_indices.push_back(K + i + height_subu + 1);
+							height_map_indices.push_back(K + i);
+							height_map_indices.push_back(K + i + 1);
+							height_map_indices.push_back(K + i + height_subu + 1);
+							height_map_indices.push_back(K + i + 1);
+							height_map_indices.push_back(K + i + height_subu + 2);
+						}
+						else
+						{
+							height_map_indices.push_back(K + i);
+							height_map_indices.push_back(K + i + 1);
+							height_map_indices.push_back(K + i + height_subu + 2);
+							height_map_indices.push_back(K + i + height_subu + 1);
+							height_map_indices.push_back(K + i);
+							height_map_indices.push_back(K + i + height_subu + 2);
+						}
+					}
+					else
+					{
+						if (i % 2 != 0)
+						{
+							height_map_indices.push_back(K + i + height_subu + 1);
+							height_map_indices.push_back(K + i);
+							height_map_indices.push_back(K + i + 1);
+							height_map_indices.push_back(K + i + height_subu + 1);
+							height_map_indices.push_back(K + i + 1);
+							height_map_indices.push_back(K + i + height_subu + 2);
+						}
+						else
+						{
+							height_map_indices.push_back(K + i);
+							height_map_indices.push_back(K + i + 1);
+							height_map_indices.push_back(K + i + height_subu + 2);
+							height_map_indices.push_back(K + i + height_subu + 1);
+							height_map_indices.push_back(K + i);
+							height_map_indices.push_back(K + i + height_subu + 2);
+						}
+					}
+				}
+			}
+		}
+
+		// Gen Normals
+		{
+			glm::vec3 temp_norm;
+
+			for (dword i = 0; i < height_map_indices.size(); i += 3)
+			{
+				// Get the vertices for each triangle in the element array
+				Vec3 p1 = height_map_verts[height_map_indices[i]].position;
+				Vec3 p2 = height_map_verts[height_map_indices[i + 1]].position;
+				Vec3 p3 = height_map_verts[height_map_indices[i + 2]].position;
+
+				Vec3 u = p2 - p1;
+				Vec3 v = p3 - p1;
+
+				temp_norm = glm::cross(u, v);
+
+				// change the new values of normal in the interleaved vertex
+				height_map_verts[height_map_indices[i]].normal += temp_norm;
+				height_map_verts[height_map_indices[i + 1]].normal += temp_norm;
+				height_map_verts[height_map_indices[i + 2]].normal += temp_norm;
+
+			}
+
+			for (size_t v = 0; v < height_map_verts.size(); ++v)
+			{
+				height_map_verts[v].normal = glm::normalize(height_map_verts[v].normal);
+			}
+		}
+	}
+
+	// Now Apply to upscaled
+	{
+		std::vector<Vertex>		m_Vertices;
+		std::vector<unsigned>	m_Indices;
+
+		std::vector< std::vector<Vec3> >patches;
+		std::vector<Vec3> points{ 16 };
+
+		// Gen Vertices
+		{
+			bool clampUV = true;
+			int x_verts = subU + 1;
+			int z_verts = subV + 1;
+
+			float U, V;
+
+			for (int z = 0; z < z_verts; ++z)
+			{
+				for (int x = 0; x < x_verts; ++x)
+				{
+					// Evenly spaces displacement values in terms of the size of the terrain and the number of sub divisions
+					float x_pos = (sizeX / subU) * x;
+					float z_pos = (sizeZ / subV) * z;
+
+					U = ((float)x / x_verts) * (clampUV ? 1.0f : tileU);
+					V = ((float)z / z_verts) * (clampUV ? 1.0f : tileV);
+
+					m_Vertices.push_back(
+						Vertex
+					{
+						Vec3(static_cast<float>(x_pos), 0.0f, -static_cast<float>(z_pos)),
+						Vec3(0.0f),
+						Vec2(U, V)
+					}
+					);
+				}
+			}
+		}
+
+		size_t x_verts = subU + 1;
+		size_t z_verts = subV + 1;
+
+		// Displace Bezier
+		for (size_t y = 0; y < z_verts; ++y)
+		{
+			for (size_t x = 0; x < x_verts; ++x)
+			{
+				// Loop through each vertex in order with offset
+				size_t offset = x + y * x_verts;
+
+				// Algorithm I created to get first control point, use global uv and multiply by the amount of subs in cps
+				float X = (m_Vertices[offset].texcoord.x * ((float)height_subu));
+				float Y = (m_Vertices[offset].texcoord.y * ((float)height_subv));
+
+				// Use this for patches that share control points to lerp and smooth them
+				size_t x_patch_offset = (size_t)X - (size_t)X % 3;
+				size_t z_patch_offset = (size_t)Y - (size_t)Y % 3;
+				size_t patch_id = x_patch_offset + z_patch_offset * (size_t)height_x;
+
+				// This is calculated for smooth local UV and passed to bezier function along with contro points for this vertex
+				float U = (X - x_patch_offset) / 3;
+				float V = (Y - z_patch_offset) / 3;
+
+				// Generate 16 cps ( 4 rows ), using the above algorithm 
+				points[0] = height_map_verts[patch_id].position;
+				points[1] = height_map_verts[patch_id + 1].position;
+				points[2] = height_map_verts[patch_id + 2].position;
+				points[3] = height_map_verts[patch_id + 3].position;
+
+				points[4] = height_map_verts[patch_id + (size_t)height_x].position;
+				points[5] = height_map_verts[patch_id + (size_t)height_x + 1].position;
+				points[6] = height_map_verts[patch_id + (size_t)height_x + 2].position;
+				points[7] = height_map_verts[patch_id + (size_t)height_x + 3].position;
+
+				points[8] = height_map_verts[patch_id + ((size_t)height_x * 2)].position;
+				points[9] = height_map_verts[patch_id + ((size_t)height_x * 2) + 1].position;
+				points[10] = height_map_verts[patch_id + ((size_t)height_x * 2) + 2].position;
+				points[11] = height_map_verts[patch_id + ((size_t)height_x * 2) + 3].position;
+
+				points[12] = height_map_verts[patch_id + ((size_t)height_x * 3)].position;
+				points[13] = height_map_verts[patch_id + ((size_t)height_x * 3) + 1].position;
+				points[14] = height_map_verts[patch_id + ((size_t)height_x * 3) + 2].position;
+				points[15] = height_map_verts[patch_id + ((size_t)height_x * 3) + 3].position;
+
+				m_Vertices[offset].position =
+					// Lerp
+					0.5f + m_Vertices[offset].position +
+					BezierSurface_16(U, V, points);
+
+				patches.clear();
+			}
+		}
+
+		// Apply Brownian
+		{
+			if (withBrowian)
+			{
+				for (size_t v = 0; v < m_Vertices.size(); ++v)
+				{
+					m_Vertices[v].position.y =
+						0.5f + m_Vertices[v].position.y +
+						Brownian(m_Vertices[v].position, heightmapSizeY, 8, 2.0f, 0.4f).y;
+				}
+			}
+		}
+
+		// Gen Indices
+		{
+			for (dword j = 0; j < subV; ++j)
+			{
+				dword K = j * (subV + 1);
+
+				for (dword i = 0; i < subU; ++i)
+				{
+					if (j % 2 == 0)
+					{
+						if (i % 2 == 0)
+						{
+							m_Indices.push_back(K + i + subU + 1);
+							m_Indices.push_back(K + i);
+							m_Indices.push_back(K + i + 1);
+							m_Indices.push_back(K + i + subU + 1);
+							m_Indices.push_back(K + i + 1);
+							m_Indices.push_back(K + i + subU + 2);
+						}
+						else
+						{
+							m_Indices.push_back(K + i);
+							m_Indices.push_back(K + i + 1);
+							m_Indices.push_back(K + i + subU + 2);
+							m_Indices.push_back(K + i + subU + 1);
+							m_Indices.push_back(K + i);
+							m_Indices.push_back(K + i + subU + 2);
+						}
+					}
+					else
+					{
+						if (i % 2 != 0)
+						{
+							m_Indices.push_back(K + i + subU + 1);
+							m_Indices.push_back(K + i);
+							m_Indices.push_back(K + i + 1);
+							m_Indices.push_back(K + i + subU + 1);
+							m_Indices.push_back(K + i + 1);
+							m_Indices.push_back(K + i + subU + 2);
+						}
+						else
+						{
+							m_Indices.push_back(K + i);
+							m_Indices.push_back(K + i + 1);
+							m_Indices.push_back(K + i + subU + 2);
+							m_Indices.push_back(K + i + subU + 1);
+							m_Indices.push_back(K + i);
+							m_Indices.push_back(K + i + subU + 2);
+						}
+					}
+				}
+			}
+		}
+
+		// Gen Normals
+		{
+			glm::vec3 temp_norm;
+
+			for (dword i = 0; i < m_Indices.size(); i += 3)
+			{
+				// Get the vertices for each triangle in the element array
+				Vec3 p1 = m_Vertices[m_Indices[i]].position;
+				Vec3 p2 = m_Vertices[m_Indices[i + 1]].position;
+				Vec3 p3 = m_Vertices[m_Indices[i + 2]].position;
+
+				Vec3 u = p2 - p1;
+				Vec3 v = p3 - p1;
+
+				temp_norm = glm::cross(u, v);
+
+				// change the new values of normal in the interleaved vertex
+				m_Vertices[m_Indices[i]].normal += temp_norm;
+				m_Vertices[m_Indices[i + 1]].normal += temp_norm;
+				m_Vertices[m_Indices[i + 2]].normal += temp_norm;
+
+			}
+
+			for (size_t v = 0; v < m_Vertices.size(); ++v)
+			{
+				m_Vertices[v].normal = glm::normalize(m_Vertices[v].normal);
+			}
+		}
+
+		// Reapply this to sort texcoords
+		{
+			int x_verts = subU + 1;
+			int z_verts = subV + 1;
+			for (int z = 0; z < z_verts; ++z)
+			{
+				for (int x = 0; x < x_verts; ++x)
+				{
+					// Evenly spaces displacement values in terms of the size of the terrain and the number of sub divisions
+					float x_pos = (sizeX / subU) * x;
+					float z_pos = (sizeZ / subV) * z;
+
+					m_Vertices[x + z * x_verts].texcoord = Vec2(
+						(float)x / (x_verts)* tileU,
+						(float)z / (z_verts)* tileV
+						);
+				}
+			}
+		}
+
+		// Set Buffers
+		{
+			glGenVertexArrays(1, &m_VAO);
+			glBindVertexArray(m_VAO);
+
+			// Create the buffers for the vertices atttributes
+			glGenBuffers(1, &m_VertexVBO);
+			glGenBuffers(1, &m_IndexVBO);
+
+			// Generate and populate the buffers with vertex attributes and the indices
+			glBindBuffer(GL_ARRAY_BUFFER, m_VertexVBO);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * m_Vertices.size(), m_Vertices.data(), GL_STATIC_DRAW);
+
+			glEnableVertexAttribArray(0);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
+			glEnableVertexAttribArray(1);
+			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)12);
+			glEnableVertexAttribArray(2);
+			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)24);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_IndexVBO);
+			glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned) * m_Indices.size(), m_Indices.data(), GL_STATIC_DRAW);
+
+			// End
+			glBindVertexArray(0);
+		}
+
+		m_NumIndices = m_Indices.size();
+		m_MaxHeight = heightmapSizeY;
+		m_TexU = tileU;
+		m_TexV = tileV;
+		m_MaterialId = materialId;
 	}
 }

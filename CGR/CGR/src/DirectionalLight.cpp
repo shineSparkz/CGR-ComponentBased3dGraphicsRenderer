@@ -147,3 +147,8 @@ void DirectionalLightC::SetColB(float b)
 	}
 }
 
+const Vec3& DirectionalLightC::GetDir() const
+{
+	return m_Direction;
+}
+

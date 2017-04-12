@@ -221,7 +221,7 @@ void Application::Run()
 
 void Application::renderInfo()
 {
-	int numItems = 1;
+	int numItems = 2;		// <-- Hacky, it's from renderer
 	const float divider = 32.0f;
 	const float top = static_cast<float>(Screen::Instance()->FrameBufferHeight());
 
@@ -273,31 +273,41 @@ void Application::HandleEvent(Event* e)
 				this->m_ShouldClose = GE_TRUE;
 			}
 
-			// Indoor
+			// Indoor Scene
 			else if (ke->key == GLFW_KEY_F1 && ke->action == GLFW_RELEASE)
 			{
 				this->ChangeScene("indoor");
 			}
-			// Outdoor
+			// Outdoor Scene
 			else if (ke->key == GLFW_KEY_F2 && ke->action == GLFW_RELEASE)
 			{
 				this->ChangeScene("outdoor");
 			}
+			// Sponza Scene
 			else if (ke->key == GLFW_KEY_F3 && ke->action == GLFW_RELEASE)
 			{
 				this->ChangeScene("sponza");
 			}
+			// Ortho Scene
 			else if (ke->key == GLFW_KEY_F4 && ke->action == GLFW_RELEASE)
 			{
 				this->ChangeScene("ortho");
 			}
+			// Toggle Culling
+			else if (ke->key == GLFW_KEY_F9 && ke->action == GLFW_RELEASE)
+			{
+				this->m_Renderer->ToggleFrustumCulling();
+			}
+			// Toggle Frame Quuery
 			else if (ke->key == GLFW_KEY_F10 && ke->action == GLFW_RELEASE)
 			{
 				this->m_Renderer->ToggleFrameQueeryMode();
 			}
+			// Toggle Info strings
 			else if (ke->key == GLFW_KEY_F11 && ke->action == GLFW_RELEASE)
 			{
 				this->ShouldRenderInfoStrings(!this->IsRenderingInfoStrings());
+				m_Renderer->SetDisplayInfo(this->IsRenderingInfoStrings());
 			}
 			else if (ke->key == GLFW_KEY_TAB && ke->action == GLFW_RELEASE)
 			{

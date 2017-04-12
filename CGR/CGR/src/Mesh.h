@@ -28,6 +28,10 @@ struct SubMesh
 	unsigned int MaterialIndex;	
 	int BaseVertex;
 	int BaseIndex;
+
+	Vec3 minvertex;
+	Vec3 maxVertex;
+	Vec3 centre;
 };
 
 class Mesh

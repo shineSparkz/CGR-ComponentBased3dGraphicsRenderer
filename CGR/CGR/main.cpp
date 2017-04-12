@@ -7,17 +7,14 @@
 
 /*
 List
-- Reimplement shadows Directional, Have shadows for multiple lights
 - Wavy grass
-- Change shaders at runtime, reload shaders runtime
-- Materials
+- Reimplement shadows Directional, Have shadows for multiple lights
 - Instancing/Batching
 - Frustum
+- Change shaders at runtime, reload shaders runtime
 - Better water implementation
-
-- Make all scenes nice 
+- Materials
 - Make a use case for a new user, creating a scene, game objects, shader and using engine functionality or write docs
-- Tidy Camera
 
 Extra
 - picking
@@ -67,7 +64,7 @@ int main(void)
 		}
 
 
-		if (app->ChangeScene("sponza") != GE_OK)
+		if (app->ChangeScene("outdoor") != GE_OK)
 		{
 			SAFE_CLOSE(app);
 			return -1;

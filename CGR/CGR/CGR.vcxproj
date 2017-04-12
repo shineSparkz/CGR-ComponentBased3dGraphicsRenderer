@@ -163,6 +163,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="src\AABB.cpp" />
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\BillboardList.cpp" />
     <ClCompile Include="src\Camera.cpp" />
@@ -173,6 +174,7 @@
     <ClCompile Include="src\Event.cpp" />
     <ClCompile Include="src\EventManager.cpp" />
     <ClCompile Include="src\Font.cpp" />
+    <ClCompile Include="src\Frustum.cpp" />
     <ClCompile Include="src\GameObject.cpp" />
     <ClCompile Include="src\GBuffer.cpp" />
     <ClCompile Include="src\Image.cpp" />
@@ -185,6 +187,7 @@
     <ClCompile Include="src\OpenGlLayer.cpp" />
     <ClCompile Include="src\OrthoScene.cpp" />
     <ClCompile Include="src\OutdoorScene.cpp" />
+    <ClCompile Include="src\Plane.cpp" />
     <ClCompile Include="src\PointLight.cpp" />
     <ClCompile Include="src\Queery.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
@@ -208,6 +211,7 @@
     <ClCompile Include="src\utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\AABB.h" />
     <ClInclude Include="src\Application.h" />
     <ClInclude Include="src\BillboardList.h" />
     <ClInclude Include="src\Camera.h" />
@@ -221,6 +225,7 @@
     <ClInclude Include="src\EventManager.h" />
     <ClInclude Include="src\Font.h" />
     <ClInclude Include="src\FontAlign.h" />
+    <ClInclude Include="src\Frustum.h" />
     <ClInclude Include="src\GameObject.h" />
     <ClInclude Include="src\GBuffer.h" />
     <ClInclude Include="src\gl_headers.h" />
@@ -238,6 +243,7 @@
     <ClInclude Include="src\OpenGlLayer.h" />
     <ClInclude Include="src\OrthoScene.h" />
     <ClInclude Include="src\OutdoorScene.h" />
+    <ClInclude Include="src\Plane.h" />
     <ClInclude Include="src\PointLight.h" />
     <ClInclude Include="src\Queery.h" />
     <ClInclude Include="src\Rect.h" />

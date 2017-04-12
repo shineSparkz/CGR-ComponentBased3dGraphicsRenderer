@@ -35,6 +35,8 @@ public:
 	void SetColG(float g);
 	void SetColB(float b);
 
+	const Vec3& GetPosition() const;
+
 	static int GetId();
 
 private:

@@ -22,8 +22,7 @@
 OutDoorScene::OutDoorScene(const std::string& name) :
 	IScene(name),
 	m_GameObjects(),
-	m_TreeBillboardList(nullptr),
-	m_Terrain(nullptr)
+	m_TreeBillboardList(nullptr)
 {
 }
 
@@ -50,47 +49,65 @@ int OutDoorScene::OnSceneLoad(ResourceManager* resManager)
 	);
 
 	m_Camera->AddSkybox(30.0f, TEX_SKYBOX_DEFAULT);
+	
 	// Set Pointer in renderer
 	m_Renderer->SetSceneData(m_Camera, Vec3(0.1f));
 	m_GameObjects.push_back(cam);
 
-	// Point Lights
-	GameObject* p1 = CgrEngine::CreatePointLight(m_Renderer, Vec3(20.0f, 15.0f, -20.0f), Vec3(0.7f, 0, 0), 0.02f);
-	GameObject* p2 = CgrEngine::CreatePointLight(m_Renderer, Vec3(-50.0f, 15.0f, 30.0f), Vec3(0.7f), 0.02f);
-	GameObject* p3 = CgrEngine::CreatePointLight(m_Renderer, Vec3(70.0f, 15.0f, 10.0f), Vec3(0.7f), 0.02f);
-
-	if (p1)
-		m_GameObjects.push_back(p1);
-	if (p2)
-		m_GameObjects.push_back(p2);
-	if (p3)
-		m_GameObjects.push_back(p3);
+	GameObject* cube = new GameObject();
+	Transform* ct = cube->AddComponent<Transform>();
+	ct->SetPosition(Vec3(0.0f, 0, 0));
+	ct->SetScale(Vec3(1.0f));
+	MeshRenderer* cmr = cube->AddComponent<MeshRenderer>();
+	cmr->SetMesh(MESH_ID_CUBE);
+	cmr->SetMaterialSet(MATERIALS_BRICKS);
+	cmr->SetToUseBumpMaps(false);
+	m_GameObjects.push_back(cube);
 
 	// Directional Light
 	GameObject* dlight = new GameObject();
 	DirectionalLightC* dl = dlight->AddComponent<DirectionalLightC>();
-	dl->SetLight(m_Renderer, Vec3(0, -1, 0), Vec3(0.7f));
+	dl->SetLight(m_Renderer, Vec3(0, -0.8f, 0), Vec3(0.7f));
+	m_DirLightHandle = dl;
 	m_GameObjects.push_back(dlight);
+
+	//if (!m_Surface)
+	{
+		m_Surface[0] = new SurfaceMesh();
+		m_Surface[1] = new SurfaceMesh();
+	}
+
+	// Per Pixel Surface
+	m_Surface[0]->Create(
+		resManager->GetShader(SHADER_TERRAIN_DEF), 
+		MATERIALS_TERRAIN,
+		200,			// Sz X
+		50.f,			// Sz Y
+		200,			// Sz Z
+		199,			// Sub U
+		199,			// Sub V
+		16,				// Tex U
+		16,				// Tex V
+		"../resources/textures/terrain/heightmap.tga"
+	);
+
+	// Bezier Surface
+	m_Surface[1]->CreateBez(
+		resManager->GetShader(SHADER_TERRAIN_DEF),
+		MATERIALS_TERRAIN,
+		"../resources/textures/terrain/heightmap.tga",
+		50.f,
+		500,
+		500,
+		128,
+		128,
+		16,
+		16,
+		true
+	);
 
 	// Terrain
 	std::vector<Vec3> billboardPositions;
-
-	if (!m_Terrain)
-		m_Terrain = new Terrain();
-
-	unsigned int textures[5] = { TEX_TERRAIN1, TEX_TERRAIN2, TEX_TERRAIN3, TEX_TERRAIN4, TEX_TERRAIN5 };
-	if (!m_Terrain->LoadFromHeightMapWithBillboards(
-		"../resources/textures/terrain/heightmap.tga",
-		resManager->GetShader(SHADER_TERRAIN_DEF),
-		textures,
-		Vec3(200, 30, 200),
-		Vec3(1.0f),
-		billboardPositions,
-		50
-	))
-	{
-		return GE_FALSE;
-	}
 
 	// Load Billboard list
 	if (!m_TreeBillboardList)
@@ -103,16 +120,15 @@ int OutDoorScene::OnSceneLoad(ResourceManager* resManager)
 			return GE_FALSE;
 		}
 
-		/*
-		m_TreeBillboardList->Init(ResourceManager::Instance()->GetShader(SHADER_BILLBOARD_FWD), TEX_GRASS_BILLBOARD,
-		0.5f,	// scale
-		10,		// numX
-		10,		// numY
-		2.0f,	// spacing
-		14.0f,	// offset pos
-		-1.4f	// ypos
-		);
-		*/
+		//m_TreeBillboardList->Init(ResourceManager::Instance()->GetShader(SHADER_BILLBOARD_FWD), TEX_GRASS_BILLBOARD,
+		//0.5f,	// scale
+		//10,		// numX
+		//10,		// numY
+		//2.0f,	// spacing
+		//14.0f,	// offset pos
+		//-1.4f	// ypos
+		//);
+		
 	}
 
 	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
@@ -132,12 +148,64 @@ void OutDoorScene::OnSceneExit()
 	}
 	m_GameObjects.clear();
 
-	SAFE_DELETE(m_Terrain);
+	for (int i = 0; i < ARRAY_SIZE_IN_ELEMENTS(m_Surface); ++i)
+	{
+		SAFE_DELETE(m_Surface[i]);
+	}
+	
 	SAFE_DELETE(m_TreeBillboardList);
 }
 
 void OutDoorScene::Update(float dt)
 {
+	const auto& d = m_DirLightHandle->GetDir();
+
+	if (Input::Keys[GLFW_KEY_UP] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		m_DirLightHandle->SetDirectionY(Maths::Max(-1.0f, d.y - 0.1f));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_DOWN] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		m_DirLightHandle->SetDirectionY(Maths::Min(1.0f, d.y + 0.1f));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_LEFT] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		m_DirLightHandle->SetDirectionX(Maths::Max(-1.0f, d.x - 0.1f));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_RIGHT] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		m_DirLightHandle->SetDirectionX(Maths::Min(1.0f, d.x + 0.1f));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_F] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		m_DirLightHandle->SetDirectionZ(Maths::Max(-1.0f, d.z - 0.1f));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_V] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		m_DirLightHandle->SetDirectionZ(Maths::Min(1.0f, d.z + 0.1f));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	
+	// Set Wireframe mode
+	if (Input::Keys[GLFW_KEY_P] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		m_WireFrame = !m_WireFrame;
+		m_TimeNow = Time::ElapsedTime();
+	}
+
+	// Set Fill mode
+	if (Input::Keys[GLFW_KEY_O] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		m_RenderSurface = !m_RenderSurface;
+		m_TimeNow = Time::ElapsedTime();
+	}
+
+
 	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
 	{
 		(*i)->Update();
@@ -147,11 +215,21 @@ void OutDoorScene::Update(float dt)
 void OutDoorScene::Render()
 {
 	m_Renderer->Render(m_GameObjects);
-	m_Renderer->RenderTerrain(m_Terrain);
+
+	if (m_RenderSurface)
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, m_WireFrame ? GL_FILL : GL_LINE);
+		m_Renderer->RenderSurface(m_Surface[0], Vec3(0, 0, 0));
+		m_Renderer->RenderSurface(m_Surface[1], Vec3(0, 0, -500));
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
+
 	m_Renderer->RenderBillboardList(m_TreeBillboardList);
 }
 
 void OutDoorScene::RenderUI()
 {
-
+	m_Renderer->RenderText(FONT_COURIER, "Point Light Pos: " + util::vec3_to_str(m_DirLightHandle->GetDir()), 8, 64);
+	m_Renderer->RenderText(FONT_COURIER, "Wire frame mode [P]", 8, 96);
+	m_Renderer->RenderText(FONT_COURIER, "Render SUrface [O]", 8, 128);
 }

@@ -154,6 +154,11 @@ namespace Maths
 		return Vec3(s ? 0.0f : v.x / l, s ? 0.0f : v.y / l, s ? 0.0f : v.z / l);
 	}
 
+	INLINE Vec3 Vec4To3(const Vec4& v)
+	{
+		return Vec3(v.x, v.y, v.z);
+	}
+
 	INLINE Vec3 Up()
 	{
 		return Vec3(0.0f, 1.0f, 0.0f);
@@ -258,6 +263,20 @@ namespace Maths
 			{ v.x * v.z * omc + v.y * s, v.y * v.z * omc - v.x * s, z2 * omc + c, 0 },
 			{ 0 ,  0,  0, 1 }
 		);
+	}
+
+	INLINE Mat4 frustum_perspective(float left, float right, float bottom, float top, float near, float far)
+	{
+		Mat4 matrix(1.0f);
+		matrix[0][0] = 2 * near / (right - left);
+		matrix[1][1] = 2 * near / (top - bottom);
+		matrix[2][2] = -(far + near) / (far - near);
+		matrix[2][3] = -1;
+		matrix[3][2] = -2 * far*near / (far - near);
+		matrix[2][0] = (right + left) / (right - left);
+		matrix[2][1] = (top + bottom) / (top - bottom);
+		matrix[3][3] = 0;
+		return matrix;
 	}
 
 	/*

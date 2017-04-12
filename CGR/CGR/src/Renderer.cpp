@@ -15,6 +15,7 @@
 #include "UniformBlockManager.h"
 #include "UniformBlock.h"
 #include "Lights.h"
+#include "Frustum.h"
 
 // Utils
 #include "LogFile.h"
@@ -40,6 +41,7 @@ Renderer::Renderer() :
 	m_Query(),
 	m_QueryTime(0),
 	m_Gbuffer(nullptr),
+	m_Frustum(nullptr),
 	m_UniformBlockManager(nullptr),
 	m_NumDirLightsInScene(-1),
 	m_NumPointLightsInScene(-1),
@@ -97,6 +99,9 @@ bool Renderer::Init()
 	// Set static shader values on default engine shaders
 	success &= setStaticDefaultShaderValues();
 
+	if(!m_Frustum)
+		m_Frustum = new Frustum();
+
 	return success;
 }
 
@@ -113,6 +118,7 @@ void Renderer::Close()
 	m_Query.Clean();
 
 	SAFE_DELETE(m_Gbuffer);
+	SAFE_DELETE(m_Frustum);
 	SAFE_CLOSE(m_UniformBlockManager);
 	SAFE_CLOSE(m_ResManager);
 }
@@ -134,6 +140,8 @@ const std::string& Renderer::GetHardwareStr() const
 
 void Renderer::Render(std::vector<GameObject*>& gameObjects)
 {
+	m_CullCount = 0;
+
 	if(m_ShouldQueryFrames)
 		m_Query.Start();
 
@@ -161,7 +169,6 @@ void Renderer::Render(std::vector<GameObject*>& gameObjects)
 	{
 		m_Query.End();
 		m_QueryTime = m_Query.Result(false);
-		RenderText(FONT_COURIER, "Frm Time: " + util::to_str(getFrameTime(TimeMeasure::Seconds)), 8, Screen::Instance()->FrameBufferHeight() - 32.0f, FontAlign::Left, Colour::Red());
 	}
 
 	// Wait until everything is drawn first
@@ -176,6 +183,13 @@ void Renderer::Render(std::vector<GameObject*>& gameObjects)
 
 		m_ShadingMode = m_PendingShadingMode;
 		m_ShadingModePending = false;
+	}
+
+	// Render info if asked
+	if (m_ShouldDisplayInfo)
+	{
+		this->RenderText(FONT_COURIER, "Frm Time Seconds: " + util::to_str(getFrameTime(TimeMeasure::Seconds)), 8, Screen::Instance()->FrameBufferHeight() - 32.0f, FontAlign::Left, Colour::Red());
+		this->RenderText(FONT_COURIER, "Frustum cull set to: " + util::bool_to_str(m_ShouldFrustumCull) + " :  Cull count: " + util::to_str(m_CullCount), 8, Screen::Instance()->FrameBufferHeight() - 64.0f);
 	}
 }
 
@@ -279,37 +293,40 @@ void Renderer::RenderBillboardList(BillboardList* billboard)
 	}
 }
 
-void Renderer::RenderTerrain(Terrain* terrain)
+void Renderer::RenderSurface(SurfaceMesh* surface, const Vec3& position)
 {
-	if (terrain)
+	if (surface)
 	{
-		if (terrain->m_Material)
+		if (surface->m_Material)
 		{
-			// Use Program
-			terrain->m_Material->Use();
-
-			for (int i = 0; i < 5; ++i)
+			surface->m_Material->Use();
+			
+			// Bind Materials
+			if (m_ResManager->MaterialSetExists(surface->m_MaterialId))
 			{
-				this->GetTexture(terrain->m_TextureIds[i])->Bind();
+				auto& materials = m_ResManager->m_Materials[surface->m_MaterialId];
+
+				for (auto i = materials.begin(); i != materials.end(); ++i)
+				{
+					i->second->Bind();
+				}
 			}
 
-			float u = 0.1f * (float)terrain->m_Cols;
-			float v = 0.1f * (float)terrain->m_Rows;
+			int n = 0;
+			surface->m_Material->SetUniformValue<Mat4>("u_world_xform", &(glm::translate(IDENTITY, position)));
+			surface->m_Material->SetUniformValue<int>("u_use_bumpmap", &n);
+			surface->m_Material->SetUniformValue<float>("u_MaxHeight", &surface->m_MaxHeight);
+			surface->m_Material->SetUniformValue<float>("u_MaxTexU", &surface->m_TexU);
+			surface->m_Material->SetUniformValue<float>("u_MaxTexV", &surface->m_TexV);
 
-			// Set uniforms per terrain
-			terrain->m_Material->SetUniformValue<Mat4>("u_world_xform", &(Mat4(1.0f)));
-
-			glBindVertexArray(terrain->m_VAO);
-			glEnable(GL_PRIMITIVE_RESTART);
-			glPrimitiveRestartIndex(terrain->m_Rows * terrain->m_Cols);
-
-			int numIndices = (terrain->m_Rows - 1) * terrain->m_Cols * 2 + terrain->m_Rows - 1;
-
-			glDrawElements(GL_TRIANGLE_STRIP, numIndices, GL_UNSIGNED_INT, 0);
-			glDisable(GL_PRIMITIVE_RESTART);
+			glBindVertexArray(surface->m_VAO);
+			glDrawElements(GL_TRIANGLES, surface->m_NumIndices, GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
 		}
 	}
 }
+
+
 
 size_t Renderer::GetNumSubMeshesInMesh(size_t meshIndex) const
 {
@@ -426,6 +443,26 @@ void Renderer::ToggleFrameQueeryMode()
 	m_ShouldQueryFrames = !m_ShouldQueryFrames;
 }
 
+void Renderer::ToggleFrustumCulling()
+{
+	m_ShouldFrustumCull = !m_ShouldFrustumCull;
+}
+
+void Renderer::SetFrustumCulling(bool should)
+{
+	m_ShouldFrustumCull = should;
+}
+
+void Renderer::ToggleDisplayInfo()
+{
+	m_ShouldDisplayInfo = !m_ShouldDisplayInfo;
+}
+
+void Renderer::SetDisplayInfo(bool should)
+{
+	m_ShouldDisplayInfo = should;
+}
+
 
 void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 {
@@ -442,7 +479,12 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 	{
 		this->renderSkybox(m_CameraPtr);
 	}
-	
+
+	m_ResManager->GetShader(SHADER_FRUSTUM)->Use();
+
+	m_ResManager->GetShader(SHADER_FRUSTUM)->SetUniformValue<Mat4>("u_wvp_xform", &(m_CameraPtr->ProjXView() * IDENTITY));
+	m_Frustum->UpdateFrustum(m_CameraPtr->Projection(), m_CameraPtr->View());
+
 	// TODO : need to use the shader program that was set to each mesh or batch them 
 	ShaderProgram* sp = m_ResManager->m_Shaders[SHADER_LIGHTING_FWD]; //m_Shaders[mr->m_ShaderIndex];
 	ShaderProgram* np = nullptr;	
@@ -467,7 +509,7 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 			sp->SetUniformValue<Mat4>("u_world_xform", &(model_xform));
 			sp->SetUniformValue<int>("u_use_bumpmap", &(mr->m_HasBumpMaps));
 
-			this->renderMesh(mr);
+			this->renderMesh(mr, model_xform);
 
 			// Do a normal pass if required
 			if (m_ShouldDisplayNormals)
@@ -475,7 +517,7 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 				np->Use();
 				np->SetUniformValue<Mat4>("u_wvp", &(m_CameraPtr->ProjXView() * model_xform));
 				np->SetUniformValue<Mat4>("u_world_xform", &(model_xform));
-				this->renderMesh(mr, GL_POINTS);
+				this->renderMesh(mr, IDENTITY, GL_POINTS);
 			}
 		}
 	}
@@ -522,7 +564,7 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 				// Render Mesh here
 				sp->Use();
 				sp->SetUniformValue<Mat4>("u_world_xform", &(model_xform));
-				this->renderMesh(mr);
+				this->renderMesh(mr, model_xform);
 			}
 
 			// Do a normal pass if required
@@ -531,7 +573,7 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 				np->Use();
 				np->SetUniformValue<Mat4>("u_wvp", &(m_CameraPtr->ProjXView() * model_xform));
 				np->SetUniformValue<Mat4>("u_world_xform", &(model_xform));
-				this->renderMesh(mr, GL_POINTS);
+				this->renderMesh(mr, model_xform, GL_POINTS);
 			}
 		}
 
@@ -655,7 +697,7 @@ void Renderer::renderMesh(Mesh* thisMesh)
 	glBindVertexArray(0);
 }
 
-void Renderer::renderMesh(MeshRenderer* meshRenderer, GLenum renderMode)
+void Renderer::renderMesh(MeshRenderer* meshRenderer, const Mat4& world_xform, GLenum renderMode)
 {
 	Mesh* thisMesh = m_ResManager->m_Meshes[meshRenderer->MeshIndex];
 	if (!thisMesh)
@@ -668,51 +710,68 @@ void Renderer::renderMesh(MeshRenderer* meshRenderer, GLenum renderMode)
 	{
 		SubMesh subMesh = (*j);
 
-		const size_t	MaterialSet = meshRenderer->m_MaterialIndex;
-		const unsigned	MaterialIndex = subMesh.MaterialIndex;
-
-		if (m_ResManager->MaterialSetExists(MaterialSet))
+		bool should_render = true;
+		if (m_ShouldFrustumCull)
 		{
-			auto& materials = m_ResManager->m_Materials[MaterialSet];
-
-			if (materials[MaterialIndex])
-			{
-				materials[MaterialIndex]->Bind();
-			}
+			Vec3 centre = Maths::Vec4To3(world_xform * Vec4(subMesh.centre, 1.0f));
+			float r = Maths::Distance(
+				Maths::Vec4To3(world_xform * Vec4(subMesh.minvertex, 1.0f)),
+				Maths::Vec4To3(world_xform * Vec4(subMesh.maxVertex, 1.0f)));
+			should_render = m_Frustum->SphereInFrustum(centre, r);
 		}
 
-		/*
-		if (thisMesh->HasMaterials())
+		if (should_render)
 		{
-			const unsigned int MaterialIndex = subMesh.MaterialIndex;
-			if(thisMesh->m_Materials[MaterialIndex])
-			{			
-				thisMesh->m_Materials[MaterialIndex]->Bind();
+			const size_t	MaterialSet = meshRenderer->m_MaterialIndex;
+			const unsigned	MaterialIndex = subMesh.MaterialIndex;
+
+			if (m_ResManager->MaterialSetExists(MaterialSet))
+			{
+				auto& materials = m_ResManager->m_Materials[MaterialSet];
+
+				if (materials[MaterialIndex])
+				{
+					materials[MaterialIndex]->Bind();
+				}
+			}
+
+			/*
+			if (thisMesh->HasMaterials())
+			{
+				const unsigned int MaterialIndex = subMesh.MaterialIndex;
+				if(thisMesh->m_Materials[MaterialIndex])
+				{
+					thisMesh->m_Materials[MaterialIndex]->Bind();
+				}
+			}
+			else
+			{
+				// Bind the textures for this mesh instance
+				for (auto tex = meshInstance->m_SubMeshTextures[meshIndex].begin();
+					tex != meshInstance->m_SubMeshTextures[meshIndex].end(); ++tex)
+				{
+					m_ResManager->m_Textures[meshInstance->m_TextureHandles[(*tex)]]->Bind();
+				}
+			}
+			*/
+
+			if (subMesh.NumIndices > 0)
+			{
+				glDrawElementsBaseVertex(
+					renderMode,
+					subMesh.NumIndices,
+					GL_UNSIGNED_INT,
+					(void*)(sizeof(unsigned int) * subMesh.BaseIndex),
+					subMesh.BaseVertex);
+			}
+			else
+			{
+				glDrawArrays(renderMode, 0, subMesh.NumVertices);
 			}
 		}
 		else
 		{
-			// Bind the textures for this mesh instance
-			for (auto tex = meshInstance->m_SubMeshTextures[meshIndex].begin();
-				tex != meshInstance->m_SubMeshTextures[meshIndex].end(); ++tex)
-			{
-				m_ResManager->m_Textures[meshInstance->m_TextureHandles[(*tex)]]->Bind();
-			}
-		}
-		*/
-
-		if (subMesh.NumIndices > 0)
-		{
-			glDrawElementsBaseVertex(
-				renderMode,
-				subMesh.NumIndices,
-				GL_UNSIGNED_INT,
-				(void*)(sizeof(unsigned int) * subMesh.BaseIndex),
-				subMesh.BaseVertex);
-		}
-		else
-		{
-			glDrawArrays(renderMode, 0, subMesh.NumVertices);
+			++m_CullCount;
 		}
 
 		++meshIndex;
@@ -853,19 +912,6 @@ bool Renderer::setStaticDefaultShaderValues()
 	}
 
 	//--------------------------------------------------------------------------------
-
-	// Set for terrain in forward mode
-	ShaderProgram* terrainShader = m_ResManager->GetShader(SHADER_TERRAIN_DEF);
-	if (terrainShader)
-	{
-		terrainShader->Use();
-
-		for (int i = 0; i < 5; ++i)
-		{
-			int val = GL_TEXTURE0 + i;
-			terrainShader->SetUniformValue<int>("u_Sampler" + std::to_string(i), &val);
-		}
-	}
 
 	return true;
 }

@@ -31,6 +31,9 @@
     <Filter Include="Shaders\Deferred">
       <UniqueIdentifier>{28949f33-323f-47a0-8ff0-a3b534502de4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Physics">
+      <UniqueIdentifier>{5f2724e4-d603-425b-aff4-d2c2b4f47b76}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Application.h">
@@ -204,6 +207,15 @@
     <ClInclude Include="src\Material.h">
       <Filter>Render</Filter>
     </ClInclude>
+    <ClInclude Include="src\AABB.h">
+      <Filter>Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Plane.h">
+      <Filter>Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Frustum.h">
+      <Filter>Render</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -335,6 +347,15 @@
     </ClCompile>
     <ClCompile Include="src\IScene.cpp">
       <Filter>Application</Filter>
+    </ClCompile>
+    <ClCompile Include="src\AABB.cpp">
+      <Filter>Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Plane.cpp">
+      <Filter>Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Frustum.cpp">
+      <Filter>Render</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

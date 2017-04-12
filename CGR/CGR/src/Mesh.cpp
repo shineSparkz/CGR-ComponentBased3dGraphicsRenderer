@@ -41,6 +41,7 @@ bool Import3DFromFile(const std::string& pFile)
 		aiProcess_Triangulate |
 		aiProcess_GenSmoothNormals |
 		aiProcess_CalcTangentSpace
+		//| aiProcess_FindInstances
 		);
 		//aiProcess_JoinIdenticalVertices);
 
@@ -73,6 +74,9 @@ void SubMesh::Init(const aiMesh* paiMesh, std::vector<Vertex>& vertices, std::ve
 {
 	const aiVector3D Zero3D(0.0f, 0.0f, 0.0f);
 
+	Vec3 tempMin(MAX_TYPE(float));
+	Vec3 tempMax(-MAX_TYPE(float));
+
 	// Populate the vertex attribute vectors
 	for (unsigned int i = 0; i < paiMesh->mNumVertices; i++)
 	{
@@ -86,8 +90,38 @@ void SubMesh::Init(const aiMesh* paiMesh, std::vector<Vertex>& vertices, std::ve
 		v.normal = Vec3(pNormal->x, pNormal->y, pNormal->z);
 		v.texcoord = Vec2(pTexCoord->x, pTexCoord->y);
 
+		if ((v.position.x < tempMin.x))
+		{
+			tempMin.x = v.position.x;
+		}
+		if ((v.position.y < tempMin.y))
+		{
+			tempMin.y = v.position.y;
+		}
+		if ((v.position.z < tempMin.z))
+		{
+			tempMin.z = v.position.z;
+		}
+
+		if ((v.position.x > tempMax.x))
+		{
+			tempMax.x = v.position.x;
+		}
+		if ((v.position.y > tempMax.y))
+		{
+			tempMax.y = v.position.y;
+		}
+		if ((v.position.z > tempMax.z))
+		{
+			tempMax.z = v.position.z;
+		}
+
 		vertices.push_back(v);
 	}
+
+	minvertex = tempMin;
+	maxVertex = tempMax;
+	centre = (minvertex + maxVertex) / 2.0f;
 
 	// Populate the index buffer
 	for (unsigned int i = 0; i < paiMesh->mNumFaces; i++)
@@ -104,6 +138,9 @@ void SubMesh::Init(const aiMesh* paiMesh, std::vector<VertexTan>& vertices, std:
 {
 	const aiVector3D Zero3D(0.0f, 0.0f, 0.0f);
 
+	Vec3 tempMin(MAX_TYPE(float));
+	Vec3 tempMax(-MAX_TYPE(float));
+
 	// Populate the vertex attribute vectors
 	for (unsigned int i = 0; i < paiMesh->mNumVertices; i++)
 	{
@@ -118,8 +155,38 @@ void SubMesh::Init(const aiMesh* paiMesh, std::vector<VertexTan>& vertices, std:
 		v.texcoord = Vec2(pTexCoord->x, pTexCoord->y);
 		v.tangent = Vec3(pTangent->x, pTangent->y, pTangent->z);
 
+		if ((v.position.x < tempMin.x))
+		{
+			tempMin.x = v.position.x;
+		}
+		if ((v.position.y < tempMin.y))
+		{
+			tempMin.y = v.position.y;
+		}
+		if ((v.position.z < tempMin.z))
+		{
+			tempMin.z = v.position.z;
+		}
+
+		if ((v.position.x > tempMax.x))
+		{
+			tempMax.x = v.position.x;
+		}
+		if ((v.position.y > tempMax.y))
+		{
+			tempMax.y = v.position.y;
+		}
+		if ((v.position.z > tempMax.z))
+		{
+			tempMax.z = v.position.z;
+		}
+
 		vertices.push_back(v);
 	}
+
+	minvertex = tempMin;
+	maxVertex = tempMax;
+	centre = (minvertex + maxVertex) / 2.0f;
 
 	// Populate the index buffer
 	for (unsigned int i = 0; i < paiMesh->mNumFaces; i++)
