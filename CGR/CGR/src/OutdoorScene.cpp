@@ -38,7 +38,7 @@ int OutDoorScene::OnSceneLoad(ResourceManager* resManager)
 	m_Camera->Start();
 	m_Camera->Init(
 		CamType::Perspective,
-		Vec3(0.0f, 20.0f, 1.0f),																			// Pos
+		Vec3(30.0f, 70.0f,-31.0f),																			// Pos
 		Vec3(0.0f, 1.0f, 0.0f),																				// Up
 		Vec3(1.0f, 0.0f, 0.0f),																				// Right
 		Vec3(0.0f, 0.0f, -1.0f),																			// Fwd
@@ -56,7 +56,7 @@ int OutDoorScene::OnSceneLoad(ResourceManager* resManager)
 
 	GameObject* cube = new GameObject();
 	Transform* ct = cube->AddComponent<Transform>();
-	ct->SetPosition(Vec3(0.0f, 0, 0));
+	ct->SetPosition(Vec3(20.0f, 60.f, -20.0f));
 	ct->SetScale(Vec3(1.0f));
 	MeshRenderer* cmr = cube->AddComponent<MeshRenderer>();
 	cmr->SetMesh(MESH_ID_CUBE);
@@ -224,7 +224,7 @@ void OutDoorScene::Render()
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
 
-	m_Renderer->RenderBillboardList(m_TreeBillboardList);
+	//m_Renderer->RenderBillboardList(m_TreeBillboardList);
 }
 
 void OutDoorScene::RenderUI()

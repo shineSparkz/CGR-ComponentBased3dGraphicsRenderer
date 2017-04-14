@@ -279,6 +279,31 @@ namespace Maths
 		return matrix;
 	}
 
+	INLINE Mat4 ortho_proj_transform(float l, float r, float b, float t, float n, float f)
+	{
+		Mat4 m;
+		m[0][0] = 2.0f / (r - l);
+		m[0][1] = 0.0f;         
+		m[0][2] = 0.0f;        
+		m[0][3] = -(r + l) / (r - l);
+
+		m[1][0] = 0.0f;        
+		m[1][1] = 2.0f / (t - b); 
+		m[1][2] = 0.0f;         
+		m[1][3] = -(t + b) / (t - b);
+		
+		m[2][0] = 0.0f;         
+		m[2][1] = 0.0f;        
+		m[2][2] = 2.0f / (f - n); 
+		m[2][3] = -(f + n) / (f - n);
+
+		m[3][0] = 0.0f;         
+		m[3][1] = 0.0f;        
+		m[3][2] = 0.0f;         
+		m[3][3] = 1.0;
+		return m;
+	}
+
 	/*
 	void INLINE generate_normals(std::vector<Vertex>& vertices, const std::vector<dword>& elements)
 	{

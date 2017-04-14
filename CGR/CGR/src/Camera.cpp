@@ -1,6 +1,7 @@
 #include "Camera.h"
 #include "Input.h"
 
+#include "math_utils.h"
 #include "EventManager.h"
 #include "KeyEvent.h"
 #include "Screen.h"
@@ -56,7 +57,7 @@ void BaseCamera::Init(CamType type, const Vec3& position, const Vec3& up, const 
 
 void BaseCamera::AddSkybox(float scale, unsigned cubeMapIndex)
 {
-	if (this->camType == CamType::Orthographic)
+	if (this->camType == CamType::Orthographic || this->camType == CamType::Shadow)
 		return;
 
 	if (!skyboxSettings)
@@ -106,10 +107,18 @@ void BaseCamera::SetDirection(const Vec3& p)
 void BaseCamera::Update()
 {
 	if (this->camType == CamType::Perspective)
+	{
 		projection = glm::perspective(perspectiveSettings.fov, perspectiveSettings.aspect, perspectiveSettings.near, perspectiveSettings.far);
-	else
+	}
+	else if (this->camType == CamType::Orthographic)
+	{
 		projection = glm::ortho(0.0f, (float)Screen::Instance()->FrameBufferWidth(), 0.0f, (float)Screen::Instance()->FrameBufferHeight(),
 			perspectiveSettings.near, perspectiveSettings.far);
+	}
+	else if (this->camType == CamType::Shadow)
+	{
+		projection = Maths::ortho_proj_transform(0, (float)Screen::Instance()->FrameBufferWidth(), 0.0f, (float)Screen::Instance()->FrameBufferHeight(), this->perspectiveSettings.near, this->perspectiveSettings.far);
+	}
 	
 	view = glm::lookAt(m_Transform->Position(), m_Transform->Position() + forward, up);
 }

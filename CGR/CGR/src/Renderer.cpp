@@ -42,6 +42,9 @@ Renderer::Renderer() :
 	m_QueryTime(0),
 	m_Gbuffer(nullptr),
 	m_Frustum(nullptr),
+	m_ShadowFB(nullptr),
+	m_LightCamObj(nullptr),
+	m_LightCamera(nullptr),
 	m_UniformBlockManager(nullptr),
 	m_NumDirLightsInScene(-1),
 	m_NumPointLightsInScene(-1),
@@ -102,6 +105,26 @@ bool Renderer::Init()
 	if(!m_Frustum)
 		m_Frustum = new Frustum();
 
+	if (!m_LightCamObj)
+	{
+		m_LightCamObj = new GameObject();
+		m_LightCamera = m_LightCamObj->AddComponent<BaseCamera>();
+
+		m_LightCamera->Init(
+			CamType::Orthographic,
+			Vec3(0),
+			Vec3(0, 1, 0),
+			Vec3(1, 0, 0),
+			Vec3(0, -0.8f, 0),
+			45,
+			Screen::Instance()->FrameBufferWidth() / Screen::Instance()->FrameBufferHeight(),
+			0.1f,
+			500.0f);
+
+		m_LightCamObj->Start();
+		m_LightCamObj->Update();
+	}
+
 	return success;
 }
 
@@ -118,9 +141,11 @@ void Renderer::Close()
 	m_Query.Clean();
 
 	SAFE_DELETE(m_Gbuffer);
+	SAFE_DELETE(m_ShadowFB);
 	SAFE_DELETE(m_Frustum);
 	SAFE_CLOSE(m_UniformBlockManager);
 	SAFE_CLOSE(m_ResManager);
+	SAFE_CLOSE(m_LightCamObj);
 }
 
 bool Renderer::SetSceneData(BaseCamera* camera, const Vec3& ambient_light)
@@ -138,7 +163,7 @@ const std::string& Renderer::GetHardwareStr() const
 	return m_HardwareStr;
 }
 
-void Renderer::Render(std::vector<GameObject*>& gameObjects)
+void Renderer::Render(std::vector<GameObject*>& gameObjects, bool withShadows)
 {
 	m_CullCount = 0;
 
@@ -163,7 +188,13 @@ void Renderer::Render(std::vector<GameObject*>& gameObjects)
 	if (m_ShadingMode == ShadingMode::Deferred)
 		deferredRender(gameObjects);
 	else
+	{
+		if (withShadows)
+		{
+
+		}
 		forwardRender(gameObjects);
+	}
 
 	if (m_ShouldQueryFrames)
 	{
@@ -464,6 +495,40 @@ void Renderer::SetDisplayInfo(bool should)
 }
 
 
+void Renderer::forwardRenderShadows(std::vector<GameObject*>& gameObjects)
+{
+	m_ShadowFB->BindForWriting();
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	ShaderProgram* sp = m_ResManager->GetShader(SHADER_SHADOW);
+	if (sp)
+	{
+		sp->Use();
+
+		for (auto i = gameObjects.begin(); i != gameObjects.end(); ++i)
+		{
+			Transform* t = (*i)->GetComponent<Transform>();
+			MeshRenderer* mr = (*i)->GetComponent<MeshRenderer>();
+
+			if (!t || !mr)
+				continue;
+
+			const Mat4& model_xform = t->GetModelXform();
+
+			// TODO : Only if the object wants to cast shadows
+
+			if (sp)
+			{
+				sp->Use();
+				sp->SetUniformValue<Mat4>("u_wvp_xform", &(m_LightCamera->ProjXView() * model_xform));
+				this->renderMesh(mr, model_xform);
+			}
+		}
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -480,10 +545,9 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 		this->renderSkybox(m_CameraPtr);
 	}
 
-	m_ResManager->GetShader(SHADER_FRUSTUM)->Use();
-
-	m_ResManager->GetShader(SHADER_FRUSTUM)->SetUniformValue<Mat4>("u_wvp_xform", &(m_CameraPtr->ProjXView() * IDENTITY));
-	m_Frustum->UpdateFrustum(m_CameraPtr->Projection(), m_CameraPtr->View());
+	//m_ResManager->GetShader(SHADER_FRUSTUM)->Use();
+	//m_ResManager->GetShader(SHADER_FRUSTUM)->SetUniformValue<Mat4>("u_wvp_xform", &(m_CameraPtr->ProjXView() * IDENTITY));
+	//m_Frustum->UpdateFrustum(m_CameraPtr->Projection(), m_CameraPtr->View());
 
 	// TODO : need to use the shader program that was set to each mesh or batch them 
 	ShaderProgram* sp = m_ResManager->m_Shaders[SHADER_LIGHTING_FWD]; //m_Shaders[mr->m_ShaderIndex];
@@ -506,6 +570,13 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 		{
 			// Render Mesh normally
 			sp->Use();
+
+			//if(withShadows && thisMeshShouldReceiveShadows)
+			//{
+			//	m_ShadowFB->BindForReading(GL_TEXTURE1);
+			//	sp->SetUniformValue<Mat4>("u_light_xform", &(m_LightCamera->ProjXView() * model_xform));
+			//}
+
 			sp->SetUniformValue<Mat4>("u_world_xform", &(model_xform));
 			sp->SetUniformValue<int>("u_use_bumpmap", &(mr->m_HasBumpMaps));
 
@@ -878,6 +949,11 @@ void Renderer::windowSizeChanged(int w, int h)
 		m_Gbuffer->Init();
 	}
 
+	if (m_ShadowFB)
+	{
+		m_ShadowFB->Init(Screen::Instance()->FrameBufferWidth(), Screen::Instance()->FrameBufferHeight());
+	}
+
 	// TODO : Anything else that depends on screen size
 }
 
@@ -893,6 +969,13 @@ bool Renderer::setFrameBuffers()
 		WRITE_LOG("Gbuffer load failed", "error");
 		return false;
 	}	
+
+	if (!m_ShadowFB)
+	{
+		m_ShadowFB = new ShadowFrameBuffer();
+	}
+
+	m_ShadowFB->Init(Screen::Instance()->FrameBufferWidth(), Screen::Instance()->FrameBufferHeight());
 
 	return true;
 }

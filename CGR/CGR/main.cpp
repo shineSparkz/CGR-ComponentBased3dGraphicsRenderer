@@ -7,13 +7,11 @@
 
 /*
 List
+- Reimplement shadows Directional
 - Wavy grass
-- Reimplement shadows Directional, Have shadows for multiple lights
-- Instancing/Batching
-- Frustum
 - Change shaders at runtime, reload shaders runtime
+- Particles
 - Better water implementation
-- Materials
 - Make a use case for a new user, creating a scene, game objects, shader and using engine functionality or write docs
 
 Extra
@@ -27,6 +25,12 @@ Done
 - Normal display tool
 - Specular
 - Reimplement normal maps
+- Frustum
+- Bez Terrains
+- Materials
+
+Cuts
+- Instancing/Batching
 
 */
 

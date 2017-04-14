@@ -11,7 +11,8 @@ class Transform;
 enum CamType
 {
 	Perspective,
-	Orthographic
+	Orthographic,
+	Shadow
 };
 
 struct PerspectiveSettings

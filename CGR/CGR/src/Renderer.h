@@ -56,7 +56,7 @@ public:
 	const std::string&		GetHardwareStr() const;
 
 	// Public Rendering
-	void					Render(std::vector<GameObject*>& gameObjects);
+	void					Render(std::vector<GameObject*>& gameObjects, bool withShadows = false);
 	void					RenderText(size_t fontId, const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White());
 	void					RenderBillboardList(BillboardList* billboard);
 	void					RenderSurface(SurfaceMesh* surface, const Vec3& position);
@@ -95,6 +95,7 @@ public:
 
 private:
 	// Rendering
+	void forwardRenderShadows(std::vector<GameObject*>& gameObjects);
 	void forwardRender(std::vector<GameObject*>& gameObjects);
 	void deferredRender(std::vector<GameObject*>& gameObjects);
 	void renderMesh(Mesh* mesh);
@@ -118,7 +119,10 @@ private:
 	ResourceManager*						m_ResManager;
 	BaseCamera*								m_CameraPtr;
 	GBuffer*								m_Gbuffer;
+	ShadowFrameBuffer*						m_ShadowFB;
 	Frustum*								m_Frustum;
+	GameObject*								m_LightCamObj;
+	BaseCamera*								m_LightCamera;
 	GLuint									m_QueryTime;
 	Query									m_Query;
 	std::string								m_HardwareStr;

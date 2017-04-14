@@ -134,6 +134,9 @@ SurfaceMesh::SurfaceMesh()
 
 SurfaceMesh::~SurfaceMesh()
 {
+	OpenGLLayer::clean_GL_vao(&m_VAO,1);
+	OpenGLLayer::clean_GL_buffer(&m_IndexVBO, 1);
+	OpenGLLayer::clean_GL_buffer(&m_VertexVBO, 1);
 }
 
 void SurfaceMesh::Create(ShaderProgram* mat, size_t materialId, float sizeX, float sizeY, float sizeZ, dword subU, dword subV, int texTileX, int texTileZ, const std::string& heightmap)
