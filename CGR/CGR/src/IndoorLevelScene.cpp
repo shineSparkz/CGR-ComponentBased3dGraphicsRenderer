@@ -68,7 +68,9 @@ int IndoorLevelScene::OnSceneLoad(ResourceManager* resManager)
 	MeshRenderer* levelMr = level->AddComponent<MeshRenderer>();
 	levelMr->SetMesh(MESH_ID_LEVEL);
 	levelMr->SetMaterialSet(MATERIALS_LEVEL);
-	levelMr->SetShader(SHADER_GEOM_PASS_DEF);
+	levelMr->SetToUseBumpMaps(false);
+	levelMr->SetShader(SHADER_LIGHTING_FWD);
+	levelMr->ReceiveShadows = true;
 	m_GameObjects.push_back(level);
 
 	// Create Bumped cube at origin
@@ -81,9 +83,13 @@ int IndoorLevelScene::OnSceneLoad(ResourceManager* resManager)
 		cmr->SetMesh(MESH_ID_CUBE);
 		cmr->SetMaterialSet(MATERIALS_BRICKS);
 		cmr->SetToUseBumpMaps(true);
+		cmr->SetShader(SHADER_LIGHTING_FWD);
+		cmr->ReceiveShadows = false;
+		m_Handle = m_GameObjects.size();
 		m_GameObjects.push_back(cube);
 	}
 
+	/*
 	{
 		GameObject* cube = new GameObject();
 		Transform* ct = cube->AddComponent<Transform>();
@@ -92,9 +98,11 @@ int IndoorLevelScene::OnSceneLoad(ResourceManager* resManager)
 		MeshRenderer* cmr = cube->AddComponent<MeshRenderer>();
 		cmr->SetMesh(MESH_ID_CUBE);
 		cmr->SetMaterialSet(MATERIALS_BRICKS);
+		cmr->SetShader(SHADER_LIGHTING_FWD);
 		cmr->SetToUseBumpMaps(false);
 		m_GameObjects.push_back(cube);
 	}
+	*/
 
 	// Point Lights
 	GameObject* p1 = CgrEngine::CreatePointLight(m_Renderer, Vec3(20.0f, 15.0f, -20.0f), Vec3(0.7f, 0, 0), 0.02f);
@@ -129,6 +137,39 @@ void IndoorLevelScene::OnSceneExit()
 
 void IndoorLevelScene::Update(float dt)
 {
+	auto HANDLE = m_Handle;
+	float SPEED = 2;
+	if (Input::Keys[GLFW_KEY_UP] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
+	{
+		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, 0, -SPEED));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_DOWN] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
+	{
+		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, 0, SPEED));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_LEFT] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
+	{
+		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(-SPEED, 0, 0));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_RIGHT] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
+	{
+		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(SPEED, 0, 0));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_F] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
+	{
+		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, SPEED, 0));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_V] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
+	{
+		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, -SPEED, 0));
+		m_TimeNow = Time::ElapsedTime();
+	}
+
 	// Change Mode (defered/forward)
 	if (Input::Keys[GLFW_KEY_M] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
 	{
@@ -167,7 +208,7 @@ void IndoorLevelScene::Update(float dt)
 
 void IndoorLevelScene::Render()
 {
-	m_Renderer->Render(m_GameObjects);
+	m_Renderer->Render(m_GameObjects, true);
 }
 
 void IndoorLevelScene::RenderUI()

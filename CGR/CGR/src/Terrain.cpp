@@ -14,162 +14,150 @@
 #include "Shader.h"
 #include "ShaderProgram.h"
 
-
-float Noise(int x, int y)
+namespace bez
 {
-	// Seed random noise
-	int n = x + y * 47;
-	n = (n >> 13) ^ n;
-	int nn = (n * (n * n * 60493 + 19990303) + 1376312589) & 0x7fffffff;
-	return 1.0f - ((float)nn / 1073741824.0f);
-}
-
-float CosineLerp(float a, float b, float x)
-{
-	float ft = x * 3.1415927f;
-	float f = (1.0f - cos(ft))* 0.5f;
-	return a*(1.0f - f) + b*f;
-}
-
-float KenPerlin(float xPos, float zPos)
-{
-	float s, t, u, v;
-	s = Noise((int)xPos, (int)zPos);
-	t = Noise((int)xPos + 1, (int)zPos);
-	u = Noise((int)xPos, (int)zPos + 1);
-	v = Noise((int)xPos + 1, (int)zPos + 1);
-	float c1 = CosineLerp(s, t, xPos);
-	float c2 = CosineLerp(u, v, xPos);
-
-	return CosineLerp(c1, c2, zPos);//Here we use y-yPos, to get the 2nd dimension.
-}
-
-glm::vec3 Brownian(const glm::vec3& p, float grid_height, int octaves, float lacunarity, float gain)
-{
-	/*
-	To control and improve the Perlin noise function.
-	fruqency: is how many points fit into a provided space
-	amplitude: is how tall
-	lacunarity: is the rate in which the freq grows
-	octaves: is the number of layers and the amount of detail
-	*/
-
-	float total = 0.0f;
-	float frequency = 1.0f / grid_height;
-	float amplitude = gain;
-
-	for (int i = 0; i < octaves; ++i)
+	float noise(int32 x, int32 y)
 	{
-		total += KenPerlin((float)p.x * frequency, (float)p.z * frequency) * amplitude;
-		frequency *= lacunarity;
-		amplitude *= gain;
+		// Seed random noise
+		int32 n = x + y * 47;
+		n = (n >> 13) ^ n;
+		int32 nn = (n * (n * n * 60493 + 19990303) + 1376312589) & 0x7fffffff;
+		return 1.0f - ((float)nn / 1073741824.0f);
 	}
 
-	//now that we have the value, put it in
-	return glm::vec3(p.x, total, p.z);
-}
-
-glm::vec3 CalculateBezier(const std::vector<glm::vec3>& cps, float t)
-{
-	/*
-	Bilinear Bzier to be used with 4 control points, we create a temp curve in the BezSurface function
-	from the 4 control points that are passed in, the control points are generated from the global UV co-ordinates of the
-	terrain mesh, the 4 temp values give us a curve using the u tex coord, we then pass that curve to this function with the value
-	along the V tex coord and get the displaced pixel on the curve
-	*/
-	float temps[4];
-
-	temps[0] = (1 - t) * (1 - t) * (1 - t);
-	temps[1] = 3 * t * (1 - t) * (1 - t);
-	temps[2] = 3 * (1 - t) * t * t;
-	temps[3] = t * t * t;
-
-	return (
-		cps[0] * temps[0] +
-		cps[1] * temps[1] +
-		cps[2] * temps[2] +
-		cps[3] * temps[3]
-		);
-}
-
-glm::vec3 BezierSurface_16(float u, float v, const std::vector<glm::vec3>& Points)
-{
-	std::vector<glm::vec3> Pu{ 4 };
-	// compute 4 control points along u direction
-	for (int i = 0; i < 4; ++i)
+	float cosineLerp(float a, float b, float x)
 	{
-		std::vector<glm::vec3> curveP{ 4 };
-		curveP[0] = Points[i * 4];
-		curveP[1] = Points[i * 4 + 1];
-		curveP[2] = Points[i * 4 + 2];
-		curveP[3] = Points[i * 4 + 3];
-		Pu[i] = CalculateBezier(curveP, u);
-	}
-	// compute final position on the surface using v
-	return CalculateBezier(Pu, v);
-}
-
-glm::vec3 BezierSurface_4(const std::vector<glm::vec3>& cps, float u, float v)
-{
-	/*
-	Bilinear Bzier to be used with 16 control points, we create a temp curve in the BezSurface function
-	from the 16 control points that are passed in, the control points are generated from the global UV co-ordinates of the
-	terrain mesh, the 4 temp values give us a curve using the u tex coord, we then pass that curve to this function with the value
-	along the V tex coord and get the displaced pixel on the curve
-	*/
-	std::vector<glm::vec3> curve{ 4 };
-
-	for (size_t j = 0; j < curve.size(); ++j)
-	{
-		curve[j] = CalculateBezier(cps, u);
+		float ft = x * 3.1415927f;
+		float f = (1.0f - cos(ft))* 0.5f;
+		return a*(1.0f - f) + b*f;
 	}
 
-	return CalculateBezier(curve, v);
+	float kenPerlin(float xPos, float zPos)
+	{
+		float s, t, u, v;
+		s = noise((int)xPos, (int)zPos);
+		t = noise((int)xPos + 1, (int)zPos);
+		u = noise((int)xPos, (int)zPos + 1);
+		v = noise((int)xPos + 1, (int)zPos + 1);
+		float c1 = cosineLerp(s, t, xPos);
+		float c2 = cosineLerp(u, v, xPos);
+
+		return cosineLerp(c1, c2, zPos); // Here we use y-yPos, to get the 2nd dimension.
+	}
+
+	Vec3 brownian(const Vec3& p, float grid_height, int32 octaves, float lacunarity, float gain)
+	{
+		float total = 0.0f;
+		float frequency = 1.0f / grid_height;
+		float amplitude = gain;
+
+		for (int i = 0; i < octaves; ++i)
+		{
+			total += kenPerlin((float)p.x * frequency, (float)p.z * frequency) * amplitude;
+			frequency *= lacunarity;
+			amplitude *= gain;
+		}
+
+		// Now that we have the value, put it in
+		return Vec3(p.x, total, p.z);
+	}
+
+	Vec3 calculateBezier(const std::vector<Vec3>& cps, float t)
+	{
+		float temps[4];
+
+		temps[0] = (1 - t) * (1 - t) * (1 - t);
+		temps[1] = 3 * t * (1 - t) * (1 - t);
+		temps[2] = 3 * (1 - t) * t * t;
+		temps[3] = t * t * t;
+
+		return (
+			cps[0] * temps[0] +
+			cps[1] * temps[1] +
+			cps[2] * temps[2] +
+			cps[3] * temps[3]
+			);
+	}
+
+	Vec3 bezierSurface_16(float u, float v, const std::vector<Vec3>& Points)
+	{
+		std::vector<Vec3> Pu{ 4 };
+
+		// Compute 4 control points along u direction
+		for (int i = 0; i < 4; ++i)
+		{
+			std::vector<Vec3> curveP{ 4 };
+
+			curveP[0] = Points[i * 4];
+			curveP[1] = Points[i * 4 + 1];
+			curveP[2] = Points[i * 4 + 2];
+			curveP[3] = Points[i * 4 + 3];
+			Pu[i] = calculateBezier(curveP, u);
+		}
+
+		// Compute final position on the surface using v
+		return calculateBezier(Pu, v);
+	}
+
+	Vec3 bezierSurface_4(const std::vector<Vec3>& cps, float u, float v)
+	{
+		std::vector<Vec3> curve{ 4 };
+
+		for (size_t j = 0; j < curve.size(); ++j)
+		{
+			curve[j] = calculateBezier(cps, u);
+		}
+
+		return calculateBezier(curve, v);
+	}
 }
 
-
-SurfaceMesh::SurfaceMesh()
+bool TerrainConstructor::CreateTerrain(
+	std::vector<Vertex>& m_Vertices,
+	std::vector<uint32>& m_Indices,
+	ShaderProgram* shader,
+	float sizeX,
+	float size_y,
+	float sizeZ,
+	uint32 subU,
+	uint32 subV,
+	float tile_u,
+	float tile_v,
+	const std::string& heightmap)
 {
-}
-
-SurfaceMesh::~SurfaceMesh()
-{
-	OpenGLLayer::clean_GL_vao(&m_VAO,1);
-	OpenGLLayer::clean_GL_buffer(&m_IndexVBO, 1);
-	OpenGLLayer::clean_GL_buffer(&m_VertexVBO, 1);
-}
-
-void SurfaceMesh::Create(ShaderProgram* mat, size_t materialId, float sizeX, float sizeY, float sizeZ, dword subU, dword subV, int texTileX, int texTileZ, const std::string& heightmap)
-{
-	m_Material = mat;
-
-	if (!m_Material)
+	if (!shader)
 	{
 		WRITE_LOG("Material null for surface mesh", "error");
-		return;
+		return false;
 	}
 	else
 	{
-		m_Material->Use();
+		shader->Use();
 
+		// Set Material uniforms
 		int i = 0;
-		m_Material->SetUniformValue<int>("u_LowHeightMap", &i);
+		shader->SetUniformValue<int>("u_LowHeightMap", &i);
 
 		i = 1;
-		m_Material->SetUniformValue<int>("u_MediumHeightMap", &i);
+		shader->SetUniformValue<int>("u_MediumHeightMap", &i);
 
 		i = 2;
-		m_Material->SetUniformValue<int>("u_HighHeightMap", &i);
+		shader->SetUniformValue<int>("u_HighHeightMap", &i);
 
 		i = 3;
-		m_Material->SetUniformValue<int>("u_PathMap", &i);
+		shader->SetUniformValue<int>("u_PathMap", &i);
 
 		i = 4;
-		m_Material->SetUniformValue<int>("u_PathSampler", &i);
-	}
+		shader->SetUniformValue<int>("u_PathSampler", &i);
 
-	std::vector<Vertex>		m_Vertices;
-	std::vector<unsigned>	m_Indices;
+		i = 6;
+		shader->SetUniformValue<int>("u_shadow_sampler", &i);
+
+		// This means can only have one mesh
+		shader->SetUniformValue<float>("u_MaxHeight", &size_y);
+		shader->SetUniformValue<float>("u_MaxTexU", &tile_u);
+		shader->SetUniformValue<float>("u_MaxTexV", &tile_v);
+	}
 
 	// Gen Vertices
 	{
@@ -187,11 +175,11 @@ void SurfaceMesh::Create(ShaderProgram* mat, size_t materialId, float sizeX, flo
 				float x_pos = (sizeX / subU) * x;
 				float z_pos = (sizeZ / subV) * z;
 
-				U = ((float)x / x_verts) * (clampUV ? 1.0f : texTileX);
-				V = ((float)z / z_verts) * (clampUV ? 1.0f : texTileZ);
+				U = ((float)x / x_verts) * (clampUV ? 1.0f : tile_u);
+				V = ((float)z / z_verts) * (clampUV ? 1.0f : tile_v);
 
 				m_Vertices.push_back(
-				Vertex
+					Vertex
 				{
 					Vec3(static_cast<float>(x_pos), 0.0f, -static_cast<float>(z_pos)),
 					Vec3(0.0f),
@@ -210,13 +198,14 @@ void SurfaceMesh::Create(ShaderProgram* mat, size_t materialId, float sizeX, flo
 
 			if (!height_map.LoadImg(heightmap.c_str()))
 			{
-				return;
+				WRITE_LOG("Can't create height map for surface mesh as loading failed", "error");
+				return false;
 			}
 
 			if (m_Vertices.empty())
 			{
 				WRITE_LOG("Can't create height map with no vertices for surface mesh", "error");
-				return;
+				return false;
 			}
 
 			int num_x = subU + 1;
@@ -228,9 +217,7 @@ void SurfaceMesh::Create(ShaderProgram* mat, size_t materialId, float sizeX, flo
 				{
 					size_t offset = x + z * num_x;
 					float height_map_val = static_cast<float>(*(byte*)height_map.GetPixel(x, z));
-					//float y_pos = (height_map_val / 1.0f) * sizeY;
-					float y_pos = ((1.0f / 255) * height_map_val) * sizeY;
-
+					float y_pos = ((1.0f / 255) * height_map_val) * size_y;
 
 					m_Vertices[offset].position.y = y_pos;
 				}
@@ -294,7 +281,7 @@ void SurfaceMesh::Create(ShaderProgram* mat, size_t materialId, float sizeX, flo
 
 	// Gen Normals
 	{
-		glm::vec3 temp_norm;
+		Vec3 temp_norm;
 
 		for (dword i = 0; i < m_Indices.size(); i += 3)
 		{
@@ -321,83 +308,82 @@ void SurfaceMesh::Create(ShaderProgram* mat, size_t materialId, float sizeX, flo
 		}
 	}
 
-	// Set Buffers
-	{
-		glGenVertexArrays(1, &m_VAO);
-		glBindVertexArray(m_VAO);
-
-		// Create the buffers for the vertices atttributes
-		glGenBuffers(1, &m_VertexVBO);
-		glGenBuffers(1, &m_IndexVBO);
-
-		// Generate and populate the buffers with vertex attributes and the indices
-		glBindBuffer(GL_ARRAY_BUFFER, m_VertexVBO);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * m_Vertices.size(), m_Vertices.data(), GL_STATIC_DRAW);
-
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)12);
-		glEnableVertexAttribArray(2);
-		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)24);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_IndexVBO);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned) * m_Indices.size(), m_Indices.data(), GL_STATIC_DRAW);
-
-		// End
-		glBindVertexArray(0);
-	}
-
-	m_NumIndices = m_Indices.size();
-	m_MaxHeight = sizeY;
-	m_TexU = texTileX;
-	m_MaterialId = materialId;
-	m_TexV = texTileZ;
+	return true;
 }
 
-void SurfaceMesh::CreateBez(
-	ShaderProgram* mat,
-	size_t materialId,
+bool TerrainConstructor::CreateBez(
+	std::vector<Vertex>& m_Vertices,
+	std::vector<uint32>& m_Indices,
+	ShaderProgram* shader,
 	const std::string& heightmap,
 	float heightmapSizeY,
 	float sizeX,
 	float sizeZ,
-	dword subU,
-	dword subV,
+	uint32 subU,
+	uint32 subV,
 	float tileU,
 	float tileV,
 	bool withBrowian
-	)
+)
 {
-	m_Material = mat;
-	if (!m_Material)
+	if (!shader)
 	{
 		WRITE_LOG("Material null for surface mesh", "error");
-		return;
+		return false;
+	}
+	else
+	{
+		shader->Use();
+
+		// Set Material uniforms
+		int i = 0;
+		shader->SetUniformValue<int>("u_LowHeightMap", &i);
+
+		i = 1;
+		shader->SetUniformValue<int>("u_MediumHeightMap", &i);
+
+		i = 2;
+		shader->SetUniformValue<int>("u_HighHeightMap", &i);
+
+		i = 3;
+		shader->SetUniformValue<int>("u_PathMap", &i);
+
+		i = 4;
+		shader->SetUniformValue<int>("u_PathSampler", &i);
+
+		i = 6;
+		shader->SetUniformValue<int>("u_shadow_sampler", &i);
+
+		// This means can only have one mesh
+		shader->SetUniformValue<float>("u_MaxHeight", &heightmapSizeY);
+		shader->SetUniformValue<float>("u_MaxTexU", &tileU);
+		shader->SetUniformValue<float>("u_MaxTexV", &tileV);
 	}
 
 	Image i;
 	if (!i.LoadImg(heightmap.c_str()))
-		return;
+	{
+		WRITE_LOG("Can't create height map for surface mesh as loading failed", "error");
+		return false;
+	}
 
 	std::vector<Vertex> height_map_verts;
 	uint32 height_subs = i.Width() - 1;
-	float height_x = i.Width();
-	float height_z = i.Height();
+	float height_x = static_cast<float>(i.Width());
+	float height_z = static_cast<float>(i.Height());
 	float height_y = heightmapSizeY;
-	float height_subu = height_x - 1;
-	float height_subv = height_z - 1;
+	dword height_subu = static_cast<dword>(height_x - 1);
+	dword height_subv = static_cast<dword>(height_z - 1);
 
 	// Create HeightMap Low res
 	{
-		std::vector<unsigned> height_map_indices;
+		std::vector<dword> height_map_indices;
 
 		// Gen Vertices
 		{
 			bool clampUV = false;
-			int x_verts = height_subu + 1;
-			int z_verts = height_subv + 1;
+			int x_verts = static_cast<int>(height_subu + 1);
+			int z_verts = static_cast<int>(height_subv + 1);
 
 			float U, V;
 
@@ -413,28 +399,26 @@ void SurfaceMesh::CreateBez(
 					V = ((float)z / z_verts) * (clampUV ? 1.0f : tileV);
 
 					height_map_verts.push_back(
-					Vertex
+						Vertex
 					{
 						Vec3(static_cast<float>(x_pos), 0.0f, -static_cast<float>(z_pos)),
 						Vec3(0.0f),
 						Vec2(U, V)
-					}
-					);
+					});
 				}
 			}
 		}
 
 		// Gen Heightmap
 		{
-
 			if (height_map_verts.empty())
 			{
 				WRITE_LOG("Can't create height map with no vertices for surface mesh", "error");
-				return;
+				return false;
 			}
 
-			int num_x = height_subu + 1;
-			int num_z = height_subv + 1;
+			int num_x = static_cast<int>(height_subu + 1);
+			int num_z = static_cast<int>(height_subv + 1);
 
 			for (int z = 0; z < num_z; ++z)
 			{
@@ -505,7 +489,7 @@ void SurfaceMesh::CreateBez(
 
 		// Gen Normals
 		{
-			glm::vec3 temp_norm;
+			Vec3 temp_norm;
 
 			for (dword i = 0; i < height_map_indices.size(); i += 3)
 			{
@@ -523,7 +507,6 @@ void SurfaceMesh::CreateBez(
 				height_map_verts[height_map_indices[i]].normal += temp_norm;
 				height_map_verts[height_map_indices[i + 1]].normal += temp_norm;
 				height_map_verts[height_map_indices[i + 2]].normal += temp_norm;
-
 			}
 
 			for (size_t v = 0; v < height_map_verts.size(); ++v)
@@ -535,9 +518,6 @@ void SurfaceMesh::CreateBez(
 
 	// Now Apply to upscaled
 	{
-		std::vector<Vertex>		m_Vertices;
-		std::vector<unsigned>	m_Indices;
-
 		std::vector< std::vector<Vec3> >patches;
 		std::vector<Vec3> points{ 16 };
 
@@ -619,8 +599,9 @@ void SurfaceMesh::CreateBez(
 
 				m_Vertices[offset].position =
 					// Lerp
-					0.5f + m_Vertices[offset].position +
-					BezierSurface_16(U, V, points);
+					//0.5f + 
+					m_Vertices[offset].position +
+					bez::bezierSurface_16(U, V, points);
 
 				patches.clear();
 			}
@@ -634,7 +615,7 @@ void SurfaceMesh::CreateBez(
 				{
 					m_Vertices[v].position.y =
 						0.5f + m_Vertices[v].position.y +
-						Brownian(m_Vertices[v].position, heightmapSizeY, 8, 2.0f, 0.4f).y;
+						bez::brownian(m_Vertices[v].position, heightmapSizeY, 8, 2.0f, 0.4f).y;
 				}
 			}
 		}
@@ -695,7 +676,7 @@ void SurfaceMesh::CreateBez(
 
 		// Gen Normals
 		{
-			glm::vec3 temp_norm;
+			Vec3 temp_norm;
 
 			for (dword i = 0; i < m_Indices.size(); i += 3)
 			{
@@ -734,46 +715,63 @@ void SurfaceMesh::CreateBez(
 					float x_pos = (sizeX / subU) * x;
 					float z_pos = (sizeZ / subV) * z;
 
-					m_Vertices[x + z * x_verts].texcoord = Vec2(
-						(float)x / (x_verts)* tileU,
+					m_Vertices[x + z * x_verts].texcoord =
+						Vec2((float)x / (x_verts)* tileU,
 						(float)z / (z_verts)* tileV
 						);
 				}
 			}
 		}
 
-		// Set Buffers
+	}
+
+	return true;
+}
+
+void TerrainConstructor::GenerateRandomPositions(const std::vector<Vertex>& vertsIN, std::vector<Vec3>& positionsOUT, int maxPositions)
+{
+	int maxBillboards = Maths::Min(maxPositions, (int)vertsIN.size());
+	
+	std::vector<int32> usedList;
+
+	// Create some random billboards (like trees, plants etc)
+	for (int i = 0; i < maxBillboards; ++i)
+	{
+		int32 randomPosition = 0;
+
+		if (usedList.empty())
 		{
-			glGenVertexArrays(1, &m_VAO);
-			glBindVertexArray(m_VAO);
-
-			// Create the buffers for the vertices atttributes
-			glGenBuffers(1, &m_VertexVBO);
-			glGenBuffers(1, &m_IndexVBO);
-
-			// Generate and populate the buffers with vertex attributes and the indices
-			glBindBuffer(GL_ARRAY_BUFFER, m_VertexVBO);
-			glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * m_Vertices.size(), m_Vertices.data(), GL_STATIC_DRAW);
-
-			glEnableVertexAttribArray(0);
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
-			glEnableVertexAttribArray(1);
-			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)12);
-			glEnableVertexAttribArray(2);
-			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)24);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_IndexVBO);
-			glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned) * m_Indices.size(), m_Indices.data(), GL_STATIC_DRAW);
-
-			// End
-			glBindVertexArray(0);
+			randomPosition = random::RandomRange(0, (int32)vertsIN.size());
+			usedList.push_back(randomPosition);
 		}
+		else
+		{
+			bool gotNewPos = false;
+			while (!gotNewPos)
+			{
+				randomPosition = random::RandomRange(0, (int32)vertsIN.size());
 
-		m_NumIndices = m_Indices.size();
-		m_MaxHeight = heightmapSizeY;
-		m_TexU = tileU;
-		m_TexV = tileV;
-		m_MaterialId = materialId;
+				bool same = false;
+				for (int j = 0; j < usedList.size(); ++j)
+				{
+					if (randomPosition == usedList[j])
+					{
+						same = true;
+						break;
+					}
+				}
+
+				if (!same)
+				{
+					usedList.push_back(randomPosition);
+					gotNewPos = true;
+				}
+			}
+		}
+	}
+
+	for (int i = 0; i < usedList.size(); ++i)
+	{
+		positionsOUT.push_back(vertsIN[usedList[i]].position);
 	}
 }

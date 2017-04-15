@@ -24,13 +24,9 @@ public:
 
 private:
 	std::vector<GameObject*>	m_GameObjects;
-	SurfaceMesh*				m_Surface[2];
 	BillboardList*				m_TreeBillboardList;
-
 	DirectionalLightC*			m_DirLightHandle;
 	float						m_TimeNow;
-	bool						m_WireFrame{ !false };
-	bool						m_RenderSurface{ !false };
 };
 
 #endif

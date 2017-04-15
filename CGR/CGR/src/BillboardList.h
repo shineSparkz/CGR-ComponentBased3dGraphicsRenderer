@@ -4,6 +4,7 @@
 #include <vector>
 #include "gl_headers.h"
 #include "types.h"
+#include "Vertex.h"
 
 class ShaderProgram;
 class Renderer;

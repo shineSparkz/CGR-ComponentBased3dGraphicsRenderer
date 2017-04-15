@@ -68,5 +68,5 @@ void main()
 	vec4 diffuse = texture2D(u_TextureMap, geom_texcoord);     
 	if(diffuse.a == 0.0f) 
 		discard;
-	frag_colour = vec4(ambient_light, diffuse.a) + getDirectionalLightColour(normalize(geom_normal))  * diffuse;   
+	frag_colour = vec4(ambient_light, diffuse.a) + (getDirectionalLightColour(normalize(geom_normal)))  * diffuse;   
 }

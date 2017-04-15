@@ -25,7 +25,6 @@ class GameObject;
 class ShaderProgram;
 class ShadowFrameBuffer;
 class UniformBlockManager;
-class SurfaceMesh;
 class Frustum;
 
 struct DeferredPointLightInfo
@@ -59,7 +58,6 @@ public:
 	void					Render(std::vector<GameObject*>& gameObjects, bool withShadows = false);
 	void					RenderText(size_t fontId, const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White());
 	void					RenderBillboardList(BillboardList* billboard);
-	void					RenderSurface(SurfaceMesh* surface, const Vec3& position);
 
 	// Get Resources
 	size_t					GetNumSubMeshesInMesh(size_t meshIndex) const;
@@ -96,10 +94,10 @@ public:
 private:
 	// Rendering
 	void forwardRenderShadows(std::vector<GameObject*>& gameObjects);
-	void forwardRender(std::vector<GameObject*>& gameObjects);
+	void forwardRender(std::vector<GameObject*>& gameObjects, bool withShadows = false);
 	void deferredRender(std::vector<GameObject*>& gameObjects);
 	void renderMesh(Mesh* mesh);
-	void renderMesh(MeshRenderer* mesh, const Mat4& world, GLenum renderMode = GL_TRIANGLES);
+	void renderMesh(MeshRenderer* mesh, const Mat4& world, bool withTextures, GLenum renderMode = GL_TRIANGLES);
 	void renderSkybox(BaseCamera* cam);
 
 	// Events
@@ -148,77 +146,5 @@ INLINE ResourceManager* const Renderer::GetResourceManager() const
 {
 	return m_ResManager;
 }
-
-
-/*
-class Renderer : public Singleton<Renderer>
-{
-public:
-	Renderer();
-
-	bool Init();
-	void ShadowPass();
-	void Render();
-	void Close();
-	void ReloadShaders();
-
-	void RenderMesh(MeshRenderer* mesh, bool withTextures = true);
-	void RenderSkybox(BaseCamera* cam);
-	void RenderText(const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White() );
-	
-	Texture* GetTexture(size_t index);
-
-	void WindowSizeChanged(int w, int h);
-
-private:
-	// These will ALL be moved later, this is not dynamic or user enanled, but not concerned at this stage
-	bool setRenderStates();
-	bool setFrameBuffers();
-	bool setLights();
-	bool setCamera();
-	bool loadFonts();
-	bool loadTetxures();
-	bool loadMeshes();
-	bool createMaterials();
-
-	bool loadTexture(const std::string& path, size_t key_store, int glTextureIndex);
-	bool loadMesh(const std::string& path, size_t key_store, bool tangents);
-
-private:
-	// Resources
-	std::map<size_t, Texture*> m_Textures;
-	std::map<size_t, Mesh*> m_Meshes;
-
-	std::vector<GameObject*> m_GameObjects;
-
-	MeshRenderer* m_LavaTestMesh;
-
-	// Objects
-	Font* m_Font;
-	GameObject* m_CameaObj;
-	FlyCamera* m_Camera;
-	GameObject* m_LightCameaObj;
-	BaseCamera* m_LightCamera;
-	ShadowFrameBuffer* m_ShadowFBO;
-	BillboardList* m_TreeBillboardList;
-	Terrain* m_Terrain;
-
-	// 'Materials'
-	FontTechnique* m_FontMaterial;
-	LightTechnique* m_LightMaterial;
-	BasicDiffuseTechnique* m_DiffuseMaterial;
-	SkyboxTechnique* m_SkyBoxMaterial;
-	ShadowMapTechnique* m_ShadowMaterial;
-	BillboardTechnique* m_BillboardMaterial;
-	TerrainTechnique* m_TerrainMaterial;
-	LavaTechnique* m_LavaMaterial;
-	
-	// Lights -- here for now
-	DirectionalLight m_DirectionalLight;
-	SpotLight m_SpotLights[1];
-	//PointLight m_PointLights[2];
-
-};
-*/
 
 #endif

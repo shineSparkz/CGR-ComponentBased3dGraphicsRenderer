@@ -119,7 +119,7 @@ bool UniformBlock::allocBlock(GLuint* shaderProg, const char* name)
 	// Assign the info of each sub block with info from GL
 	for (int i = 0; i < numUniformsInBlock; ++i)
 	{
-		this->addBlockData(names[i], sizes[i] * OpenGLLayer::glTypeSize(types[i]), offsets[i]);
+		this->addBlockData(names[i], sizes[i] * (GLint)OpenGLLayer::glTypeSize(types[i]), offsets[i]);
 	}
 
 	// Allocate Buffer

@@ -104,23 +104,40 @@ void BaseCamera::SetDirection(const Vec3& p)
 	this->forward = p;
 }
 
+void BaseCamera::SetUp(const Vec3& u)
+{
+	this->up = u;
+}
+
 void BaseCamera::Update()
 {
 	if (this->camType == CamType::Perspective)
 	{
 		projection = glm::perspective(perspectiveSettings.fov, perspectiveSettings.aspect, perspectiveSettings.near, perspectiveSettings.far);
+		view = glm::lookAt(m_Transform->Position(), m_Transform->Position() + forward, up);
 	}
 	else if (this->camType == CamType::Orthographic)
 	{
 		projection = glm::ortho(0.0f, (float)Screen::Instance()->FrameBufferWidth(), 0.0f, (float)Screen::Instance()->FrameBufferHeight(),
 			perspectiveSettings.near, perspectiveSettings.far);
+		view = glm::lookAt(m_Transform->Position(), m_Transform->Position() + forward, up);
 	}
 	else if (this->camType == CamType::Shadow)
 	{
-		projection = Maths::ortho_proj_transform(0, (float)Screen::Instance()->FrameBufferWidth(), 0.0f, (float)Screen::Instance()->FrameBufferHeight(), this->perspectiveSettings.near, this->perspectiveSettings.far);
+		const float fRangeX = 150, fRangeY = 150, fMinZ = 0.05f, fMaxZ = 400;
+
+		projection = glm::ortho<float>(-fRangeX, fRangeX, -fRangeY, fRangeY, fMinZ, fMaxZ);
+		
+		Vec3 vLightPos = -forward * 150.0f;
+		view = glm::lookAt(vLightPos, Vec3(0.0f), up);
+		//view = glm::lookAt(m_Transform->Position(), m_Transform->Position() + forward, up);
+
+
+		//float p = 100;
+		//projection =  Maths::ortho_proj_transform(-p, p, -p, p, -p*0.1f , p);
+			//0, (float)Screen::Instance()->FrameBufferWidth(), 0.0f, (float)Screen::Instance()->FrameBufferHeight(), this->perspectiveSettings.near, this->perspectiveSettings.far);
 	}
 	
-	view = glm::lookAt(m_Transform->Position(), m_Transform->Position() + forward, up);
 }
 
 const Vec3& BaseCamera::Position() const

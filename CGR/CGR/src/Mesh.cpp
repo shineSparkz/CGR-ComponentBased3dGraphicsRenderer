@@ -74,8 +74,8 @@ void SubMesh::Init(const aiMesh* paiMesh, std::vector<Vertex>& vertices, std::ve
 {
 	const aiVector3D Zero3D(0.0f, 0.0f, 0.0f);
 
-	Vec3 tempMin(MAX_TYPE(float));
-	Vec3 tempMax(-MAX_TYPE(float));
+	Vec3 tempMin((float)MAX_TYPE(float));
+	Vec3 tempMax((float)-MAX_TYPE(float));
 
 	// Populate the vertex attribute vectors
 	for (unsigned int i = 0; i < paiMesh->mNumVertices; i++)
@@ -138,8 +138,8 @@ void SubMesh::Init(const aiMesh* paiMesh, std::vector<VertexTan>& vertices, std:
 {
 	const aiVector3D Zero3D(0.0f, 0.0f, 0.0f);
 
-	Vec3 tempMin(MAX_TYPE(float));
-	Vec3 tempMax(-MAX_TYPE(float));
+	Vec3 tempMin((float)MAX_TYPE(float));
+	Vec3 tempMax((float)-MAX_TYPE(float));
 
 	// Populate the vertex attribute vectors
 	for (unsigned int i = 0; i < paiMesh->mNumVertices; i++)
@@ -329,6 +329,80 @@ bool Mesh::Load(const std::string& mesh, bool withTangents, bool loadTextures, u
 		//m_Materials.resize(scene->mNumMaterials);
 		return InitMaterials(scene, mesh, textureSet, resMan);
 	}
+
+	return true;
+}
+
+bool Mesh::Construct(const std::vector<Vertex>& vertices, const std::vector<uint32>& indices, unsigned materialSet)
+{
+	glGenVertexArrays(1, &m_VAO);
+	glBindVertexArray(m_VAO);
+
+	// Create the buffers for the vertices atttributes
+	glGenBuffers(1, &m_VertexVBO);
+	glGenBuffers(1, &m_IndexVBO);
+
+	// Generate and populate the buffers with vertex attributes and the indices
+	glBindBuffer(GL_ARRAY_BUFFER, m_VertexVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), vertices.data(), GL_STATIC_DRAW);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)12);
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)24);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_IndexVBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(dword) * indices.size(), indices.data(), GL_STATIC_DRAW);
+
+	glBindVertexArray(0);
+
+	m_SubMeshes.resize(1);
+	m_SubMeshes[0].BaseIndex = 0;
+	m_SubMeshes[0].BaseVertex = 0;
+	m_SubMeshes[0].MaterialIndex = 0;
+	m_SubMeshes[0].NumVertices = static_cast<unsigned>(vertices.size());
+	m_SubMeshes[0].NumIndices = static_cast<unsigned>(indices.size());
+
+	Vec3 tempMin((float)MAX_TYPE(float));
+	Vec3 tempMax((float)-MAX_TYPE(float));
+
+	for (size_t i = 0; i < vertices.size(); ++i)
+	{
+		const Vertex& v = vertices[i];
+
+		if ((v.position.x < tempMin.x))
+		{
+			tempMin.x = v.position.x;
+		}
+		if ((v.position.y < tempMin.y))
+		{
+			tempMin.y = v.position.y;
+		}
+		if ((v.position.z < tempMin.z))
+		{
+			tempMin.z = v.position.z;
+		}
+
+		if ((v.position.x > tempMax.x))
+		{
+			tempMax.x = v.position.x;
+		}
+		if ((v.position.y > tempMax.y))
+		{
+			tempMax.y = v.position.y;
+		}
+		if ((v.position.z > tempMax.z))
+		{
+			tempMax.z = v.position.z;
+		}
+	}
+
+	m_SubMeshes[0].minvertex = tempMin;
+	m_SubMeshes[0].maxVertex = tempMax;
+	m_SubMeshes[0].centre = (m_SubMeshes[0].minvertex + m_SubMeshes[0].maxVertex) / 2.0f;
 
 	return true;
 }

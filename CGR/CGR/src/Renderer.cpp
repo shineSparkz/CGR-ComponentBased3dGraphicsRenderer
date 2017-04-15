@@ -111,15 +111,18 @@ bool Renderer::Init()
 		m_LightCamera = m_LightCamObj->AddComponent<BaseCamera>();
 
 		m_LightCamera->Init(
-			CamType::Orthographic,
-			Vec3(0),
-			Vec3(0, 1, 0),
-			Vec3(1, 0, 0),
-			Vec3(0, -0.8f, 0),
+			CamType::Shadow, 
+			Vec3(1, 20, 1),		// Pos
+			Vec3(0, 1, 0),		// Up
+			Vec3(1, 0, 0),		// Right
+			Vec3(0, -1.0, 0.1f),	// Fwd(Dir)
 			45,
-			Screen::Instance()->FrameBufferWidth() / Screen::Instance()->FrameBufferHeight(),
+			static_cast<float>(Screen::Instance()->FrameBufferWidth() / Screen::Instance()->FrameBufferHeight()),
 			0.1f,
 			500.0f);
+
+		//m_LightCamera->SetDirection( glm::normalize(Vec3(0, 0, 0) - Vec3(1, 20, 1)));
+		//m_LightCamera->SetUp(glm::cross(m_LightCamera->Forward(), m_LightCamera->Right()));
 
 		m_LightCamObj->Start();
 		m_LightCamObj->Update();
@@ -165,6 +168,18 @@ const std::string& Renderer::GetHardwareStr() const
 
 void Renderer::Render(std::vector<GameObject*>& gameObjects, bool withShadows)
 {
+	// To remove
+	/*
+	static int frame = 0;
+	if (++frame >= 60)
+	{
+		Vec3 d = m_LightCamera->Forward();
+		m_LightCamera->SetDirection(Vec3(0, -1, sinf(Time::ElapsedTime())));
+		m_LightCamera->Update();
+		frame = 0;
+	}
+	*/
+
 	m_CullCount = 0;
 
 	if(m_ShouldQueryFrames)
@@ -185,15 +200,25 @@ void Renderer::Render(std::vector<GameObject*>& gameObjects, bool withShadows)
 			i->second->Bind();
 	}
 
+	if (m_ShouldFrustumCull)
+	{
+		//m_ResManager->GetShader(SHADER_FRUSTUM)->Use();
+		//m_ResManager->GetShader(SHADER_FRUSTUM)->SetUniformValue<Mat4>("u_wvp_xform", &(m_CameraPtr->ProjXView() * IDENTITY));
+		m_Frustum->UpdateFrustum(m_CameraPtr->Projection(), m_CameraPtr->View());
+	}
+
 	if (m_ShadingMode == ShadingMode::Deferred)
+	{
 		deferredRender(gameObjects);
+	}
 	else
 	{
 		if (withShadows)
 		{
-
+			forwardRenderShadows(gameObjects);
 		}
-		forwardRender(gameObjects);
+
+		forwardRender(gameObjects, withShadows);
 	}
 
 	if (m_ShouldQueryFrames)
@@ -321,39 +346,6 @@ void Renderer::RenderBillboardList(BillboardList* billboard)
 
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_BLEND);
-	}
-}
-
-void Renderer::RenderSurface(SurfaceMesh* surface, const Vec3& position)
-{
-	if (surface)
-	{
-		if (surface->m_Material)
-		{
-			surface->m_Material->Use();
-			
-			// Bind Materials
-			if (m_ResManager->MaterialSetExists(surface->m_MaterialId))
-			{
-				auto& materials = m_ResManager->m_Materials[surface->m_MaterialId];
-
-				for (auto i = materials.begin(); i != materials.end(); ++i)
-				{
-					i->second->Bind();
-				}
-			}
-
-			int n = 0;
-			surface->m_Material->SetUniformValue<Mat4>("u_world_xform", &(glm::translate(IDENTITY, position)));
-			surface->m_Material->SetUniformValue<int>("u_use_bumpmap", &n);
-			surface->m_Material->SetUniformValue<float>("u_MaxHeight", &surface->m_MaxHeight);
-			surface->m_Material->SetUniformValue<float>("u_MaxTexU", &surface->m_TexU);
-			surface->m_Material->SetUniformValue<float>("u_MaxTexV", &surface->m_TexV);
-
-			glBindVertexArray(surface->m_VAO);
-			glDrawElements(GL_TRIANGLES, surface->m_NumIndices, GL_UNSIGNED_INT, 0);
-			glBindVertexArray(0);
-		}
 	}
 }
 
@@ -513,15 +505,16 @@ void Renderer::forwardRenderShadows(std::vector<GameObject*>& gameObjects)
 			if (!t || !mr)
 				continue;
 
-			const Mat4& model_xform = t->GetModelXform();
-
-			// TODO : Only if the object wants to cast shadows
-
-			if (sp)
+			if (!mr->ReceiveShadows)
 			{
-				sp->Use();
-				sp->SetUniformValue<Mat4>("u_wvp_xform", &(m_LightCamera->ProjXView() * model_xform));
-				this->renderMesh(mr, model_xform);
+				const Mat4& model_xform = t->GetModelXform();
+
+				if (sp)
+				{
+					sp->Use();
+					sp->SetUniformValue<Mat4>("u_wvp_xform", &(m_LightCamera->ProjXView() * model_xform));
+					this->renderMesh(mr, model_xform, false, GL_TRIANGLES);
+				}
 			}
 		}
 	}
@@ -529,7 +522,7 @@ void Renderer::forwardRenderShadows(std::vector<GameObject*>& gameObjects)
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
+void Renderer::forwardRender(std::vector<GameObject*>& gameObjects, bool withShadows)
 {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
@@ -545,12 +538,7 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 		this->renderSkybox(m_CameraPtr);
 	}
 
-	//m_ResManager->GetShader(SHADER_FRUSTUM)->Use();
-	//m_ResManager->GetShader(SHADER_FRUSTUM)->SetUniformValue<Mat4>("u_wvp_xform", &(m_CameraPtr->ProjXView() * IDENTITY));
-	//m_Frustum->UpdateFrustum(m_CameraPtr->Projection(), m_CameraPtr->View());
-
 	// TODO : need to use the shader program that was set to each mesh or batch them 
-	ShaderProgram* sp = m_ResManager->m_Shaders[SHADER_LIGHTING_FWD]; //m_Shaders[mr->m_ShaderIndex];
 	ShaderProgram* np = nullptr;	
 	if(m_ShouldDisplayNormals)
 		np = m_ResManager->m_Shaders[SHADER_NORMAL_DISP_FWD];
@@ -566,21 +554,25 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects)
 
 		const Mat4& model_xform = t->GetModelXform();
 
+		ShaderProgram* sp = m_ResManager->m_Shaders[mr->m_ShaderIndex];
 		if (sp)
 		{
 			// Render Mesh normally
 			sp->Use();
 
-			//if(withShadows && thisMeshShouldReceiveShadows)
-			//{
-			//	m_ShadowFB->BindForReading(GL_TEXTURE1);
-			//	sp->SetUniformValue<Mat4>("u_light_xform", &(m_LightCamera->ProjXView() * model_xform));
-			//}
+			if (withShadows && mr->ReceiveShadows)
+			{
+				m_ShadowFB->BindForReading(GL_TEXTURE6);
+				sp->SetUniformValue<Mat4>("u_light_xform", &(m_LightCamera->ProjXView() * model_xform));
+			}
+
+			int shadows = static_cast<int>(mr->ReceiveShadows);
 
 			sp->SetUniformValue<Mat4>("u_world_xform", &(model_xform));
 			sp->SetUniformValue<int>("u_use_bumpmap", &(mr->m_HasBumpMaps));
+			sp->SetUniformValue<int>("u_use_shadow", &(shadows));
 
-			this->renderMesh(mr, model_xform);
+			this->renderMesh(mr, model_xform, true, GL_TRIANGLES);
 
 			// Do a normal pass if required
 			if (m_ShouldDisplayNormals)
@@ -635,7 +627,7 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 				// Render Mesh here
 				sp->Use();
 				sp->SetUniformValue<Mat4>("u_world_xform", &(model_xform));
-				this->renderMesh(mr, model_xform);
+				this->renderMesh(mr, model_xform, true, GL_TRIANGLES);
 			}
 
 			// Do a normal pass if required
@@ -768,19 +760,25 @@ void Renderer::renderMesh(Mesh* thisMesh)
 	glBindVertexArray(0);
 }
 
-void Renderer::renderMesh(MeshRenderer* meshRenderer, const Mat4& world_xform, GLenum renderMode)
+void Renderer::renderMesh(MeshRenderer* meshRenderer, const Mat4& world_xform, bool withTextures, GLenum renderMode)
 {
+	// Get the pre-loaded mesh resource from the manager 
 	Mesh* thisMesh = m_ResManager->m_Meshes[meshRenderer->MeshIndex];
+	
 	if (!thisMesh)
 		return;
 
 	glBindVertexArray(thisMesh->m_VAO);
 
+	// Used to index the sub meshes of this mesh resource
 	int meshIndex = 0;
+
 	for (std::vector<SubMesh>::iterator j = thisMesh->m_SubMeshes.begin(); j != thisMesh->m_SubMeshes.end(); j++)
 	{
+		// Get the sub mesh
 		SubMesh subMesh = (*j);
 
+		// Flag for culling, we won't draw if out of frustum
 		bool should_render = true;
 		if (m_ShouldFrustumCull)
 		{
@@ -791,41 +789,43 @@ void Renderer::renderMesh(MeshRenderer* meshRenderer, const Mat4& world_xform, G
 			should_render = m_Frustum->SphereInFrustum(centre, r);
 		}
 
+		// Passed cull test
 		if (should_render)
 		{
-			const size_t	MaterialSet = meshRenderer->m_MaterialIndex;
-			const unsigned	MaterialIndex = subMesh.MaterialIndex;
-
-			if (m_ResManager->MaterialSetExists(MaterialSet))
+			// We do not care about textures when doing depth pass for shadows
+			if (withTextures)
 			{
-				auto& materials = m_ResManager->m_Materials[MaterialSet];
+				// Get the map of materials from the index in the mesh renderer component
+				const size_t	MaterialSet = meshRenderer->m_MaterialIndex;
 
-				if (materials[MaterialIndex])
+				// Get the index into the material set that this sub mesh uses
+				const unsigned	MaterialIndex = subMesh.MaterialIndex;
+
+				// Check this mat set is valid
+				if (m_ResManager->MaterialSetExists(MaterialSet))
 				{
-					materials[MaterialIndex]->Bind();
+					auto& materials = m_ResManager->m_Materials[MaterialSet];
+
+					// This flag is used when mesh/shader uses multiple diffuse textures such as terrain and binds them all
+					if (meshRenderer->MultiTextures)
+					{
+						for (auto i = materials.begin(); i != materials.end(); ++i)
+						{
+							i->second->Bind();
+						}
+					}
+					// This sub mesh is expected to only have one diffuse texture, possibly a normal map
+					else
+					{
+						if (materials[MaterialIndex])
+						{
+							materials[MaterialIndex]->Bind();
+						}
+					}
 				}
 			}
 
-			/*
-			if (thisMesh->HasMaterials())
-			{
-				const unsigned int MaterialIndex = subMesh.MaterialIndex;
-				if(thisMesh->m_Materials[MaterialIndex])
-				{
-					thisMesh->m_Materials[MaterialIndex]->Bind();
-				}
-			}
-			else
-			{
-				// Bind the textures for this mesh instance
-				for (auto tex = meshInstance->m_SubMeshTextures[meshIndex].begin();
-					tex != meshInstance->m_SubMeshTextures[meshIndex].end(); ++tex)
-				{
-					m_ResManager->m_Textures[meshInstance->m_TextureHandles[(*tex)]]->Bind();
-				}
-			}
-			*/
-
+			// Finally Render this mesh
 			if (subMesh.NumIndices > 0)
 			{
 				glDrawElementsBaseVertex(
@@ -985,16 +985,26 @@ bool Renderer::setStaticDefaultShaderValues()
 	// Set Light Uniforms
 	// Should make these engine constants
 	int sampler = 0;
+	int shadow_sampler = 6;
 	int normal_sampler = 2;
+
 	ShaderProgram* lsp = m_ResManager->GetShader(SHADER_LIGHTING_FWD);
 	if (lsp)
 	{
 		lsp->Use();
 		lsp->SetUniformValue<int>("u_sampler", &sampler);
+		lsp->SetUniformValue<int>("u_shadow_sampler", &shadow_sampler);
 		lsp->SetUniformValue<int>("u_normal_sampler", &normal_sampler);
 	}
 
 	//--------------------------------------------------------------------------------
+
+	ShaderProgram* shadow = m_ResManager->GetShader(SHADER_SHADOW);
+	if (shadow)
+	{
+		shadow->Use();
+		shadow->SetUniformValue<int>("u_shadow_sampler", &shadow_sampler);
+	}
 
 	return true;
 }

@@ -9,6 +9,7 @@
 // "User Defined"
 #define MESH_ID_LEVEL					5
 #define MESH_ID_SPONZA					6
+#define MESH_TERRAIN					7
 
 // Material Set IDs
 #define MATERIALS_MALE					0

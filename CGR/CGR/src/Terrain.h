@@ -25,48 +25,40 @@ enum TerrainSamplers
 	TerrainSamplerCount = 5
 };
 
-class SurfaceMesh
+class TerrainConstructor
 {
 public:
-	SurfaceMesh();
-	~SurfaceMesh();
+	bool CreateTerrain(
+		std::vector<Vertex>& vertsOut,
+		std::vector<uint32>& indicesOut,
+		ShaderProgram* shader,
+		float sizeX,
+		float size_y,
+		float size_z,
+		uint32 subU,
+		uint32 subV,
+		float tile_u,
+		float tile_v,
+		const std::string& heightmap = ""
+		);
 
-	void Create(ShaderProgram* mat, 
-		size_t materialId,
-		float sizeX, 
-		float size_y, 
-		float size_z, 
-		dword subU, 
-		dword subV, 
-		int tile_u, 
-		int tile_v, 
-		const std::string& heightmap = "");
 
-	void CreateBez(
+	bool CreateBez(
+		std::vector<Vertex>& vertsOut,
+		std::vector<uint32>& indicesOut,
 		ShaderProgram* mat,
-		size_t materialId,
 		const std::string& heightmap,
 		float heightmapSizeY,
 		float sizeX,
 		float sizeZ,
-		dword subU,
-		dword subV,
+		uint32 subU,
+		uint32 subV,
 		float tileU,
 		float tileV,
 		bool withBrowian
-		);
+	);
 
-private:
-	friend class			Renderer;
-	size_t					m_MaterialId;
-	ShaderProgram*			m_Material;
-	GLuint					m_VAO;
-	GLuint					m_VertexVBO;
-	GLuint					m_IndexVBO;
-	unsigned				m_NumIndices;
-	float					m_MaxHeight;
-	float					m_TexU;
-	float					m_TexV;
+	void GenerateRandomPositions(const std::vector<Vertex>& vertsIN, std::vector<Vec3>& positionsOUT, int maxPositions);
 };
 
 #endif

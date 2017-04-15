@@ -26,6 +26,7 @@ private:
 	std::vector<GameObject*>	m_GameObjects;
 	MeshRenderer*				m_SponzaPtr;	// <-- Weak Ptr
 	float						m_TimeNow{ 0 };
+	size_t						m_Handle = 0;
 };
 
 #endif

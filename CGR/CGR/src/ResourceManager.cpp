@@ -41,48 +41,84 @@ bool ResourceManager::loadDefaultForwardShaders()
 {
 	// ---- Fwd lighting (Fwd) ----
 	{
-		//Shader lights(GL_FRAGMENT_SHADER);
-		Shader geom_vs(GL_VERTEX_SHADER);
+		Shader vert(GL_VERTEX_SHADER);
 		Shader fwd_fs(GL_FRAGMENT_SHADER);
 
-		if (!geom_vs.LoadShader("../resources/shaders/new_lights/forward_geom_vs.glsl"))
+		if (!vert.LoadShader("../resources/shaders/new_lights/forward_geom_vs.glsl"))
 		{
-			WRITE_LOG("Geom shader failed compile", "error");
+			WRITE_LOG("Forward Lighting vert shader failed compile", "error");
 			return false;
 		}
 
 		if (!fwd_fs.LoadShader("../resources/shaders/new_lights/forward_lights_fs.glsl"))
 		{
-			WRITE_LOG("Forward render failed compile", "error");
+			WRITE_LOG("Fwd Lighting frag shader failed compile", "error");
 			return false;
 		}
 
-		geom_vs.AddAttribute(POS_ATTR);
-		geom_vs.AddAttribute(NORM_ATTR);
-		geom_vs.AddAttribute(TEX_ATTR);
+		vert.AddAttribute(POS_ATTR);
+		vert.AddAttribute(NORM_ATTR);
+		vert.AddAttribute(TEX_ATTR);
 
 		std::vector<Shader> shaders;
-		shaders.push_back(geom_vs);
+		shaders.push_back(vert);
 		shaders.push_back(fwd_fs);
 
 		if (!this->CreateShaderProgram(shaders, SHADER_LIGHTING_FWD))
+		{
+			WRITE_LOG("Shader program Link failure: forward lighting", "error");
 			return false;
+		}
+	}
+
+	// ---- Terrain (Fwd) ----
+	{
+		Shader vert(GL_VERTEX_SHADER);
+		Shader frag(GL_FRAGMENT_SHADER);
+		if (!vert.LoadShader("../resources/shaders/new_lights/forward_geom_vs.glsl")) { return false; }
+		//if (!vert.LoadShader("../resources/shaders/terrain/terrain_vs.glsl")) { return false; }
+		if (!frag.LoadShader("../resources/shaders/terrain/terrain_fs.glsl")) { return false; }
+		vert.AddAttribute(POS_ATTR);
+		vert.AddAttribute(NORM_ATTR);
+		vert.AddAttribute(TEX_ATTR);
+		vert.AddAttribute(TAN_ATTR);
+
+		std::vector<Shader> shaders;
+		shaders.push_back(vert);
+		shaders.push_back(frag);
+
+		if (!this->CreateShaderProgram(shaders, SHADER_TERRAIN_DEF))
+		{
+			WRITE_LOG("Shader program Link failure: terrain", "error");
+			return false;
+		}
 	}
 
 	// ---- Font material (Fwd) ----
 	{
 		Shader font_vert(GL_VERTEX_SHADER);
 		Shader font_frag(GL_FRAGMENT_SHADER);
-		if (!font_vert.LoadShader("../resources/shaders/font/font_vs.glsl")) { return false; }
-		if (!font_frag.LoadShader("../resources/shaders/font/font_fs.glsl")) { return false; }
-		font_vert.AddAttribute(POS_ATTR);
 		
+		if (!font_vert.LoadShader("../resources/shaders/font/font_vs.glsl")) 
+		{
+			WRITE_LOG("Font vert shader failed compile", "error");
+			return false; 
+		}
+		if (!font_frag.LoadShader("../resources/shaders/font/font_fs.glsl"))
+		{ 
+			WRITE_LOG("Font frag shader failed compile", "error");
+			return false;
+		}
+
+		font_vert.AddAttribute(POS_ATTR);
+
 		std::vector<Shader> shaders;
 		shaders.push_back(font_vert);
 		shaders.push_back(font_frag);
 
 		if (!this->CreateShaderProgram(shaders, SHADER_FONT_FWD))
 		{
+			WRITE_LOG("Shader program Link failure: font", "error");
 			return false;
 		}
 	}
@@ -99,7 +135,10 @@ bool ResourceManager::loadDefaultForwardShaders()
 		shaders.push_back(frag);
 
 		if (!this->CreateShaderProgram(shaders, SHADER_SKYBOX_ANY))
+		{
+			WRITE_LOG("Shader program Link failure: skybox", "error");
 			return false;
+		}
 
 		// One off values
 		int texUnit = 0;
@@ -124,6 +163,7 @@ bool ResourceManager::loadDefaultForwardShaders()
 
 		if (!this->CreateShaderProgram(shaders, SHADER_BILLBOARD_FWD))
 		{
+			WRITE_LOG("Shader program Link failure: billboard", "error");
 			return false;
 		}
 	}
@@ -146,35 +186,11 @@ bool ResourceManager::loadDefaultForwardShaders()
 
 		if (!this->CreateShaderProgram(shaders, SHADER_NORMAL_DISP_FWD))
 		{
+			WRITE_LOG("Shader program Link failure: normal displays", "error");
 			return false;
 		}
 	}
 
-	// ---- Terrain (Fwd) ----
-	{
-		Shader vert(GL_VERTEX_SHADER);
-		Shader frag(GL_FRAGMENT_SHADER);
-		if (!vert.LoadShader("../resources/shaders/new_lights/forward_geom_vs.glsl")) { return false; }
-		//if (!vert.LoadShader("../resources/shaders/terrain/terrain_vs.glsl")) { return false; }
-
-		if (!frag.LoadShader("../resources/shaders/terrain/terrain_fs.glsl")) { return false; }
-		vert.AddAttribute(POS_ATTR);
-		vert.AddAttribute(NORM_ATTR);
-		vert.AddAttribute(TEX_ATTR);
-
-		std::vector<Shader> shaders;
-		shaders.push_back(vert);
-		shaders.push_back(frag);
-
-		if (!this->CreateShaderProgram(shaders, SHADER_TERRAIN_DEF))
-			return false;
-
-		m_Shaders[SHADER_TERRAIN_DEF]->Use();
-		for (int i = 0; i < 5; ++i)
-		{
-			m_Shaders[SHADER_TERRAIN_DEF]->SetUniformValue<int>("u_Sampler" + std::to_string(i), &i);
-		}
-	}
 
 	// ---- Frustum (Fwd) ----
 	{
@@ -189,7 +205,32 @@ bool ResourceManager::loadDefaultForwardShaders()
 		shaders.push_back(frag);
 
 		if (!this->CreateShaderProgram(shaders, SHADER_FRUSTUM))
+		{
+			WRITE_LOG("Shader program Link failure: frustum", "error");
 			return false;
+		}
+	}
+
+	// ---- Shadows (Fwd) ----
+	{
+		Shader vert(GL_VERTEX_SHADER);
+		Shader frag(GL_FRAGMENT_SHADER);
+		if (!vert.LoadShader("../resources/shaders/shadow/shadowmap_vs.glsl")) { return false; }
+		if (!frag.LoadShader("../resources/shaders/shadow/shadowmap_fs.glsl")) { return false; }
+		vert.AddAttribute(POS_ATTR);
+		vert.AddAttribute(NORM_ATTR);
+		vert.AddAttribute(TEX_ATTR);
+
+
+		std::vector<Shader> shaders;
+		shaders.push_back(vert);
+		shaders.push_back(frag);
+
+		if (!this->CreateShaderProgram(shaders, SHADER_SHADOW))
+		{
+			WRITE_LOG("Shader program Link failure: shadows", "error");
+			return false;
+		}
 	}
 
 	return true;
@@ -214,7 +255,10 @@ bool ResourceManager::loadDefaultDeferredShaders()
 		shaders.push_back(frag);
 
 		if (!this->CreateShaderProgram(shaders, SHADER_LAVA_FWD))
+		{
+			WRITE_LOG("Shader program Link failure: Lava", "error");
 			return false;
+		}
 
 		m_Shaders[SHADER_LAVA_FWD]->Use();
 		int sampler = 0;
@@ -237,7 +281,10 @@ bool ResourceManager::loadDefaultDeferredShaders()
 		shaders.push_back(frag);
 
 		if (!this->CreateShaderProgram(shaders, SHADER_GEOM_PASS_DEF))
+		{
+			WRITE_LOG("Shader program Link failure: Deferred Geom", "error");
 			return false;
+		}
 
 		int sampler = 0;
 		m_Shaders[SHADER_GEOM_PASS_DEF]->Use();
@@ -257,7 +304,10 @@ bool ResourceManager::loadDefaultDeferredShaders()
 		shaders.push_back(frag);
 
 		if (!this->CreateShaderProgram(shaders, SHADER_STENCIL_PASS_DEF))
+		{
+			WRITE_LOG("Shader program Link failure: Deferred stencil", "error");
 			return false;
+		}
 	}
 
 	// ---- Std Point Light Shader (Def) ----
@@ -275,7 +325,10 @@ bool ResourceManager::loadDefaultDeferredShaders()
 		shaders.push_back(frag);
 
 		if (!this->CreateShaderProgram(shaders, SHADER_POINT_LIGHT_PASS_DEF))
+		{
+			WRITE_LOG("Shader program Link failure: Deferred point light", "error");
 			return false;
+		}
 
 		int p = (int)GBuffer::TexTypes::Position;
 		int d = (int)GBuffer::TexTypes::Diffuse;
@@ -304,7 +357,10 @@ bool ResourceManager::loadDefaultDeferredShaders()
 		shaders.push_back(frag);
 
 		if (!this->CreateShaderProgram(shaders, SHADER_DIR_LIGHT_PASS_DEF))
+		{
+			WRITE_LOG("Shader program Link failure: Deferred dir light", "error");
 			return false;
+		}
 
 		int p = (int)GBuffer::TexTypes::Position;
 		int d = (int)GBuffer::TexTypes::Diffuse;
@@ -395,7 +451,9 @@ bool ResourceManager::loadDefaultTextures()
 
 	// Load Brick material set
 	{
-		Texture* brick_diff = this->LoadTexture("../resources/textures/bricks/bricks.tga", GL_TEXTURE0);
+		//Texture* brick_diff = this->LoadTexture("../resources/textures/bricks/bricks.tga", GL_TEXTURE0);
+		Texture* brick_diff = this->LoadTexture("../resources/textures/ol.jpg", GL_TEXTURE0);
+
 		Texture* brick_norm = this->LoadTexture("../resources/textures/bricks/bricks_normal.tga", GL_TEXTURE2);
 
 		if (brick_diff && brick_norm)
@@ -408,11 +466,11 @@ bool ResourceManager::loadDefaultTextures()
 
 	// Load Terrain material set
 	{
-		Texture* low =			this->LoadTexture("../resources/textures/terrain/fungus.tga",		GL_TEXTURE0);
-		Texture* med =			this->LoadTexture("../resources/textures/terrain/sand_grass.tga",	GL_TEXTURE1);
-		Texture* high =			this->LoadTexture("../resources/textures/terrain/rock.tga",			GL_TEXTURE2);
-		Texture* path =			this->LoadTexture("../resources/textures/terrain/sand.tga",			GL_TEXTURE3);
-		Texture* path_samp =	this->LoadTexture("../resources/textures/terrain/path.tga",			GL_TEXTURE4);
+		Texture* low = this->LoadTexture("../resources/textures/terrain/fungus.tga", GL_TEXTURE0);
+		Texture* med = this->LoadTexture("../resources/textures/terrain/sand_grass.tga", GL_TEXTURE1);
+		Texture* high = this->LoadTexture("../resources/textures/terrain/rock.tga", GL_TEXTURE2);
+		Texture* path = this->LoadTexture("../resources/textures/terrain/sand.tga", GL_TEXTURE3);
+		Texture* path_samp = this->LoadTexture("../resources/textures/terrain/path.tga", GL_TEXTURE4);
 
 		if (low && med && high && path && path_samp)
 		{
@@ -456,9 +514,9 @@ bool ResourceManager::loadDefaultMeshes()
 {
 	bool success = true;
 	success &= LoadMesh("cube.obj", MESH_ID_CUBE, true, false, 0);
-	success &= LoadMesh("quad.obj", MESH_ID_QUAD, false, false, 0);
-	success &= LoadMesh("sphere.obj", MESH_ID_SPHERE, false, false, 0);
-	success &= LoadMesh("male.obj", MESH_ID_MALE, false, false, 0);
+	success &= LoadMesh("quad.obj", MESH_ID_QUAD, true, false, 0);
+	success &= LoadMesh("sphere.obj", MESH_ID_SPHERE, true, false, 0);
+	success &= LoadMesh("male.obj", MESH_ID_MALE, true, false, 0);
 	return success;
 }
 
@@ -501,6 +559,26 @@ bool ResourceManager::LoadMesh(const std::string& path, size_t key_store, bool t
 	if (!mesh->Load(path, tangents, withTextures, materialSet, this))
 	{
 		WRITE_LOG("Failed to load mesh: " + path, "error");
+		return false;
+	}
+
+	return true;
+}
+
+bool ResourceManager::CreateMesh(size_t key_store, const std::vector<Vertex>& verts, const std::vector<uint32>& indices, unsigned materialSet)
+{
+	if (m_Meshes.find(key_store) != m_Meshes.end())
+	{
+		WRITE_LOG("Tried to use same mesh key twice", "error");
+		return false;
+	}
+
+	Mesh* mesh = new Mesh();
+	m_Meshes[key_store] = mesh;
+
+	if (!mesh->Construct(verts, indices, materialSet))
+	{
+		WRITE_LOG("Failed to construct mesh", "error");
 		return false;
 	}
 

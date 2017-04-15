@@ -24,6 +24,10 @@ public:
 	void SetToUseBumpMaps(bool shouldUse);
 	bool UsingBumpMaps() const;
 
+	// Temp
+	bool ReceiveShadows = false;
+	bool MultiTextures = false;
+
 private:
 	friend class						Renderer;
 	static int							m_Id;

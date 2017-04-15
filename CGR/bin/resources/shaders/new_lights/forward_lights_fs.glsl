@@ -51,15 +51,47 @@ layout (binding = 1, std140) uniform scene
 
 // TODO : This will go in material block
 uniform sampler2D 	u_sampler;
+uniform sampler2D	u_shadow_sampler;
 uniform sampler2D 	u_normal_sampler;
 uniform int			u_use_bumpmap;
+uniform int			u_use_shadow;
 
 in  vec3    N;
 in  vec3 	P;
-in  vec2    varying_texcoord;   //!< The interpolated co-ordinate to use for the texture sampler.
+in  vec2    varying_texcoord;  
 in 	vec3 	varying_tangent;
+in  vec4 	varying_light_position;
 
 out vec4    frag_colour; 		//!< The calculated colour of the fragment.
+
+// Definitions
+float calcShadowFactor(vec4 lightSpacePos);
+vec3 calcBumpedNormal();
+vec4 reflection(vec3 light_intensity, float light_ambient_intensity, vec3 light_dir, vec3 p, vec3 n);
+vec4 getDirectionalLightColour(in vec3 n);
+vec4 getPointLightColor(const PointLight ptLight, vec3 p, vec3 n);
+vec4 getSpotLightColor(const Spotlight spotLight, vec3 p);
+
+
+void main()
+{
+	vec3 n = (u_use_bumpmap == 1) ? calcBumpedNormal() : normalize(N);
+	vec4 tex_colour = texture(u_sampler, varying_texcoord);
+	
+	vec4 total_light =  getDirectionalLightColour(n);
+	
+	for(int i = 0; i < numSpots; ++i)
+	{
+		total_light += getSpotLightColor(spotLights[i], P);
+	}
+						
+	for(int i = 0; i < numPoints; ++i)
+	{
+		total_light += getPointLightColor(pointLights[i], P, n);
+	}
+						
+	frag_colour = vec4(ambient_light, tex_colour.a) + total_light * tex_colour;
+}
 
 vec4 reflection(vec3 light_intensity, float light_ambient_intensity, vec3 light_dir, vec3 p, vec3 n)
 {
@@ -95,7 +127,8 @@ vec4 getDirectionalLightColour(in vec3 n)
 {
 	float diffuse_intensity = max(0.0, dot(n, -directionLight.direction));
 	float fMult = clamp(0.1 + diffuse_intensity, 0.0, 1.0);
-	return vec4(directionLight.intensity * fMult, 1.0);
+	float shadowFactor = u_use_shadow == 1 ? calcShadowFactor(varying_light_position) : 1.0;
+	return vec4(directionLight.intensity * fMult * shadowFactor, 1.0);
 }
 
 vec4 getPointLightColor(const PointLight ptLight, vec3 p, vec3 n) 
@@ -147,6 +180,21 @@ vec4 getSpotLightColor(const Spotlight spotLight, vec3 p)
 	return vec4(0.0, 0.0, 0.0, 0.0);
 }
 
+float calcShadowFactor(vec4 lightSpacePos)
+{
+	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
+	
+	vec2 uvCoords;
+	uvCoords.x = 0.5 * projCoords.x + 0.5;
+	uvCoords.y = 0.5 * projCoords.y + 0.5;
+	float z = 0.5 * projCoords.z + 0.5;
+	
+	float depth = texture(u_shadow_sampler, uvCoords).x;
+	if(depth < z + 0.00001)
+		return 0.5;
+	return 1.0;
+}  
+
 vec3 calcBumpedNormal()
 {
 	vec3 normal = normalize(N);
@@ -163,25 +211,3 @@ vec3 calcBumpedNormal()
     newNormal = normalize(newNormal);                                                       
     return newNormal;   
 }
-
-void main()
-{
-	vec3 n = (u_use_bumpmap == 1) ? calcBumpedNormal() : normalize(N);
-	vec4 tex_colour = texture(u_sampler, varying_texcoord);
-	
-	vec4 total_light =  getDirectionalLightColour(n);
-	
-	for(int i = 0; i < numSpots; ++i)
-	{
-		total_light += getSpotLightColor(spotLights[i], P);
-	}
-						
-	for(int i = 0; i < numPoints; ++i)
-	{
-		total_light += getPointLightColor(pointLights[i], P, n);
-	}
-						
-	frag_colour = vec4(ambient_light, tex_colour.a) + total_light * tex_colour;
-}
-
-

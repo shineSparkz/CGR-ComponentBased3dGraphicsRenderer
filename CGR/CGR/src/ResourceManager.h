@@ -3,6 +3,7 @@
 
 #include "Singleton.h"
 #include "Shader.h"
+#include "Vertex.h"
 #include <map>
 
 struct Material;
@@ -16,6 +17,7 @@ class ResourceManager
 public:
 	bool LoadFont(const std::string& path, size_t key, int size);
 	bool LoadMesh(const std::string& path, size_t key_store, bool tangents, bool withTextures, unsigned materialSet);
+	bool CreateMesh(size_t key, const std::vector<Vertex>&, const std::vector<uint32>& indices, unsigned materialSet);
 	bool LoadTexture(const std::string& path, size_t key_store, int glTextureIndex);
 	bool LoadCubeMap(std::string path[6], size_t key_store, int glTextureIndex);
 	bool CreateShaderProgram(std::vector<Shader>& shaders, size_t key);

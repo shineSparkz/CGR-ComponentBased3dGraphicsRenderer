@@ -42,6 +42,8 @@ bool ShadowFrameBuffer::Init(int windowWidth, int windowHeight)
 		return false;
 	}
 
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	return true;
 }
 

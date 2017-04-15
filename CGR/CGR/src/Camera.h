@@ -65,6 +65,7 @@ public:
 	void SetFOV(float fov);
 	void SetPosition(const Vec3& p);
 	void SetDirection(const Vec3& p);
+	void SetUp(const Vec3& u);
 
 	bool HasSkybox() const;
 	SkyboxSettings* SkyBoxParams() const;
@@ -118,7 +119,7 @@ private:
 	Vec3 velocity;
 	bool fk, bk, lk, rk;
 	float speed = 45.0f;
-	float mouseSpeed = 1.4f;
+	float mouseSpeed = 0.4f;
 	int windowFocused = 1;
 };
 
@@ -137,7 +138,7 @@ private:
 	Vec3 velocity;
 	bool fk, bk, lk, rk;
 	float speed = 565.0f;
-	float mouseSpeed = 1.4f;
+	float mouseSpeed = 0.04f;
 };
 
 #endif

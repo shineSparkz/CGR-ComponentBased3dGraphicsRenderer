@@ -130,6 +130,8 @@ bool Application::Init(int width, int height, bool windowed, const char* title, 
 		return false;
 	}
 
+	m_Renderer->SetDisplayInfo(m_ShouldRendedInfoStrings);
+
 	return true;
 }
 

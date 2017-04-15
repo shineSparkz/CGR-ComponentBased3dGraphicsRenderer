@@ -26,7 +26,7 @@ struct SubMesh
 	unsigned int NumIndices;
 	unsigned int NumVertices;
 	unsigned int MaterialIndex;	
-	int BaseVertex;
+	int BaseVertex; 
 	int BaseIndex;
 
 	Vec3 minvertex;
@@ -53,6 +53,8 @@ public:
 								diffuse. If the texture does not exist then a pink error texture will be used from the engine
 	*/
 	bool Load(const std::string& meshFile, bool withTangents, bool loadTexturesFromMtlFile, unsigned textureSet, ResourceManager* resMan);
+
+	bool Construct(const std::vector<Vertex>& vertices, const std::vector<uint32>& indices, unsigned materialSet);
 
 	size_t GetNumSubMeshes() const;
 	

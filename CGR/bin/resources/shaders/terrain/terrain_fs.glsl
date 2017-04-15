@@ -135,21 +135,105 @@ void main()
 
 //---------------------------------
 //Forward rendering
-in vec2 varying_texcoord;
 in vec3 N;
 in vec3 P;
+in vec2 varying_texcoord;
+in vec3 varying_tangent;
+in vec4 varying_light_position;
 
 out vec4 frag_colour;
                                                                                
-uniform sampler2D u_LowHeightMap;
-uniform sampler2D u_MediumHeightMap;
-uniform sampler2D u_HighHeightMap;
-uniform sampler2D u_PathMap;
-uniform sampler2D u_PathSampler;
+uniform sampler2D 	u_LowHeightMap;
+uniform sampler2D 	u_MediumHeightMap;
+uniform sampler2D 	u_HighHeightMap;
+uniform sampler2D 	u_PathMap;
+uniform sampler2D 	u_PathSampler;
+uniform sampler2D 	u_shadow_sampler;
 
-uniform float u_MaxHeight;
-uniform float u_MaxTexU;
-uniform float u_MaxTexV;
+uniform int			u_use_bumpmap;
+uniform int			u_use_shadow;
+
+uniform float 		u_MaxHeight;
+uniform float 		u_MaxTexU;
+uniform float 		u_MaxTexV;
+
+// Definitions
+float calcShadowFactor(vec4 lightSpacePos);
+vec3 calcBumpedNormal();
+vec4 reflection(vec3 light_intensity, float light_ambient_intensity, vec3 light_dir, vec3 p, vec3 n);
+vec4 getDirectionalLightColour(in vec3 n);
+vec4 getPointLightColor(const PointLight ptLight, vec3 p, vec3 n);
+vec4 getSpotLightColor(const Spotlight spotLight, vec3 p);
+
+void main()
+{	
+	vec3 n = (u_use_bumpmap == 1) ? calcBumpedNormal() : normalize(N);
+	vec4 vTexColor = vec4(0.0);
+	
+	float fScale = P.y / u_MaxHeight;
+
+	const float fRange1 = 0.15f;
+	const float fRange2 = 0.3f;
+	const float fRange3 = 0.65f;
+	const float fRange4 = 0.85f;
+
+	if(fScale >= 0.0 && fScale <= fRange1)
+	{
+		vTexColor = texture2D(u_LowHeightMap, varying_texcoord);
+	}
+	else if(fScale <= fRange2)
+	{
+		fScale -= fRange1;
+		fScale /= (fRange2-fRange1);
+		
+		float fScale2 = fScale;
+		fScale = 1.0-fScale; 
+		
+		vTexColor += texture2D(u_LowHeightMap, varying_texcoord) * fScale;
+		vTexColor += texture2D(u_MediumHeightMap, varying_texcoord) * fScale2;
+	}
+	else if(fScale <= fRange3)
+	{
+		vTexColor = texture2D(u_MediumHeightMap, varying_texcoord);
+	}
+	else if(fScale <= fRange4)
+	{
+		fScale -= fRange3;
+		fScale /= (fRange4-fRange3);
+		
+		float fScale2 = fScale;
+		fScale = 1.0-fScale; 
+		
+		vTexColor += texture2D(u_MediumHeightMap, varying_texcoord) * fScale;
+		vTexColor += texture2D(u_HighHeightMap, varying_texcoord) * fScale2;		
+	}
+	else 
+	{
+		vTexColor = texture2D(u_HighHeightMap, varying_texcoord);
+	}
+	
+	vec2 vPathCoord = vec2(varying_texcoord.x / u_MaxTexU, varying_texcoord.y / u_MaxTexV);
+	vec4 vPathIntensity = texture2D(u_PathSampler, vPathCoord);
+	fScale = vPathIntensity.x;
+  
+	// Black color means there is a path
+	vec4 vPathColor = texture2D(u_PathMap, varying_texcoord); 
+	vec4 vFinalTexColor = fScale * vTexColor + ((1-fScale) * vPathColor);
+	
+	vec4 total_light = getDirectionalLightColour(n);
+	
+	for(int i = 0; i < numSpots; ++i)
+	{
+		total_light += getSpotLightColor(spotLights[i], P);
+	}
+						
+	for(int i = 0; i < numPoints; ++i)
+	{
+		total_light += getPointLightColor(pointLights[i], P, n);
+	}
+
+	frag_colour = vec4(ambient_light, vFinalTexColor.a) + total_light * vFinalTexColor;
+}      
 
 vec4 reflection(vec3 light_intensity, float light_ambient_intensity, vec3 light_dir, vec3 p, vec3 n)
 {
@@ -185,7 +269,8 @@ vec4 getDirectionalLightColour(in vec3 n)
 {
 	float diffuse_intensity = max(0.0, dot(n, -directionLight.direction));
 	float fMult = clamp(0.1 + diffuse_intensity, 0.0, 1.0);
-	return vec4(directionLight.intensity * fMult, 1.0);
+	float shadowFactor = u_use_shadow == 1 ? calcShadowFactor(varying_light_position) : 1.0;
+	return vec4(directionLight.intensity * fMult * shadowFactor, 1.0);
 }
 
 vec4 getPointLightColor(const PointLight ptLight, vec3 p, vec3 n) 
@@ -237,71 +322,38 @@ vec4 getSpotLightColor(const Spotlight spotLight, vec3 p)
 	return vec4(0.0, 0.0, 0.0, 0.0);
 }
 
-void main()
-{	
-	vec3 n = normalize(N);
-	vec4 vTexColor = vec4(0.0);
-	float fScale = P.y / u_MaxHeight;
-
-	const float fRange1 = 0.15f;
-	const float fRange2 = 0.3f;
-	const float fRange3 = 0.65f;
-	const float fRange4 = 0.85f;
-
-	if(fScale >= 0.0 && fScale <= fRange1)
-	{
-		vTexColor = texture2D(u_LowHeightMap, varying_texcoord);
-	}
-	else if(fScale <= fRange2)
-	{
-		fScale -= fRange1;
-		fScale /= (fRange2-fRange1);
-		
-		float fScale2 = fScale;
-		fScale = 1.0-fScale; 
-		
-		vTexColor += texture2D(u_LowHeightMap, varying_texcoord) * fScale;
-		vTexColor += texture2D(u_MediumHeightMap, varying_texcoord) * fScale2;
-	}
-	else if(fScale <= fRange3)
-	{
-		vTexColor = texture2D(u_MediumHeightMap, varying_texcoord);
-	}
-	else if(fScale <= fRange4)
-	{
-		fScale -= fRange3;
-		fScale /= (fRange4-fRange3);
-		
-		float fScale2 = fScale;
-		fScale = 1.0-fScale; 
-		
-		vTexColor += texture2D(u_MediumHeightMap, varying_texcoord) * fScale;
-		vTexColor += texture2D(u_HighHeightMap, varying_texcoord) * fScale2;		
-	}
-	else 
-	{
-		vTexColor = texture2D(u_HighHeightMap, varying_texcoord);
-	}
+float calcShadowFactor(vec4 lightSpacePos)
+{
+	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
 	
-	vec2 vPathCoord = vec2(varying_texcoord.x / u_MaxTexU, varying_texcoord.y / u_MaxTexV);
-	vec4 vPathIntensity = texture2D(u_PathSampler, vPathCoord);
-	fScale = vPathIntensity.x;
-  
-	// Black color means there is a path
-	vec4 vPathColor = texture2D(u_PathMap, varying_texcoord); 
-	vec4 vFinalTexColor = fScale * vTexColor + ((1-fScale) * vPathColor);
+	vec2 uvCoords;
+	uvCoords.x = 0.5 * projCoords.x + 0.5;
+	uvCoords.y = 0.5 * projCoords.y + 0.5;
+	float z = 0.5 * projCoords.z + 0.5;
 	
-	vec4 total_light =  getDirectionalLightColour(n);
-	
-	for(int i = 0; i < numSpots; ++i)
-	{
-		total_light += getSpotLightColor(spotLights[i], P);
-	}
-						
-	for(int i = 0; i < numPoints; ++i)
-	{
-		total_light += getPointLightColor(pointLights[i], P, n);
-	}
+	float depth = texture(u_shadow_sampler, uvCoords).x;
+	if(depth < z + 0.00001)
+		return 0.5;
+	return 1.0;
+}  
 
-	frag_colour = vec4(ambient_light, vFinalTexColor.a) + total_light * vFinalTexColor;
-}      
+vec3 calcBumpedNormal()
+{
+	return vec3(0,1,0);
+	/*
+	vec3 normal = normalize(N);
+	vec3 tangent = normalize(varying_tangent);
+	
+	tangent = normalize(tangent - dot(tangent, normal) * normal);
+	vec3 biTan = cross(tangent, normal);
+	vec3 bumpNorm = texture(u_normal_sampler, varying_texcoord).xyz;
+	
+	bumpNorm = 2.0 * bumpNorm - vec3(1.0, 1.0, 1.0);                              
+    vec3 newNormal;                                                                         
+    mat3 TBN = mat3(tangent, biTan, normal);                                            
+    newNormal = TBN * bumpNorm;                                                        
+    newNormal = normalize(newNormal);                                                       
+    return newNormal;   
+	*/
+}
+

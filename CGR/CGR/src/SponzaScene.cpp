@@ -37,7 +37,10 @@ void SponzaScene::createGameObjects()
 	MeshRenderer* maleMr = male->AddComponent<MeshRenderer>();
 	maleMr->SetMesh(MESH_ID_MALE);
 	maleMr->SetMaterialSet(MATERIALS_MALE);
-	maleMr->SetShader(SHADER_GEOM_PASS_DEF);
+	maleMr->SetToUseBumpMaps(false);
+	maleMr->SetShader(SHADER_LIGHTING_FWD);
+	maleMr->ReceiveShadows = false;
+	m_Handle = m_GameObjects.size();
 	m_GameObjects.push_back(male);
 
 	// Create Sponza
@@ -47,9 +50,10 @@ void SponzaScene::createGameObjects()
 	sponzat->SetScale(Vec3(0.2f));
 	MeshRenderer* sponzaMr = sponza->AddComponent<MeshRenderer>();
 	sponzaMr->SetMesh(MESH_ID_SPONZA);
-	sponzaMr->SetShader(SHADER_GEOM_PASS_DEF);
-	sponzaMr->SetToUseBumpMaps(true);
 	sponzaMr->SetMaterialSet(MATERIALS_SPONZA);
+	sponzaMr->SetToUseBumpMaps(true);
+	sponzaMr->SetShader(SHADER_LIGHTING_FWD);
+	sponzaMr->ReceiveShadows = true;
 	m_GameObjects.push_back(sponza);
 	m_SponzaPtr = sponzaMr;
 
@@ -145,6 +149,39 @@ void SponzaScene::OnSceneExit()
 
 void SponzaScene::Update(float dt)
 {
+	auto HANDLE = m_Handle;
+	float SPEED = 2;
+	if (Input::Keys[GLFW_KEY_UP] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
+	{
+		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, 0, -SPEED));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_DOWN] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
+	{
+		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, 0, SPEED));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_LEFT] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
+	{
+		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(-SPEED, 0, 0));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_RIGHT] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
+	{
+		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(SPEED, 0, 0));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_F] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
+	{
+		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, SPEED, 0));
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_V] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
+	{
+		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, -SPEED, 0));
+		m_TimeNow = Time::ElapsedTime();
+	}
+
 	// Toggle Bump maps
 	if (Input::Keys[GLFW_KEY_N] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
 	{
@@ -170,7 +207,7 @@ void SponzaScene::Update(float dt)
 
 void SponzaScene::Render()
 {
-	m_Renderer->Render(m_GameObjects);
+	m_Renderer->Render(m_GameObjects, true);
 }
 
 void SponzaScene::RenderUI()
