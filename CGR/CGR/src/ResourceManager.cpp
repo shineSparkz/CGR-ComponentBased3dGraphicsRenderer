@@ -238,7 +238,7 @@ bool ResourceManager::loadDefaultForwardShaders()
 
 bool ResourceManager::loadDefaultDeferredShaders()
 {
-	Vec2 screenSize((float)Screen::Instance()->FrameBufferWidth(), (float)Screen::Instance()->FrameBufferHeight());
+	Vec2 screenSize((float)Screen::FrameBufferWidth(), (float)Screen::FrameBufferHeight());
 
 	// ---- Lava Shader (Def) ----
 	{
@@ -492,7 +492,7 @@ bool ResourceManager::loadDefaultTextures()
 	}
 
 	// From Loaded Scene
-	success &= this->LoadTexture("../resources/textures/billboards/grass.tga", TEX_GRASS_BILLBOARD, GL_TEXTURE0);
+	success &= this->LoadTexture("../resources/textures/billboards/grass_sheet.tga", TEX_GRASS_BILLBOARD, GL_TEXTURE0);
 	success &= this->LoadTexture("../resources/textures/noise.tga", TEX_NOISE, GL_TEXTURE0);
 
 	std::string s[6] =

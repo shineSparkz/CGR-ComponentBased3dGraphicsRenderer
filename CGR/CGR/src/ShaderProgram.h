@@ -20,14 +20,17 @@ public:
 
 	void Use();
 
+	bool Reload();
+
 	void Close();
 	bool CreateProgram(const std::vector<Shader>& shaders, const std::string& fragout_identifier, GLuint frag_loc);
 	Uniform* GetUniformByName(const std::string& name);
 
 private:
-	friend class Renderer;
-	GLuint m_ShaderProgram;
-	std::map<std::string, Uniform*> m_Uniforms;
+	friend class						Renderer;
+	std::map<std::string, Uniform*>		m_Uniforms;
+	std::vector<Shader>					m_Shaders;
+	GLuint								m_ShaderProgram;
 };
 
 template<typename T>

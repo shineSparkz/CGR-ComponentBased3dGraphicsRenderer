@@ -43,7 +43,7 @@ int OutDoorScene::OnSceneLoad(ResourceManager* resManager)
 		Vec3(1.0f, 0.0f, 0.0f),																				// Right
 		Vec3(0.0f, 0.0f, -1.0f),																			// Fwd
 		45.0f,																								// FOV
-		static_cast<float>(Screen::Instance()->ScreenWidth() / Screen::Instance()->ScreenHeight()),			// Aspect
+		static_cast<float>(Screen::ScreenWidth() / Screen::ScreenHeight()),			// Aspect
 		0.1f,																								// Near
 		500.0f																								// Far
 	);
@@ -151,7 +151,6 @@ int OutDoorScene::OnSceneLoad(ResourceManager* resManager)
 				return GE_FALSE;
 			}
 
-			/*
 			// Load Billboard list
 			if (!m_TreeBillboardList)
 			{
@@ -175,7 +174,6 @@ int OutDoorScene::OnSceneLoad(ResourceManager* resManager)
 				//-1.4f	// ypos
 				//);
 			}
-			*/
 		}
 
 		// Terrain game object
@@ -212,8 +210,6 @@ void OutDoorScene::OnSceneExit()
 	
 	SAFE_DELETE(m_TreeBillboardList);
 }
-
-bool wired = false;
 
 void OutDoorScene::Update(float dt)
 {
@@ -261,11 +257,16 @@ void OutDoorScene::Update(float dt)
 
 	if (Input::Keys[GLFW_KEY_P] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
 	{
-		wired = !wired;
-		//m_Renderer->SetPolygonMode(PolygonMode::WireFrame);
+		m_Renderer->TogglePolygonMode();
 		m_TimeNow = Time::ElapsedTime();
 	}
-	
+
+	if (Input::Keys[GLFW_KEY_F6] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		m_Renderer->ReloadShaders();
+		m_TimeNow = Time::ElapsedTime();
+	}
+
 	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
 	{
 		(*i)->Update();
@@ -274,20 +275,12 @@ void OutDoorScene::Update(float dt)
 
 void OutDoorScene::Render()
 {
-	if (wired)
-	{
-		m_Renderer->SetPolygonMode(PolygonMode::WireFrame);
-	}
-	else
-	{
-		m_Renderer->SetPolygonMode(PolygonMode::Filled);
-	}
-
 	m_Renderer->Render(m_GameObjects, true);
 	m_Renderer->RenderBillboardList(m_TreeBillboardList);
 }
 
 void OutDoorScene::RenderUI()
 {
-	m_Renderer->RenderText(FONT_COURIER, "Point Light Pos: " + util::vec3_to_str(m_DirLightHandle->GetDir()), 8, 64);
+	m_Renderer->RenderText(FONT_COURIER, "Toggle wire frame: [P]", 8, 64);
+	//m_Renderer->RenderText(FONT_COURIER, "Point Light Pos: " + util::vec3_to_str(m_DirLightHandle->GetDir()), 8, 64);
 }

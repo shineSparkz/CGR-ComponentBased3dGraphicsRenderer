@@ -26,20 +26,21 @@ public:
 	bool AddUniform(const std::string& uniformname);
 	void SetValue(const std::string& uniformName, void* value);
 	void Bind();
+	void ClearBlock();
 
 private:
 	bool allocBlock(GLuint* shaderProg, const char* name);
 	bool addBlockData(const std::string& uniformName, GLint size, GLint offset);
 
 private:
-	friend class ShaderProgram;
-	GLuint m_UboIndex;
-	GLint m_BuffSize;
-	GLuint m_UBO;
-	byte* m_Buffer;
-	std::map<std::string, BlockData> m_Uniforms;
-	bool m_Bound{ false };
-	bool m_ShouldUpdatGPU{ false };
+	friend class						ShaderProgram;
+	std::map<std::string, BlockData>	m_Uniforms;
+	byte*								m_Buffer;
+	GLint								m_BuffSize;
+	GLuint								m_UboIndex;
+	GLuint								m_UBO;
+	bool								m_Bound;
+	bool								m_ShouldUpdatGPU;
 };
 
 

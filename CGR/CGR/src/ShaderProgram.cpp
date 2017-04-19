@@ -117,9 +117,7 @@ bool ShaderProgram::CreateProgram(const std::vector<Shader>& shaders, const std:
 		}
 	}
 
-	//------------------------------------------------------
 	// Populate m_Uniforms
-	//------------------------------------------------------
 	int total = -1;
 	glGetProgramiv(m_ShaderProgram, GL_ACTIVE_UNIFORMS, &total);
 
@@ -147,18 +145,37 @@ bool ShaderProgram::CreateProgram(const std::vector<Shader>& shaders, const std:
 		{
 			if (!ubm->CheckBlockUniformExists(name))
 			{
-				Uniform* ufm = new Uniform(location, (UniformTypes)type);
-				//m_Uniforms[hash(name)] = ufm;
-				m_Uniforms[name] = ufm;
-			}
-			else
-			{
-				bool b = false;
+				// Check it doesn't exist here
+				if (m_Uniforms.find(name) == m_Uniforms.end())
+				{
+					Uniform* ufm = new Uniform(location, (UniformTypes)type);
+					m_Uniforms[name] = ufm;
+				}
 			}
 		}
 	}
 
+	// Keep these in-case want to reload
+	m_Shaders = shaders;
+
 	return true;
+}
+
+bool ShaderProgram::Reload()
+{
+	std::vector<Shader> temp_shaders;
+	
+	for (auto shader = m_Shaders.begin(); shader != m_Shaders.end(); ++shader)
+	{
+		if (!shader->LoadShader(shader->source_file.c_str()))
+		{
+			return false;
+		}
+
+		temp_shaders.push_back(*shader);
+	}
+
+	return this->CreateProgram(temp_shaders, "frag_colour", 0);
 }
 
 Uniform* ShaderProgram::GetUniformByName(const std::string& name)
@@ -170,6 +187,11 @@ Uniform* ShaderProgram::GetUniformByName(const std::string& name)
 
 void ShaderProgram::Close()
 {
+	for (auto s = m_Shaders.begin(); s != m_Shaders.end(); ++s)
+	{
+		s->Close();
+	}
+
 	for (auto i = m_Uniforms.begin(); i != m_Uniforms.end(); ++i)
 	{
 		SAFE_DELETE(i->second);

@@ -117,7 +117,7 @@ bool Renderer::Init()
 			Vec3(1, 0, 0),		// Right
 			Vec3(0, -1.0, 0.1f),	// Fwd(Dir)
 			45,
-			static_cast<float>(Screen::Instance()->FrameBufferWidth() / Screen::Instance()->FrameBufferHeight()),
+			static_cast<float>(Screen::FrameBufferWidth() / Screen::FrameBufferHeight()),
 			0.1f,
 			500.0f);
 
@@ -168,24 +168,14 @@ const std::string& Renderer::GetHardwareStr() const
 
 void Renderer::Render(std::vector<GameObject*>& gameObjects, bool withShadows)
 {
-	// To remove
-	/*
-	static int frame = 0;
-	if (++frame >= 60)
-	{
-		Vec3 d = m_LightCamera->Forward();
-		m_LightCamera->SetDirection(Vec3(0, -1, sinf(Time::ElapsedTime())));
-		m_LightCamera->Update();
-		frame = 0;
-	}
-	*/
-
+	// Flush this every frame
 	m_CullCount = 0;
 
+	// Queery the frame if the mode is set
 	if(m_ShouldQueryFrames)
 		m_Query.Start();
 
-	// Update Uniform blocks for wither rendering mode
+	// The renderer updates the scene block
 	UniformBlock* scene = m_UniformBlockManager->GetBlock("scene");
 	if (scene)
 	{
@@ -193,41 +183,48 @@ void Renderer::Render(std::vector<GameObject*>& gameObjects, bool withShadows)
 		scene->SetValue("proj_xform", (void*)glm::value_ptr(m_CameraPtr->Projection()));
 	}
 
-	// Bind all Uniform Blocks (including custom usr ones)
+	// Copy all block data to the GPU (only if they have changed, which is checked internally) This will work for each shader that references the block
 	for (auto i = m_UniformBlockManager->m_Blocks.begin(); i != m_UniformBlockManager->m_Blocks.end(); ++i)
 	{
 		if (i->second->ShouldUpdateGPU())
 			i->second->Bind();
 	}
 
+	// Update the frustum once per frame if frustum culling is allowed
 	if (m_ShouldFrustumCull)
 	{
-		//m_ResManager->GetShader(SHADER_FRUSTUM)->Use();
-		//m_ResManager->GetShader(SHADER_FRUSTUM)->SetUniformValue<Mat4>("u_wvp_xform", &(m_CameraPtr->ProjXView() * IDENTITY));
 		m_Frustum->UpdateFrustum(m_CameraPtr->Projection(), m_CameraPtr->View());
 	}
 
+	// Check which rendering mode we want
 	if (m_ShadingMode == ShadingMode::Deferred)
 	{
 		deferredRender(gameObjects);
 	}
 	else
 	{
+		// Do the shadows pass if flagged, rendering objects that do NOT receive shadows into the depth buffer
 		if (withShadows)
 		{
 			forwardRenderShadows(gameObjects);
 		}
 
+		// Forward render all of the game objects with the scene light data
 		forwardRender(gameObjects, withShadows);
 	}
 
+	// Set this Back after rendering meshes if the mode is set, only want wire frames for meshes
+	if (m_PolyMode == PolygonMode::WireFrame)
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	// Get Queery result
 	if (m_ShouldQueryFrames)
 	{
 		m_Query.End();
 		m_QueryTime = m_Query.Result(false);
 	}
 
-	// Wait until everything is drawn first
+	// For switching rendering modes on the fly
 	if (m_ShadingModePending)
 	{
 		glFlush();
@@ -244,8 +241,8 @@ void Renderer::Render(std::vector<GameObject*>& gameObjects, bool withShadows)
 	// Render info if asked
 	if (m_ShouldDisplayInfo)
 	{
-		this->RenderText(FONT_COURIER, "Frm Time Seconds: " + util::to_str(getFrameTime(TimeMeasure::Seconds)), 8, Screen::Instance()->FrameBufferHeight() - 32.0f, FontAlign::Left, Colour::Red());
-		this->RenderText(FONT_COURIER, "Frustum cull set to: " + util::bool_to_str(m_ShouldFrustumCull) + " :  Cull count: " + util::to_str(m_CullCount), 8, Screen::Instance()->FrameBufferHeight() - 64.0f);
+		this->RenderText(FONT_COURIER, "Frm Time Seconds: " + util::to_str(getFrameTime(TimeMeasure::Seconds)), 8, Screen::FrameBufferHeight() - 32.0f, FontAlign::Left, Colour::Red());
+		this->RenderText(FONT_COURIER, "Frustum cull set to: " + util::bool_to_str(m_ShouldFrustumCull) + " :  Cull count: " + util::to_str(m_CullCount), 8, Screen::FrameBufferHeight() - 64.0f);
 	}
 }
 
@@ -257,9 +254,9 @@ void Renderer::RenderText(size_t fontId, const std::string& txt, float x, float 
 	// Activate corresponding render state	
 	m_ResManager->m_Shaders[SHADER_FONT_FWD]->Use();
 
-	Mat4 projection = glm::ortho(0.0f, (float)Screen::Instance()->FrameBufferWidth(),
+	Mat4 projection = glm::ortho(0.0f, (float)Screen::FrameBufferWidth(),
 		0.0f,
-		(float)Screen::Instance()->FrameBufferHeight());
+		(float)Screen::FrameBufferHeight());
 
 	m_ResManager->m_Shaders[SHADER_FONT_FWD]->SetUniformValue<Mat4>("u_proj_xform", &projection);
 	m_ResManager->m_Shaders[SHADER_FONT_FWD]->SetUniformValue<Vec4>("text_colour", &colour.Normalize());
@@ -325,16 +322,17 @@ void Renderer::RenderBillboardList(BillboardList* billboard)
 	{
 		if (billboard->m_Material)
 		{
-			billboard->m_Material->Use();
-			billboard->m_Material->SetUniformValue<float>("u_Scale", &billboard->m_BillboardScale);
-			billboard->m_Material->SetUniformValue<Vec3>("u_camera_position", &m_CameraPtr->Position());
-			billboard->m_Material->SetUniformValue<Mat4>("u_view_proj_xform", &m_CameraPtr->ProjXView());
-		}
+			float t = Time::ElapsedTime();
 
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LEQUAL);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			billboard->m_Material->Use();
+			billboard->m_Material->SetUniformValue<Mat4>("u_view_xform", &m_CameraPtr->View());
+			billboard->m_Material->SetUniformValue<Mat4>("u_proj_xform", &m_CameraPtr->Projection());
+			billboard->m_Material->SetUniformValue<Mat4>("u_model_xform", &Mat4(1.0f));
+			billboard->m_Material->SetUniformValue<float>("u_time", &(t));
+		}
+		
+		glEnable(GL_MULTISAMPLE);
+		glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
 
 		// Bind the texture we get from renderer. This needs sorting too
 		Texture* t = this->GetTexture(billboard->m_TextureIndex);
@@ -344,11 +342,26 @@ void Renderer::RenderBillboardList(BillboardList* billboard)
 		glBindVertexArray(billboard->m_VAO);
 		glDrawArrays(GL_POINTS, 0, (GLsizei)billboard->m_NumInstances);
 
-		glDisable(GL_DEPTH_TEST);
-		glDisable(GL_BLEND);
+		glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+		glDisable(GL_MULTISAMPLE);		
+		glBindVertexArray(0);
 	}
 }
 
+bool Renderer::ReloadShaders()
+{
+	for (auto sp = m_ResManager->m_Shaders.begin(); sp != m_ResManager->m_Shaders.end(); ++sp)
+	{
+		if (!sp->second->Reload())
+		{
+			WRITE_LOG("Reloading shaders failed", "error");
+			EventManager::Instance()->SendEvent(EVENT_SHUTDOWN, nullptr);
+			return false;
+		}
+	}
+
+	return true;
+}
 
 
 size_t Renderer::GetNumSubMeshesInMesh(size_t meshIndex) const
@@ -434,16 +447,21 @@ std::string Renderer::GetPolygonModeStr() const
 	return m_PolyMode == PolygonMode::Filled? "Polygon mode: Filled" : "Polygon mode: Wireframe";
 }
 
+void Renderer::TogglePolygonMode()
+{
+	if (m_PolyMode == PolygonMode::Filled)
+	{
+		m_PolyMode = PolygonMode::WireFrame;
+	}
+	else
+	{
+		m_PolyMode = PolygonMode::Filled;
+	}
+}
+
 void Renderer::SetPolygonMode(PolygonMode mode)
 {
-	if (mode == PolygonMode::Filled)
-	{
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	}
-	else if (mode == PolygonMode::WireFrame)
-	{
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	}
+	m_PolyMode = mode;
 }
 
 void Renderer::DisplayNormals(bool shouldDisplay)
@@ -538,6 +556,12 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects, bool withSha
 		this->renderSkybox(m_CameraPtr);
 	}
 
+	// Set to wire frame mode only for rendering meshes
+	if (m_PolyMode == PolygonMode::WireFrame)
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
+
 	// TODO : need to use the shader program that was set to each mesh or batch them 
 	ShaderProgram* np = nullptr;	
 	if(m_ShouldDisplayNormals)
@@ -588,7 +612,7 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects, bool withSha
 
 void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 {
-	Vec2 screenSize = Vec2((float)Screen::Instance()->FrameBufferWidth(), (float)Screen::Instance()->FrameBufferHeight());
+	Vec2 screenSize = Vec2((float)Screen::FrameBufferWidth(), (float)Screen::FrameBufferHeight());
 	m_Gbuffer->StartFrame();
 
 	// Geom Pass
@@ -936,6 +960,12 @@ void Renderer::sceneChange()
 	m_NumDirLightsInScene = -1;
 	m_NumPointLightsInScene = -1;
 	m_NumSpotLightsInScene = -1;
+
+	// Reset blocks
+	for (auto i = m_UniformBlockManager->m_Blocks.begin(); i != m_UniformBlockManager->m_Blocks.end(); ++i)
+	{
+		i->second->ClearBlock();
+	}
 }
 
 void Renderer::windowSizeChanged(int w, int h)
@@ -951,7 +981,7 @@ void Renderer::windowSizeChanged(int w, int h)
 
 	if (m_ShadowFB)
 	{
-		m_ShadowFB->Init(Screen::Instance()->FrameBufferWidth(), Screen::Instance()->FrameBufferHeight());
+		m_ShadowFB->Init(Screen::FrameBufferWidth(), Screen::FrameBufferHeight());
 	}
 
 	// TODO : Anything else that depends on screen size
@@ -975,7 +1005,7 @@ bool Renderer::setFrameBuffers()
 		m_ShadowFB = new ShadowFrameBuffer();
 	}
 
-	m_ShadowFB->Init(Screen::Instance()->FrameBufferWidth(), Screen::Instance()->FrameBufferHeight());
+	m_ShadowFB->Init(Screen::FrameBufferWidth(), Screen::FrameBufferHeight());
 
 	return true;
 }

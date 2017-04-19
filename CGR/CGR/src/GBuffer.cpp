@@ -34,8 +34,8 @@ void GBuffer::Clean()
 
 bool GBuffer::Init()
 {
-	int width =  Screen::Instance()->FrameBufferWidth();
-	int height = Screen::Instance()->FrameBufferHeight();
+	int width =  Screen::FrameBufferWidth();
+	int height = Screen::FrameBufferHeight();
 
 	glGenFramebuffers(1, &m_FBO);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_FBO);

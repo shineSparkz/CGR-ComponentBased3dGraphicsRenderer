@@ -13,6 +13,7 @@ public:
 	bool Init(int windowWidth, int windowHeight);
 	void BindForWriting();
 	void BindForReading(GLenum texUnit);
+
 private:
 	GLuint m_FrameBufferObj;
 	GLuint m_ShadowMap;

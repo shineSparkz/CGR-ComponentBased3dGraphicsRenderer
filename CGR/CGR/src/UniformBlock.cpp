@@ -4,7 +4,13 @@
 #include "LogFile.h"
 
 UniformBlock::UniformBlock() :
-	m_Buffer(nullptr)
+	m_Uniforms(),
+	m_Buffer(nullptr),
+	m_BuffSize(0),
+	m_UboIndex(0),
+	m_UBO(0),
+	m_Bound(false),
+	m_ShouldUpdatGPU(false)
 {
 }
 
@@ -157,6 +163,14 @@ void UniformBlock::SetValue(const std::string& uniformName, void* value)
 	{
 		memcpy(m_Buffer + block->second.offset, value, block->second.size);
 		m_ShouldUpdatGPU = true;
+	}
+}
+
+void UniformBlock::ClearBlock()
+{
+	if (m_Bound && m_Buffer)
+	{
+		memset(m_Buffer, 0, m_BuffSize);
 	}
 }
 

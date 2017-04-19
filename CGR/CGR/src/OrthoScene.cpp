@@ -62,7 +62,7 @@ int OrthoScene::OnSceneLoad(ResourceManager* resManager)
 		Vec3(1.0f, 0.0f, 0.0f),																				// Right
 		Vec3(0.0f, 0.0f, -1.0f),																			// Fwd
 		45.0f,																								// FOV
-		static_cast<float>(Screen::Instance()->ScreenWidth() / Screen::Instance()->ScreenHeight()),			// Aspect
+		static_cast<float>(Screen::ScreenWidth() / Screen::ScreenHeight()),			// Aspect
 		0.1f,																								// Near
 		100.0f																								// Far
 	);

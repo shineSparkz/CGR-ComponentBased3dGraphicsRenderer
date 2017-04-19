@@ -7,9 +7,6 @@
 
 /*
 List
-- Reimplement shadows Directional
-- Wavy grass
-- Change shaders at runtime, reload shaders runtime
 - Particles
 - Better water implementation
 - Make a use case for a new user, creating a scene, game objects, shader and using engine functionality or write docs
@@ -28,6 +25,9 @@ Done
 - Frustum
 - Bez Terrains
 - Materials
+- Reimplement shadows Directional
+- Wavy grass
+- Change shaders at runtime, reload shaders runtime
 
 Cuts
 - Instancing/Batching

@@ -1,53 +1,52 @@
 #ifndef __SCREEN_H__
 #define __SCREEN_H__
 
-#include "Singleton.h"
 #include "types.h"
 
-class Screen : public Singleton<Screen>
+class Screen
 {
 public:
-	Screen() {}
+	Screen();
 
-	int		ScreenWidth()		const;
-	int		ScreenHeight()		const;
-	int		FrameBufferWidth()	const;
-	int		FrameBufferHeight() const;
-	bool	IsFullScreen()		const;
+	static int		ScreenWidth();
+	static int		ScreenHeight();
+	static int		FrameBufferWidth();
+	static int		FrameBufferHeight();
+	static bool		IsFullScreen();
 
 	// TODO Later : screen resolution stuff
 
 private:
 	friend class	RenderWindow;
-	int				m_ScreenWidth{ 0 };
-	int				m_ScreenHeight{ 0 };
-	int				m_FrameBuffWidth{ 0 };
-	int				m_FrameBuffHeight{ 0 };
-	size_t			m_VideoModeHandle{ 0 };
-	bool			m_FullScreen{ 0 };
+	static int		m_ScreenWidth;
+	static int		m_ScreenHeight;
+	static int		m_FrameBuffWidth;
+	static int		m_FrameBuffHeight;
+	static size_t	m_VideoModeHandle;
+	static bool		m_FullScreen;
 };
 
-INLINE int Screen::ScreenWidth() const
+INLINE int Screen::ScreenWidth()
 {
 	return m_ScreenWidth;
 }
 
-INLINE int Screen::ScreenHeight() const
+INLINE int Screen::ScreenHeight()
 {
 	return m_ScreenHeight;
 }
 
-INLINE int Screen::FrameBufferWidth() const
+INLINE int Screen::FrameBufferWidth()
 {
 	return m_FrameBuffWidth;
 }
 
-INLINE int Screen::FrameBufferHeight() const
+INLINE int Screen::FrameBufferHeight()
 {
 	return m_FrameBuffHeight;
 }
 
-INLINE bool Screen::IsFullScreen() const
+INLINE bool Screen::IsFullScreen()
 {
 	return m_FullScreen;
 }

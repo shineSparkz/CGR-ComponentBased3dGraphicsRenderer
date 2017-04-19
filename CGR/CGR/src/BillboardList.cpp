@@ -1,6 +1,5 @@
 #include "BillboardList.h"
 #include "OpenGlLayer.h"
-#include "Technique.h"
 #include "Texture.h"
 #include "Renderer.h"
 #include "Shader.h"

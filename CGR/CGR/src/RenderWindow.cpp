@@ -92,20 +92,17 @@ bool RenderWindow::Open(int width, int height, bool windowed, const char* title,
 	glfwMakeContextCurrent(m_Window);
 
 	//------- Log window params-------------------------------------------
-	Screen* screen = Screen::Instance();
-	if (screen)
-	{
-		screen->m_FullScreen = !windowed;
-		screen->m_VideoModeHandle = m_AvailableVideoModes.size() - 1; // TODO : config
+	Screen::m_FullScreen = !windowed;
+	Screen::m_VideoModeHandle = m_AvailableVideoModes.size() - 1; // TODO : config
 
-		glfwGetWindowSize(m_Window, &screen->m_ScreenWidth, &screen->m_ScreenHeight);
-		//std::string s = "Window Size[ width: " + util::to_str(screen->m_ScreenWidth) + ", height: " + util::to_str(screen->m_ScreenHeight) + "]";
-		//WRITE_LOG(s, "normal");
+	glfwGetWindowSize(m_Window, &Screen::m_ScreenWidth, &Screen::m_ScreenHeight);
+	//std::string s = "Window Size[ width: " + util::to_str(screen->m_ScreenWidth) + ", height: " + util::to_str(screen->m_ScreenHeight) + "]";
+	//WRITE_LOG(s, "normal");
 
-		glfwGetFramebufferSize(m_Window, &screen->m_FrameBuffWidth, &screen->m_FrameBuffHeight);
-		//s = "FrameBuf Size[ width: " + util::to_str(screen->m_FrameBuffWidth) + ", height: " + util::to_str(screen->m_FrameBuffHeight) + "]";
-		//WRITE_LOG(s, "normal");
-	}
+	glfwGetFramebufferSize(m_Window, &Screen::m_FrameBuffWidth, &Screen::m_FrameBuffHeight);
+	//s = "FrameBuf Size[ width: " + util::to_str(screen->m_FrameBuffWidth) + ", height: " + util::to_str(screen->m_FrameBuffHeight) + "]";
+	//WRITE_LOG(s, "normal");
+	
 
 	return true;
 }
@@ -140,27 +137,18 @@ void RenderWindow::window_close_callback(GLFWwindow* window)
 
 void RenderWindow::window_size_callback(GLFWwindow* window, int width, int height)
 {
-	Screen* screen = Screen::Instance();
-	if (screen)
-	{
-		screen->m_ScreenWidth = width;
-		screen->m_ScreenHeight = height;
+	Screen::m_ScreenWidth = width;
+	Screen::m_ScreenHeight = height;
 
-		Vec2 screen_params((float)width, (float)height);
-		EventManager::Instance()->SendEvent(EVENT_WINDOW_SIZE_CHANGE, &screen_params);
-		WRITE_LOG("window size callback: width:" + util::to_str(width) + " height:" + util::to_str(height), "normal");
-	}
+	Vec2 screen_params((float)width, (float)height);
+	EventManager::Instance()->SendEvent(EVENT_WINDOW_SIZE_CHANGE, &screen_params);
+	WRITE_LOG("window size callback: width:" + util::to_str(width) + " height:" + util::to_str(height), "normal");
 }
 
 void RenderWindow::framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-	Screen* screen = Screen::Instance();
-	if (screen)
-	{
-		screen->m_FrameBuffWidth = width;
-		screen->m_FrameBuffHeight = height;
-	}
-
+	Screen::m_FrameBuffWidth = width;
+	Screen::m_FrameBuffHeight = height;
 	glViewport(0, 0, width, height);
 }
 

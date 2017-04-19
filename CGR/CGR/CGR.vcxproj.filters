@@ -120,9 +120,6 @@
     <ClInclude Include="src\Lights.h">
       <Filter>Render</Filter>
     </ClInclude>
-    <ClInclude Include="src\Technique.h">
-      <Filter>Render</Filter>
-    </ClInclude>
     <ClInclude Include="src\Camera.h">
       <Filter>Render</Filter>
     </ClInclude>
@@ -267,9 +264,6 @@
     <ClCompile Include="src\Texture.cpp">
       <Filter>Render</Filter>
     </ClCompile>
-    <ClCompile Include="src\Technique.cpp">
-      <Filter>Render</Filter>
-    </ClCompile>
     <ClCompile Include="src\Camera.cpp">
       <Filter>Render</Filter>
     </ClCompile>
@@ -356,6 +350,9 @@
     </ClCompile>
     <ClCompile Include="src\Frustum.cpp">
       <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Screen.cpp">
+      <Filter>Application</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

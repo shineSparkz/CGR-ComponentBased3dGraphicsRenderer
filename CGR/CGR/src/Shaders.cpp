@@ -36,6 +36,7 @@ bool Shader::LoadShader(const char* srcPath)
 	{
 		return false;
 	}
+
 	// Need to cast to a c string for open GL
 	const char* src = shadersrc.c_str();
 
@@ -60,54 +61,7 @@ bool Shader::LoadShader(const char* srcPath)
 		return false;
 	}
 
-	return true;
-}
-
-bool Shader::LoadShader(std::vector<std::string> srcs)
-{
-	std::vector<std::string> fromFiles;
-	for (int i = 0; i < srcs.size(); ++i)
-	{
-		TextFile tf;
-		std::string shadersrc = tf.LoadFileIntoStr(srcs[i]);
-		if (shadersrc == "")
-		{
-			return false;
-		}
-
-		fromFiles.push_back(shadersrc);
-	}
-
-
-	// Need to cast to a c string for open GL
-	std::vector<const char*> glSrc;
-	for (int i = 0; i < fromFiles.size(); ++i)
-	{
-		glSrc.push_back(fromFiles[i].c_str());
-	}
-	//const char* src = shadersrc.c_str();
-
-	// Ask openGL to create a shader of passed in type
-	this->shader = glCreateShader(this->shader_type);
-
-	// Ask OpenGL to attempt shader compilation
-	GLint compile_status = 0;
-	glShaderSource(shader, (GLsizei)glSrc.size(), (const GLchar**)glSrc.data(), NULL);
-	glCompileShader(shader);
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &compile_status);
-
-	if (compile_status != GL_TRUE)
-	{
-		// Log what went wrong in shader src
-		const int string_length = 1024;
-		GLchar log[string_length] = "";
-		glGetShaderInfoLog(shader, string_length, NULL, log);
-		std::stringstream logger;
-		logger << log << std::endl;
-		WRITE_LOG(logger.str(), "error");
-		return false;
-	}
-
+	this->source_file = srcPath;
 	return true;
 }
 

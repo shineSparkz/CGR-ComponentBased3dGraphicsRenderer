@@ -39,7 +39,7 @@ Application::Application() :
 
 bool Application::Init(int width, int height, bool windowed, const char* title, int vsync, int aspX, int aspY, int major, int minor)
 {
-	// ** In theory... This funciton would be completly re-written for each different platform, it sets up back end
+	// ** In theory... This function would be completly re-written for each different platform, it sets up back end
 	//				   rendering, and hardware specific input etc.
 
 	// Check memory leaks
@@ -66,8 +66,6 @@ bool Application::Init(int width, int height, bool windowed, const char* title, 
 	{
 		m_RenderWindow = new RenderWindow();
 	}
-
-	new Screen();
 
 	if (!m_RenderWindow->Open(width,height,windowed,title,vsync,aspX,aspY,major,minor))
 	{
@@ -155,7 +153,6 @@ void Application::Close()
 
 	glfwTerminate();
 	
-	delete Screen::Instance();
 	delete EventManager::Instance();
 	delete DebugLogFile::Instance();
 }
@@ -225,7 +222,7 @@ void Application::renderInfo()
 {
 	int numItems = 2;		// <-- Hacky, it's from renderer
 	const float divider = 32.0f;
-	const float top = static_cast<float>(Screen::Instance()->FrameBufferHeight());
+	const float top = static_cast<float>(Screen::FrameBufferHeight());
 
 	if(!m_ShouldRenderSceneUI)
 		m_Renderer->RenderText(FONT_COURIER, "Press [Tab] to toggle scene UI layer", 8, 32);

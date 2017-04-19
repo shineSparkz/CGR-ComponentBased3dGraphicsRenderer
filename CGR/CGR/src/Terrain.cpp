@@ -4,7 +4,6 @@
 #include "Image.h"
 #include "LogFile.h"
 #include "Vertex.h"
-#include "Technique.h"
 #include "Camera.h"
 #include "Lights.h"
 #include "Renderer.h"
@@ -772,6 +771,10 @@ void TerrainConstructor::GenerateRandomPositions(const std::vector<Vertex>& vert
 
 	for (int i = 0; i < usedList.size(); ++i)
 	{
-		positionsOUT.push_back(vertsIN[usedList[i]].position);
+		positionsOUT.push_back(Vec3(
+			vertsIN[usedList[i]].position.x,
+			vertsIN[usedList[i]].position.y - 0.25f,
+			vertsIN[usedList[i]].position.z)
+		);
 	}
 }

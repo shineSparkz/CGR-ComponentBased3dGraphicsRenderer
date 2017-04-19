@@ -194,12 +194,12 @@
     <ClCompile Include="src\RenderWindow.cpp" />
     <ClCompile Include="src\ResourceManager.cpp" />
     <ClCompile Include="src\SceneGraph.cpp" />
+    <ClCompile Include="src\Screen.cpp" />
     <ClCompile Include="src\ShaderProgram.cpp" />
     <ClCompile Include="src\Shaders.cpp" />
     <ClCompile Include="src\ShadowFrameBuffer.cpp" />
     <ClCompile Include="src\SponzaScene.cpp" />
     <ClCompile Include="src\SpotLight.cpp" />
-    <ClCompile Include="src\Technique.cpp" />
     <ClCompile Include="src\Terrain.cpp" />
     <ClCompile Include="src\TextFile.cpp" />
     <ClCompile Include="src\Texture.cpp" />
@@ -259,7 +259,6 @@
     <ClInclude Include="src\Singleton.h" />
     <ClInclude Include="src\SponzaScene.h" />
     <ClInclude Include="src\SpotLight.h" />
-    <ClInclude Include="src\Technique.h" />
     <ClInclude Include="src\Terrain.h" />
     <ClInclude Include="src\TextFile.h" />
     <ClInclude Include="src\Texture.h" />

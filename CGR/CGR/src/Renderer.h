@@ -59,6 +59,9 @@ public:
 	void					RenderText(size_t fontId, const std::string& txt, float x, float y, FontAlign fa = FontAlign::Left, const Colour& col = Colour::White());
 	void					RenderBillboardList(BillboardList* billboard);
 
+	// Reload
+	bool					ReloadShaders();
+
 	// Get Resources
 	size_t					GetNumSubMeshesInMesh(size_t meshIndex) const;
 	size_t					GetNumTextures() const;
@@ -78,6 +81,7 @@ public:
 	std::string				GetShadingModeStr() const;
 
 	std::string				GetPolygonModeStr() const;
+	void					TogglePolygonMode();
 	void					SetPolygonMode(PolygonMode mode);
 	void					DisplayNormals(bool shouldDisplay);
 	bool					IsDisplayingNormals() const;

@@ -118,7 +118,7 @@ void BaseCamera::Update()
 	}
 	else if (this->camType == CamType::Orthographic)
 	{
-		projection = glm::ortho(0.0f, (float)Screen::Instance()->FrameBufferWidth(), 0.0f, (float)Screen::Instance()->FrameBufferHeight(),
+		projection = glm::ortho(0.0f, (float)Screen::FrameBufferWidth(), 0.0f, (float)Screen::FrameBufferHeight(),
 			perspectiveSettings.near, perspectiveSettings.far);
 		view = glm::lookAt(m_Transform->Position(), m_Transform->Position() + forward, up);
 	}
@@ -214,8 +214,8 @@ void FlyCamera::Update()
 	if (this->windowFocused)
 	{
 		const float& dt = Time::DeltaTime();
-		const float hscreenWidth = (float)Screen::Instance()->ScreenWidth() * 0.5f;
-		const float hscreenHeight = (float)Screen::Instance()->ScreenHeight() * 0.5f;
+		const float hscreenWidth = (float)Screen::ScreenWidth() * 0.5f;
+		const float hscreenHeight = (float)Screen::ScreenHeight() * 0.5f;
 		velocity = Vec3(0.0f);
 
 		int num_dirs_pressed = ((rk ^ lk) ? 1 : 0) +
@@ -343,8 +343,8 @@ void ChaseCamera2D::Start()
 void ChaseCamera2D::Update()
 {
 	const float& dt = Time::DeltaTime();
-	const float hscreenWidth = (float)Screen::Instance()->ScreenWidth() * 0.5f;
-	const float hscreenHeight = (float)Screen::Instance()->ScreenHeight() * 0.5f;
+	const float hscreenWidth = (float)Screen::ScreenWidth() * 0.5f;
+	const float hscreenHeight = (float)Screen::ScreenHeight() * 0.5f;
 	velocity = Vec3(0.0f);
 
 	int num_dirs_pressed = ((rk ^ lk) ? 1 : 0) +
