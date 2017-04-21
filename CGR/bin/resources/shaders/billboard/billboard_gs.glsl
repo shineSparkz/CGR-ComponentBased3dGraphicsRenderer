@@ -1,12 +1,11 @@
 #version 450
 
-
-
 layout (points) in;
 layout (triangle_strip) out;
 layout (max_vertices = 12) out;
 
 uniform float u_time;
+uniform float u_scale = 3.0;
 uniform mat4 u_view_xform;
 uniform mat4 u_proj_xform;
 uniform mat4 u_model_xform;
@@ -14,9 +13,85 @@ uniform mat4 u_model_xform;
 out vec2 geom_texcoord;
 out vec3 geom_normal;
 out vec3 geom_position;
-//out vec4 geom_eye_space_pos;
 
-vec3 vLocalSeed;
+vec3 g_local_seed;
+
+// Function Definitions
+mat4 	rotationMatrix(vec3 axis, float angle);
+float 	randZeroOne();
+int 	randomInt(int min, int max);
+
+void main()
+{
+	mat4 wvp = u_proj_xform * u_view_xform * u_model_xform;
+	vec3 billboard_pos = gl_in[0].gl_Position.xyz;
+
+	float pIover180 = 3.1415/180.0;
+	vec3 base_direciton[] =
+	{
+		vec3(1.0, 0.0, 0.0),
+		vec3(float(cos(45.0*pIover180)), 0.0f, float(sin(45.0*pIover180))),
+		vec3(float(cos(-45.0*pIover180)), 0.0f, float(sin(-45.0*pIover180)))
+	};
+	
+	const float wind_strength = 1.3;
+	
+	vec3 wind_direction = vec3(1.0, 0.0, 1.0);
+	wind_direction = normalize(wind_direction);
+	
+	for(int i = 0; i < 3; i++)
+	{
+		// Grass patch top left vertex
+		vec3 base_dir_rotated = (rotationMatrix(vec3(0, 1, 0), sin(u_time * 0.7f) * 0.1f) * vec4(base_direciton[i], 1.0)).xyz;
+
+		g_local_seed = billboard_pos * float(i);
+		int grass_patch = randomInt(0, 3);
+		
+		float grass_patch_height = 3.5 + randZeroOne() * 2.0;
+	
+		float tex_start_x = float(grass_patch) * 0.25f;
+		float tex_end_x = tex_start_x + 0.25f;
+		
+		float wind_power = 0.5f + sin(billboard_pos.x / 30 + billboard_pos.z / 30 + u_time * (1.2f + wind_strength / 20.0f));
+		if(wind_power < 0.0f)
+			wind_power = wind_power  * 0.2f;
+		else 
+			wind_power = wind_power * 0.3f;
+		
+		wind_power *= wind_strength;
+		
+		vec3 vTL = billboard_pos - base_dir_rotated * u_scale * 0.5f + wind_direction * wind_power;
+		vTL.y += grass_patch_height;   
+		gl_Position = wvp * vec4(vTL, 1.0);
+		geom_texcoord = vec2(tex_start_x, 1.0);
+		geom_position = vTL;
+		EmitVertex();
+		
+		// Grass patch bottom left vertex
+		vec3 vBL = billboard_pos - base_direciton[i] * u_scale * 0.5f;  
+		gl_Position = wvp * vec4(vBL, 1.0);
+		geom_texcoord = vec2(tex_start_x, 0.0);
+		geom_position = vBL;
+		EmitVertex();
+		                               
+		// Grass patch top right vertex
+		vec3 vTR = billboard_pos + base_dir_rotated * u_scale * 0.5f + wind_direction * wind_power;
+		vTR.y += grass_patch_height;  
+		gl_Position = wvp * vec4(vTR, 1.0);
+		geom_texcoord = vec2(tex_end_x, 1.0);
+		geom_position = vTR;
+		EmitVertex();
+		
+		// Grass patch bottom right vertex
+		vec3 vBR = billboard_pos + base_direciton[i] * u_scale * 0.5f;  
+		gl_Position = wvp * vec4(vBR, 1.0);
+		geom_texcoord = vec2(tex_end_x, 0.0);
+		geom_position = vBR;
+		EmitVertex();
+		
+		EndPrimitive();
+	}	
+}
 
 mat4 rotationMatrix(vec3 axis, float angle)
 {
@@ -34,12 +109,12 @@ mat4 rotationMatrix(vec3 axis, float angle)
 float randZeroOne()
 {
 	// This function returns random number from zero to one
-    uint n = floatBitsToUint(vLocalSeed.y * 214013.0 + vLocalSeed.x * 2531011.0 + vLocalSeed.z * 141251.0);
+    uint n = floatBitsToUint(g_local_seed.y * 214013.0 + g_local_seed.x * 2531011.0 + g_local_seed.z * 141251.0);
     n = n * (n * n * 15731u + 789221u);
     n = (n >> 9u) | 0x3F800000u;
  
     float fRes =  2.0 - uintBitsToFloat(n);
-    vLocalSeed = vec3(vLocalSeed.x + 147158.0 * fRes, vLocalSeed.y*fRes  + 415161.0 * fRes, vLocalSeed.z + 324154.0*fRes);
+    g_local_seed = vec3(g_local_seed.x + 147158.0 * fRes, g_local_seed.y*fRes  + 415161.0 * fRes, g_local_seed.z + 324154.0*fRes);
     return fRes;
 }
 
@@ -47,123 +122,4 @@ int randomInt(int min, int max)
 {
 	float fRandomFloat = randZeroOne();
 	return int(float(min)+fRandomFloat*float(max-min));
-}
-
-void main()
-{
-	mat4 mMV = u_view_xform * u_model_xform;
-	mat4 mMVP = u_proj_xform * u_view_xform * u_model_xform;
-	
-	vec3 vGrassFieldPos = gl_in[0].gl_Position.xyz;
-
-	float PIover180 = 3.1415/180.0;
-	vec3 vBaseDir[] =
-	{
-		vec3(1.0, 0.0, 0.0),
-		vec3(float(cos(45.0*PIover180)), 0.0f, float(sin(45.0*PIover180))),
-		vec3(float(cos(-45.0*PIover180)), 0.0f, float(sin(-45.0*PIover180)))
-	};
-	
-	const float fGrassPatchSize = 3.0;
-	const float fWindStrength = 1.3;
-	
-	vec3 vWindDirection = vec3(1.0, 0.0, 1.0);
-	vWindDirection = normalize(vWindDirection);
-	
-	for(int i = 0; i < 3; i++)
-	{
-		// Grass patch top left vertex
-		
-		vec3 vBaseDirRotated = (rotationMatrix(vec3(0, 1, 0), sin(u_time*0.7f)*0.1f)*vec4(vBaseDir[i], 1.0)).xyz;
-
-		vLocalSeed = vGrassFieldPos*float(i);
-		int iGrassPatch = randomInt(0, 3);
-		
-		float fGrassPatchHeight = 3.5+randZeroOne()*2.0;
-	
-		float fTCStartX = float(iGrassPatch)*0.25f;
-		float fTCEndX = fTCStartX+0.25f;
-		
-		float fWindPower = 0.5f+sin(vGrassFieldPos.x/30+vGrassFieldPos.z/30+u_time*(1.2f+fWindStrength/20.0f));
-		if(fWindPower < 0.0f)
-			fWindPower = fWindPower*0.2f;
-		else fWindPower = fWindPower*0.3f;
-		
-		fWindPower *= fWindStrength;
-		
-		vec3 vTL = vGrassFieldPos - vBaseDirRotated*fGrassPatchSize*0.5f + vWindDirection*fWindPower;
-		vTL.y += fGrassPatchHeight;   
-		gl_Position = mMVP*vec4(vTL, 1.0);
-		geom_texcoord = vec2(fTCStartX, 1.0);
-		geom_position = vTL;
-		//geom_eye_space_pos = mMV*vec4(vTL, 1.0);
-		EmitVertex();
-		
-		// Grass patch bottom left vertex
-		vec3 vBL = vGrassFieldPos - vBaseDir[i]*fGrassPatchSize*0.5f;  
-		gl_Position = mMVP*vec4(vBL, 1.0);
-		geom_texcoord = vec2(fTCStartX, 0.0);
-		geom_position = vBL;
-		//geom_eye_space_pos = mMV*vec4(vBL, 1.0);
-		EmitVertex();
-		                               
-		// Grass patch top right vertex
-		vec3 vTR = vGrassFieldPos + vBaseDirRotated*fGrassPatchSize*0.5f + vWindDirection*fWindPower;
-		vTR.y += fGrassPatchHeight;  
-		gl_Position = mMVP*vec4(vTR, 1.0);
-		geom_texcoord = vec2(fTCEndX, 1.0);
-		geom_position = vTR;
-		//geom_eye_space_pos = mMV*vec4(vTR, 1.0);
-		EmitVertex();
-		
-		// Grass patch bottom right vertex
-		vec3 vBR = vGrassFieldPos + vBaseDir[i]*fGrassPatchSize*0.5f;  
-		gl_Position = mMVP*vec4(vBR, 1.0);
-		geom_texcoord = vec2(fTCEndX, 0.0);
-		geom_position = vBR;
-		//geom_eye_space_pos = mMV*vec4(vBR, 1.0);
-		EmitVertex();
-		
-		EndPrimitive();
-	}	
-	
-	/*
-	vec3 pos = gl_in[0].gl_Position.xyz;
-	vec3 toCam = normalize(u_camera_position - pos);
-	vec3 up = vec3(0.0, 1.0, 0.0);
-	vec3 right = cross(up, toCam);
-	
-	//---------------------------------------
-	
-	pos -= (right * 0.5) * u_Scale;
-	gl_Position = u_view_proj_xform * vec4(pos, 1.0);
-	geom_texcoord = vec2(0.0, 0.0);
-	geom_normal = toCam;
-	geom_position = gl_Position.xyz;
-	EmitVertex();
-	
-	pos.y += u_Scale;
-	gl_Position = u_view_proj_xform * vec4(pos, 1.0);
-	geom_texcoord = vec2(0.0, 1.0);
-	geom_normal = toCam;
-	geom_position = gl_Position.xyz;
-	EmitVertex();
-	
-	pos.y -= u_Scale;
-	pos += right * u_Scale;
-	gl_Position = u_view_proj_xform * vec4(pos, 1.0);
-	geom_texcoord = vec2(1.0, 0.0);
-	geom_normal = toCam;
-	geom_position = gl_Position.xyz;
-	EmitVertex();
-	
-	pos.y += u_Scale;
-	gl_Position = u_view_proj_xform * vec4(pos, 1.0);
-	geom_texcoord = vec2(1.0, 1.0);
-	geom_normal = toCam;
-	geom_position = gl_Position.xyz;
-	EmitVertex();
-	
-	EndPrimitive();
-	*/
 }

@@ -7,7 +7,7 @@
 #include <vector>
 
 BillboardList::BillboardList() :
-	m_Material(nullptr),
+	m_ShaderIndex(0),
 	m_TextureIndex(INVALID_TEXTURE_LOCATION),
 	m_NumInstances(0),
 	m_VBO(0),
@@ -22,9 +22,10 @@ BillboardList::~BillboardList()
 	OpenGLLayer::clean_GL_buffer(&m_VBO, 1);
 }
 
-bool BillboardList::Init(ShaderProgram* mat, size_t textureIndex, float scale, size_t numX, size_t numY, float displace, float offset, float yPos)
+bool BillboardList::Init(size_t shaderIndex, size_t textureIndex, float scale, size_t numX, size_t numY, float displace, float offset, float yPos)
 {
-	m_Material = mat;
+	m_ShaderIndex = shaderIndex;
+
 	m_TextureIndex = textureIndex;
 	m_BillboardScale = scale;
 
@@ -52,11 +53,12 @@ bool BillboardList::Init(ShaderProgram* mat, size_t textureIndex, float scale, s
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
-	return this->SetShaderProgram(mat);
+	return true;
 }
 
-bool BillboardList::InitWithPositions(ShaderProgram* mat, size_t texture, float setScale, const std::vector<Vec3>& positions)
+bool BillboardList::InitWithPositions(size_t shaderIndex, size_t texture, float setScale, const std::vector<Vec3>& positions)
 {
+	m_ShaderIndex = shaderIndex;
 	m_TextureIndex = texture;
 	m_BillboardScale = setScale;
 
@@ -73,19 +75,15 @@ bool BillboardList::InitWithPositions(ShaderProgram* mat, size_t texture, float 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
-	return this->SetShaderProgram(mat);
+	return true;
 }
 
-bool BillboardList::SetShaderProgram(ShaderProgram* shader)
+void BillboardList::SetScale(float scale)
 {
-	m_Material = shader;
-	if (m_Material)
-	{
-		m_Material->Use();
-		int sampler = 0;
-		m_Material->SetUniformValue<int>("u_TextureMap", &sampler);
-		return true;
-	}
+	m_BillboardScale = Maths::Clamp(scale, 0.5f, 100.0f);
+}
 
-	return false;
+float BillboardList::GetScale() const
+{
+	return m_BillboardScale;
 }

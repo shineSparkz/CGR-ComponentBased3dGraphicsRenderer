@@ -143,7 +143,7 @@ private:
 
 	bool									m_ShouldDisplayNormals{ false };
 	bool									m_ShouldQueryFrames{ false };
-	bool									m_ShouldFrustumCull{ !true };
+	bool									m_ShouldFrustumCull{ true };
 	bool									m_ShouldDisplayInfo{ true };
 	int										m_CullCount = 0;
 

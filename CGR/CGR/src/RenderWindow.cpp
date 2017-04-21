@@ -81,12 +81,6 @@ bool RenderWindow::Open(int width, int height, bool windowed, const char* title,
 	glfwSetWindowFocusCallback(m_Window, RenderWindow::window_focus_callback);
 	glfwSetWindowRefreshCallback(m_Window, RenderWindow::window_refresh_callback);
 
-	// TODO : Create Icon
-	// Icon
-	//GLFWimage images[2];
-	//images[0] = load_icon("my_icon.png");
-	//images[1] = load_icon("my_icon_small.png");
-	//glfwSetWindowIcon(window, 2, images);
 
 	glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 	glfwMakeContextCurrent(m_Window);
@@ -96,14 +90,13 @@ bool RenderWindow::Open(int width, int height, bool windowed, const char* title,
 	Screen::m_VideoModeHandle = m_AvailableVideoModes.size() - 1; // TODO : config
 
 	glfwGetWindowSize(m_Window, &Screen::m_ScreenWidth, &Screen::m_ScreenHeight);
-	//std::string s = "Window Size[ width: " + util::to_str(screen->m_ScreenWidth) + ", height: " + util::to_str(screen->m_ScreenHeight) + "]";
-	//WRITE_LOG(s, "normal");
+	std::string s = "Window Size[ width: " + util::to_str(Screen::m_ScreenWidth) + ", height: " + util::to_str(Screen::m_ScreenHeight) + "]";
+	WRITE_LOG(s, "normal");
 
 	glfwGetFramebufferSize(m_Window, &Screen::m_FrameBuffWidth, &Screen::m_FrameBuffHeight);
-	//s = "FrameBuf Size[ width: " + util::to_str(screen->m_FrameBuffWidth) + ", height: " + util::to_str(screen->m_FrameBuffHeight) + "]";
-	//WRITE_LOG(s, "normal");
+	s = "FrameBuf Size[ width: " + util::to_str(Screen::m_FrameBuffWidth) + ", height: " + util::to_str(Screen::m_FrameBuffHeight) + "]";
+	WRITE_LOG(s, "normal");
 	
-
 	return true;
 }
 
@@ -130,7 +123,6 @@ void RenderWindow::Close()
 //-----  Window Callbacks----------------------------
 void RenderWindow::window_close_callback(GLFWwindow* window)
 {
-	// TODO : Call close method
 	WRITE_LOG("window close callback: closing", "normal");
 	// the window has already been closed here, so everything should be cleaned up
 }

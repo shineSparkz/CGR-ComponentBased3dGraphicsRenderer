@@ -3,54 +3,18 @@
 
 #include "types.h"
 #include "gl_headers.h"
-#include "EventHandler.h"
 #include "Component.h"
+#include "CamData.h"
 
 class Transform;
-
-enum CamType
-{
-	Perspective,
-	Orthographic,
-	Shadow
-};
-
-struct PerspectiveSettings
-{
-	PerspectiveSettings() :
-		fov(0.0f),
-		aspect(0.0f),
-		near(0.0f),
-		far(0.0f)
-	{
-	}
-
-	PerspectiveSettings(float fov_, float aspect_, float near_, float far_) :
-		fov(fov_),
-		aspect(aspect_),
-		near(near_),
-		far(far_)
-	{
-	}
-
-	float fov;
-	float aspect;
-	float near;
-	float far;
-};
-
-struct SkyboxSettings
-{
-	float scale = 0.0f;
-	unsigned textureIndex;
-};
 
 class BaseCamera : public Component
 {
 public:
 	BaseCamera(GameObject* go);
-	static int GetId();
 	virtual ~BaseCamera();
+	
+	static int GetId();
 
 	void Start() override;
 	void Update() override;
@@ -77,67 +41,26 @@ public:
 	const Mat4& View() const;
 	const Mat4 ProjXView() const;
 
-	const CamType GetProjectionType() const
-	{
-		return camType;
-	}
+	const CamType GetProjectionType() const;
 
 protected:
-	static int m_Id;
-	Transform* m_Transform;
-	Vec3 up;
-	Vec3 forward;
-	Vec3 right;
+	static int				m_Id;
+	Transform*				m_Transform;
+	Vec3					m_Up;
+	Vec3					m_Forward;
+	Vec3					m_Right;
 
 private:
-	CamType camType;
-	Mat4 projection;
-	Mat4 view;
-	SkyboxSettings* skyboxSettings;
-	PerspectiveSettings perspectiveSettings;
+	CamType					m_CamType;
+	Mat4					m_Projection;
+	Mat4					m_View;
+	SkyboxSettings*			m_SkyboxSettings;
+	PerspectiveSettings		m_PerspectiveSettings;
 };
 
 INLINE int BaseCamera::GetId()
 {
 	return m_Id;
 }
-
-class FlyCamera : public EventHandler, public BaseCamera
-{
-public:
-	FlyCamera(GameObject* go);
-	virtual ~FlyCamera();
-
-	void Start() override;
-	void Update() override;
-
-private:
-	void HandleEvent(Event* ev) override;
-
-private:
-	Vec3 velocity;
-	bool fk, bk, lk, rk;
-	float speed = 45.0f;
-	float mouseSpeed = 0.4f;
-	int windowFocused = 1;
-};
-
-class ChaseCamera2D : public EventHandler, public BaseCamera
-{
-public:
-	ChaseCamera2D(GameObject* go);
-	virtual ~ChaseCamera2D();
-
-	void Start() override;
-	void Update() override;
-
-private:
-	void HandleEvent(Event* ev) override;
-
-	Vec3 velocity;
-	bool fk, bk, lk, rk;
-	float speed = 565.0f;
-	float mouseSpeed = 0.04f;
-};
 
 #endif

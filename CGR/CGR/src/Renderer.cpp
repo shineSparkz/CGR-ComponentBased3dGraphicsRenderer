@@ -17,7 +17,6 @@
 #include "Lights.h"
 #include "Frustum.h"
 #include "AnimMesh.h"
-#include "Animator.h"
 
 // Utils
 #include "LogFile.h"
@@ -29,13 +28,13 @@
 #include "Transform.h"
 #include "Camera.h"
 #include "MeshRenderer.h"
+#include "Animator.h"
 
 #include "Input.h"
 #include "ResId.h"
 
 // ---- Globals ----
 const Mat4 IDENTITY(1.0f);
-const bool DO_SHADOWS = true;
 
 Renderer::Renderer() :
 	m_ResManager(nullptr),
@@ -113,7 +112,7 @@ bool Renderer::Init()
 		m_LightCamera = m_LightCamObj->AddComponent<BaseCamera>();
 
 		m_LightCamera->Init(
-			CamType::Shadow, 
+			CamType::Light, 
 			Vec3(1, 20, 1),		// Pos
 			Vec3(0, 1, 0),		// Up
 			Vec3(1, 0, 0),		// Right
@@ -324,15 +323,17 @@ void Renderer::RenderBillboardList(BillboardList* billboard)
 {
 	if (billboard && m_CameraPtr)
 	{
-		if (billboard->m_Material)
+		ShaderProgram* shader = m_ResManager->GetShader(billboard->m_ShaderIndex);
+		if (shader)
 		{
 			float t = Time::ElapsedTime();
 
-			billboard->m_Material->Use();
-			billboard->m_Material->SetUniformValue<Mat4>("u_view_xform", &m_CameraPtr->View());
-			billboard->m_Material->SetUniformValue<Mat4>("u_proj_xform", &m_CameraPtr->Projection());
-			billboard->m_Material->SetUniformValue<Mat4>("u_model_xform", &Mat4(1.0f));
-			billboard->m_Material->SetUniformValue<float>("u_time", &(t));
+			shader->Use();
+			shader->SetUniformValue<Mat4>("u_view_xform", &m_CameraPtr->View());
+			shader->SetUniformValue<Mat4>("u_proj_xform", &m_CameraPtr->Projection());
+			shader->SetUniformValue<Mat4>("u_model_xform", &Mat4(1.0f));
+			shader->SetUniformValue<float>("u_time", &(t));
+			shader->SetUniformValue<float>("u_scale", &billboard->m_BillboardScale);
 		}
 		
 		glEnable(GL_MULTISAMPLE);
@@ -364,7 +365,7 @@ bool Renderer::ReloadShaders()
 		}
 	}
 
-	return true;
+	return this->setStaticDefaultShaderValues();
 }
 
 
@@ -1121,6 +1122,10 @@ bool Renderer::setStaticDefaultShaderValues()
 		lsp->SetUniformValue<int>("u_shadow_sampler", &shadow_sampler);
 		lsp->SetUniformValue<int>("u_normal_sampler", &normal_sampler);
 	}
+	else
+	{
+		return false;
+	}
 
 	ShaderProgram* shadow = m_ResManager->GetShader(SHADER_SHADOW);
 	if (shadow)
@@ -1128,19 +1133,34 @@ bool Renderer::setStaticDefaultShaderValues()
 		shadow->Use();
 		shadow->SetUniformValue<int>("u_shadow_sampler", &shadow_sampler);
 	}
+	else
+	{
+		return false;
+	}
 
 	ShaderProgram* anim = m_ResManager->GetShader(SHADER_ANIM);
 	if (anim)
 	{
 		anim->Use();
 
-		int diff = 0;
-		int shad = 1;
-		int bump = 2;
+		anim->SetUniformValue<int>("u_sampler", &sampler);
+		anim->SetUniformValue<int>("u_shadow_sampler", &shadow_sampler);
+		anim->SetUniformValue<int>("u_normal_sampler", &normal_sampler);
+	}
+	else
+	{
+		return false;
+	}
 
-		anim->SetUniformValue<int>("u_sampler", &diff);
-		anim->SetUniformValue<int>("u_shadow_sampler", &shad);
-		anim->SetUniformValue<int>("u_normal_sampler", &bump);
+	ShaderProgram* bill = m_ResManager->GetShader(SHADER_BILLBOARD_FWD);
+	if (bill)
+	{
+		bill->Use();
+		bill->SetUniformValue<int>("u_TextureMap", &sampler);
+	}
+	else
+	{
+		return false;
 	}
 
 	return true;

@@ -14,16 +14,16 @@ public:
 	RenderWindow();
 
 	bool Open(int width, int height, bool windowed, const char* title, int vsync, int aspX, int aspY, int major = 3, int minor = 3);
-	int IsOpen() const;
+	int  IsOpen() const;
 	void SwapBuffers();
 	void SetVsync(int value);
 	void Close();
 
 private:
-	friend class Input;
-	std::vector<std::tuple<const GLFWvidmode*, std::string>> m_AvailableVideoModes;
-	GLFWwindow* m_Window;
-	GLFWmonitor* m_Monitor;
+	friend class												Input;
+	std::vector<std::tuple<const GLFWvidmode*, std::string>>	m_AvailableVideoModes;
+	GLFWwindow*													m_Window;
+	GLFWmonitor*												m_Monitor;
 
 private:
 	static void window_close_callback(GLFWwindow* window);

@@ -24,35 +24,36 @@ public:
 	byte* GetPixel(int x, int y) const;
 
 private:
-	byte* data = nullptr;
-	dword width = 0, height = 0;
-	int32 num_bytes;
+	byte* m_Data;
+	dword m_Width;
+	dword m_Height;
+	int32 m_NumBytes;
 };
 
 INLINE dword Image::Width() const
 {
-	return width;
+	return m_Width;
 }
 
 INLINE dword Image::Height() const
 {
-	return height;
+	return m_Height;
 }
 
 INLINE byte* Image::Data() const
 {
-	return data;
+	return m_Data;
 }
 
 INLINE int Image::NumBytes() const
 {
-	return num_bytes;
+	return m_NumBytes;
 }
 
 INLINE byte* Image::GetPixel(int x, int y) const
 {
-	int offset = (x + (y * ((int)this->width))) * this->num_bytes;
-	return data + offset;
+	int offset = (x + (y * ((int)this->m_Width))) * this->m_NumBytes;
+	return m_Data + offset;
 }
 
 #endif

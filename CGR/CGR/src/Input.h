@@ -47,6 +47,7 @@ private:
 
 private:
 	friend class Mouse;
+
 	//------------------------------ Call Backs ------------------------------------
 	static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 	static void mouse_position_callback(GLFWwindow* window, double xpos, double ypos);

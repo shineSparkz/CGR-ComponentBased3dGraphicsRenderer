@@ -62,7 +62,7 @@ std::string sMD2AnimationNames[MAX_ANIMATIONS] =
 
 #pragma warning( once : 4305 )
 
-float3 anorms[NUM_VERT_NORMALS] =
+double3 anorms[NUM_VERT_NORMALS] =
 {
 #include "anorms.h"
 };
@@ -190,11 +190,11 @@ bool AnimMesh::Load(const char* sFilename, ResourceManager* resMan, unsigned mat
 
 			for (int k = 0; k < header.num_frames; ++k)
 			{
-				auto n = anorms[normals[k][vi]];
+				double* n = anorms[normals[k][vi]];
 
 				m_AnimData[k].buffer.push_back(AnimVert{
 					vertices[k][vi],
-					Vec3(n[0],n[1],n[2]) });
+					Vec3((float)n[0],(float)n[1],(float)n[2]) });
 			}
 		}
 	}
@@ -277,12 +277,12 @@ bool AnimMesh::Load(const char* sFilename, ResourceManager* resMan, unsigned mat
 
 	// Find texture name (modelname.jpg, modelname.png...)
 	std::string sPath = sFilename;
-	int index = sPath.find_last_of("\\/");
+	int index = (int)sPath.find_last_of("\\/");
 	std::string sDirectory = index != -1 ? sPath.substr(0, index + 1) : "";
 	std::string sPureFilename = index != -1 ? sPath.substr(index + 1) : sFilename;
 
 	std::string sTextureExtensions[] = { "jpg", "jpeg", "png", "bmp", "tga" };
-	index = sPureFilename.find_last_of(".");
+	index = (int)sPureFilename.find_last_of(".");
 	if (index != -1)
 	{
 		std::string sStripped = sPureFilename.substr(0, index + 1);

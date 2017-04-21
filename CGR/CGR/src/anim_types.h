@@ -4,7 +4,7 @@
 #include "types.h"
 #include <vector>
 
-typedef float float3[3];
+typedef double double3[3];
 
 // Num pre-calculated normals
 #define NUM_VERT_NORMALS		162

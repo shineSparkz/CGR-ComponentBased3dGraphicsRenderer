@@ -34,8 +34,8 @@ public:
 	int HashHelper(const std::string& s);
 
 private:
-	std::map<int, IScene*> m_Scenes;
-	int m_ActiveScene;
+	std::map<int, IScene*>	m_Scenes;
+	int						m_ActiveScene;
 };
 
 template<typename T>

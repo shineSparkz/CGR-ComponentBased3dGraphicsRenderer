@@ -6,6 +6,7 @@
 #include "Renderer.h"
 #include "Mesh.h"
 #include "Camera.h"
+#include "FlyCamera.h"
 #include "GameObject.h"
 #include "Screen.h"
 #include "ResId.h"
@@ -28,7 +29,8 @@ OutDoorScene::OutDoorScene(const std::string& name) :
 	IScene(name),
 	m_GameObjects(),
 	m_GoblinTransform(nullptr),
-	m_TreeBillboardList(nullptr)
+	m_TreeBillboardList(nullptr),
+	m_TerrainConstructor(nullptr)
 {
 }
 
@@ -53,6 +55,7 @@ int OutDoorScene::OnSceneLoad(ResourceManager* resManager)
 		0.1f,																								// Near
 		500.0f																								// Far
 	);
+
 
 	m_Camera->AddSkybox(30.0f, TEX_SKYBOX_DEFAULT);
 
@@ -149,9 +152,10 @@ int OutDoorScene::OnSceneLoad(ResourceManager* resManager)
 			std::vector<Vertex> verts;
 			std::vector<uint32> indices;
 
-			TerrainConstructor tcs;
+			if (!m_TerrainConstructor)
+				m_TerrainConstructor = new TerrainConstructor();
 
-			if (!tcs.CreateTerrain(verts,
+			if (!m_TerrainConstructor->CreateTerrain(verts,
 				indices,
 				resManager->GetShader(SHADER_TERRAIN_DEF),
 				200,			// Sz X
@@ -195,22 +199,13 @@ int OutDoorScene::OnSceneLoad(ResourceManager* resManager)
 				m_TreeBillboardList = new BillboardList();
 
 				std::vector<Vec3> positions;
-				tcs.GenerateRandomPositions(verts, positions, 500);
+				m_TerrainConstructor->GenerateRandomPositions(verts, positions, 500);
 
 				// Need material and textures for bill board creation, which again I am not too happy with
-				if (!m_TreeBillboardList->InitWithPositions(resManager->GetShader(SHADER_BILLBOARD_FWD), TEX_GRASS_BILLBOARD, 0.5f, positions))
+				if (!m_TreeBillboardList->InitWithPositions(SHADER_BILLBOARD_FWD, TEX_GRASS_BILLBOARD, 4.5f, positions))
 				{
 					return GE_FALSE;
 				}
-
-				//m_TreeBillboardList->Init(ResourceManager::Instance()->GetShader(SHADER_BILLBOARD_FWD), TEX_GRASS_BILLBOARD,
-				//0.5f,	// scale
-				//10,		// numX
-				//10,		// numY
-				//2.0f,	// spacing
-				//14.0f,	// offset pos
-				//-1.4f	// ypos
-				//);
 			}
 		}
 
@@ -249,6 +244,7 @@ void OutDoorScene::OnSceneExit()
 	m_GameObjects.clear();
 	
 	SAFE_DELETE(m_TreeBillboardList);
+	SAFE_DELETE(m_TerrainConstructor);
 }
 
 void OutDoorScene::Update(float dt)
@@ -292,9 +288,28 @@ void OutDoorScene::Update(float dt)
 	}
 	if (Input::Keys[GLFW_KEY_F6] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
 	{
+		// Reload all of the shaders, the renderer will also set uniforms on default shaders
 		m_Renderer->ReloadShaders();
+
+		// Any custom shader uniform should be set here
+		m_TerrainConstructor->OnReloadShaders();
+
 		m_TimeNow = Time::ElapsedTime();
 	}
+
+	// Reduce billboard size
+	if (Input::Keys[GLFW_KEY_T] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		m_TreeBillboardList->SetScale(m_TreeBillboardList->GetScale() + 1.0f);
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_G] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		m_TreeBillboardList->SetScale(m_TreeBillboardList->GetScale() - 1.0f);
+		m_TimeNow = Time::ElapsedTime();
+	}
+
+	
 	
 	// Update Game objects
 	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
@@ -312,6 +327,8 @@ void OutDoorScene::Render()
 void OutDoorScene::RenderUI()
 {
 	//m_Renderer->RenderText(FONT_COURIER, "Angle: " + util::to_str(X), 8, 96);
-	m_Renderer->RenderText(FONT_COURIER, "Toggle wire frame: [P]", 8, 64);
+	m_Renderer->RenderText(FONT_COURIER, "Toggle wire frame: [P]",   8, 64);
+	m_Renderer->RenderText(FONT_COURIER, "Change billboards: [T/G]", 8, 96);
+
 	//m_Renderer->RenderText(FONT_COURIER, "Point Light Pos: " + util::vec3_to_str(m_DirLightHandle->GetDir()), 8, 64);
 }

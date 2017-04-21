@@ -20,9 +20,9 @@ public:
 	~UniformBlock();
 	void Close();
 
+	std::vector<const char*> GetUniformNames();
 	bool IsBound() const;
 	bool ShouldUpdateGPU() const;
-	std::vector<const char*> GetUniformNames();
 	bool AddUniform(const std::string& uniformname);
 	void SetValue(const std::string& uniformName, void* value);
 	void Bind();

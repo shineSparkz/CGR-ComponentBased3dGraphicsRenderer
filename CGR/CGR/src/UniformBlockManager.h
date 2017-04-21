@@ -19,8 +19,8 @@ private:
 	void Close();
 
 private:
-	friend class Renderer;
-	std::map<std::string, UniformBlock*> m_Blocks;
+	friend class							Renderer;
+	std::map<std::string, UniformBlock*>	m_Blocks;
 };
 
 #endif

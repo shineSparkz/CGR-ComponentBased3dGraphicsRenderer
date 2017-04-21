@@ -124,6 +124,11 @@ bool TerrainConstructor::CreateTerrain(
 	float tile_v,
 	const std::string& heightmap)
 {
+	m_Height = size_y;
+	m_TexU = tile_u;
+	m_TexV = tile_v;
+	m_Shader = shader;
+
 	if (!shader)
 	{
 		WRITE_LOG("Material null for surface mesh", "error");
@@ -131,31 +136,7 @@ bool TerrainConstructor::CreateTerrain(
 	}
 	else
 	{
-		shader->Use();
-
-		// Set Material uniforms
-		int i = 0;
-		shader->SetUniformValue<int>("u_LowHeightMap", &i);
-
-		i = 1;
-		shader->SetUniformValue<int>("u_MediumHeightMap", &i);
-
-		i = 2;
-		shader->SetUniformValue<int>("u_HighHeightMap", &i);
-
-		i = 3;
-		shader->SetUniformValue<int>("u_PathMap", &i);
-
-		i = 4;
-		shader->SetUniformValue<int>("u_PathSampler", &i);
-
-		i = 6;
-		shader->SetUniformValue<int>("u_shadow_sampler", &i);
-
-		// This means can only have one mesh
-		shader->SetUniformValue<float>("u_MaxHeight", &size_y);
-		shader->SetUniformValue<float>("u_MaxTexU", &tile_u);
-		shader->SetUniformValue<float>("u_MaxTexV", &tile_v);
+		OnReloadShaders();
 	}
 
 	// Gen Vertices
@@ -325,6 +306,10 @@ bool TerrainConstructor::CreateBez(
 	bool withBrowian
 )
 {
+	m_Height = heightmapSizeY;
+	m_TexU = tileU;
+	m_TexV = tileV;
+
 	if (!shader)
 	{
 		WRITE_LOG("Material null for surface mesh", "error");
@@ -332,31 +317,7 @@ bool TerrainConstructor::CreateBez(
 	}
 	else
 	{
-		shader->Use();
-
-		// Set Material uniforms
-		int i = 0;
-		shader->SetUniformValue<int>("u_LowHeightMap", &i);
-
-		i = 1;
-		shader->SetUniformValue<int>("u_MediumHeightMap", &i);
-
-		i = 2;
-		shader->SetUniformValue<int>("u_HighHeightMap", &i);
-
-		i = 3;
-		shader->SetUniformValue<int>("u_PathMap", &i);
-
-		i = 4;
-		shader->SetUniformValue<int>("u_PathSampler", &i);
-
-		i = 6;
-		shader->SetUniformValue<int>("u_shadow_sampler", &i);
-
-		// This means can only have one mesh
-		shader->SetUniformValue<float>("u_MaxHeight", &heightmapSizeY);
-		shader->SetUniformValue<float>("u_MaxTexU", &tileU);
-		shader->SetUniformValue<float>("u_MaxTexV", &tileV);
+		OnReloadShaders();
 	}
 
 	Image i;
@@ -776,5 +737,52 @@ void TerrainConstructor::GenerateRandomPositions(const std::vector<Vertex>& vert
 			vertsIN[usedList[i]].position.y - 0.25f,
 			vertsIN[usedList[i]].position.z)
 		);
+	}
+}
+
+float TerrainConstructor::GetHeight() const
+{
+	return m_Height;
+}
+
+float TerrainConstructor::GetTexU() const
+{
+	return m_TexU;
+}
+
+float TerrainConstructor::GetTexV() const
+{
+	return m_TexV;
+}
+
+void  TerrainConstructor::OnReloadShaders()
+{
+	if (m_Shader)
+	{
+		m_Shader->Use();
+
+		// Set Material uniforms
+		int i = 0;
+		m_Shader->SetUniformValue<int>("u_LowHeightMap", &i);
+
+		i = 1;
+		m_Shader->SetUniformValue<int>("u_MediumHeightMap", &i);
+
+		i = 2;
+		m_Shader->SetUniformValue<int>("u_HighHeightMap", &i);
+
+		i = 3;
+		m_Shader->SetUniformValue<int>("u_PathMap", &i);
+
+		i = 4;
+		m_Shader->SetUniformValue<int>("u_PathSampler", &i);
+
+		i = 6;
+		m_Shader->SetUniformValue<int>("u_shadow_sampler", &i);
+
+		// This means can only have one mesh
+		m_Shader->SetUniformValue<float>("u_MaxHeight", &m_Height);
+		m_Shader->SetUniformValue<float>("u_MaxTexU", &m_TexU);
+		m_Shader->SetUniformValue<float>("u_MaxTexV", &m_TexV);
 	}
 }

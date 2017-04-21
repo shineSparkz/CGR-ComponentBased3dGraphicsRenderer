@@ -65,11 +65,11 @@ bool UniformBlock::AddUniform(const std::string& uniformname)
 
 bool UniformBlock::allocBlock(GLuint* shaderProg, const char* name)
 {
-	// Dbl checkd
+	// Double check this, should have been checked by caller though
 	if (m_Bound)
 		return false;
 
-	// TODO : Store our name, out interface through manager
+	// Get the index of this block
  	m_UboIndex = glGetUniformBlockIndex(*shaderProg, name);
 
 	if (m_UboIndex == GL_INVALID_INDEX)
@@ -78,7 +78,7 @@ bool UniformBlock::allocBlock(GLuint* shaderProg, const char* name)
 		return false;
 	}
 
-	// Find out buff size
+	// Find out buff size with index
 	m_BuffSize = -1;
 	glGetActiveUniformBlockiv(*shaderProg, m_UboIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &m_BuffSize);
 
@@ -95,7 +95,7 @@ bool UniformBlock::allocBlock(GLuint* shaderProg, const char* name)
 	// This should have been pre-asigned
 	std::vector<const char*> names = this->GetUniformNames();
 
-	// Check that this matches
+	// Check that the block in the shader matches the size of pre-asigned named
 	if (numUniformsInBlock != (int)names.size())
 	{
 		std::stringstream ss;
@@ -104,7 +104,7 @@ bool UniformBlock::allocBlock(GLuint* shaderProg, const char* name)
 		return false;
 	}
 
-	// Build all the info needed for the buffers now that all relevant data has been aquired
+	// Use these to extract relevant data from each uniform in block
 	GLuint* indices = new GLuint[numUniformsInBlock];
 	GLint* sizes = new GLint[numUniformsInBlock];
 	GLint* offsets = new GLint[numUniformsInBlock];
@@ -122,7 +122,7 @@ bool UniformBlock::allocBlock(GLuint* shaderProg, const char* name)
 	// Get Types
 	glGetActiveUniformsiv(*shaderProg, numUniformsInBlock, indices, GL_UNIFORM_TYPE, types);
 
-	// Assign the info of each sub block with info from GL
+	// Add block for each uniform, store name, the size of the block, and the offset in the buffer with this block starts
 	for (int i = 0; i < numUniformsInBlock; ++i)
 	{
 		this->addBlockData(names[i], sizes[i] * (GLint)OpenGLLayer::glTypeSize(types[i]), offsets[i]);
@@ -132,19 +132,13 @@ bool UniformBlock::allocBlock(GLuint* shaderProg, const char* name)
 	m_Buffer = new byte[m_BuffSize];
 	memset(m_Buffer, 0, m_BuffSize);
 
-	// Set Data to GPU -- TODO Map
+	// Set Data to GPU
 	glGenBuffers(1, &m_UBO);
 	glBindBuffer(GL_UNIFORM_BUFFER, m_UBO);
-	
 	glBufferData(GL_UNIFORM_BUFFER, m_BuffSize, m_Buffer, GL_DYNAMIC_DRAW);
-	
-	//glBufferData(GL_UNIFORM_BUFFER, m_BuffSize, NULL, GL_WRITE_ONLY);
-	//m_Buffer = (byte*)glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-	//glUnmapBuffer(GL_UNIFORM_BUFFER);
-
 	glBindBufferBase(GL_UNIFORM_BUFFER, m_UboIndex, m_UBO);
 
-	// flag this
+	// flag this so, we don't allocate the same memory when other shaders reference the same block
 	m_Bound = true;
 
 	// Clean up temp
@@ -161,6 +155,7 @@ void UniformBlock::SetValue(const std::string& uniformName, void* value)
 	auto block = m_Uniforms.find(uniformName);
 	if (block != m_Uniforms.end())
 	{
+		// Use the block data info that we got from OpenGL to copy into our shared memory block
 		memcpy(m_Buffer + block->second.offset, value, block->second.size);
 		m_ShouldUpdatGPU = true;
 	}
@@ -168,6 +163,7 @@ void UniformBlock::SetValue(const std::string& uniformName, void* value)
 
 void UniformBlock::ClearBlock()
 {
+	// Block data such as lights should be cleared when changing scene
 	if (m_Bound && m_Buffer)
 	{
 		memset(m_Buffer, 0, m_BuffSize);
@@ -195,6 +191,7 @@ void UniformBlock::Bind()
 	glBindBuffer(GL_UNIFORM_BUFFER, m_UBO);
 	glBufferData(GL_UNIFORM_BUFFER, m_BuffSize, m_Buffer, GL_DYNAMIC_DRAW);
 	glBindBufferBase(GL_UNIFORM_BUFFER, m_UboIndex, m_UBO);
-	//glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	// We only need to update if something in the block has been changed
 	m_ShouldUpdatGPU = false;
 }

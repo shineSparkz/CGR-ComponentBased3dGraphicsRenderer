@@ -59,3 +59,8 @@ void Uniform::SendGPU()
 		break;
 	}
 }
+
+void* Uniform::GetValue() const
+{
+	return m_CurrentValue;
+}

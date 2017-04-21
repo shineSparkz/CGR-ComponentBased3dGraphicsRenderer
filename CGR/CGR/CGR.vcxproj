@@ -170,11 +170,13 @@
     <ClCompile Include="src\BillboardList.cpp" />
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\CgrEngine.cpp" />
+    <ClCompile Include="src\ChaseCamera.cpp" />
     <ClCompile Include="src\Colour.cpp" />
     <ClCompile Include="src\Component.cpp" />
     <ClCompile Include="src\DirectionalLight.cpp" />
     <ClCompile Include="src\Event.cpp" />
     <ClCompile Include="src\EventManager.cpp" />
+    <ClCompile Include="src\FLyCamera.cpp" />
     <ClCompile Include="src\Font.cpp" />
     <ClCompile Include="src\Frustum.cpp" />
     <ClCompile Include="src\GameObject.cpp" />
@@ -220,8 +222,10 @@
     <ClInclude Include="src\anorms.h" />
     <ClInclude Include="src\Application.h" />
     <ClInclude Include="src\BillboardList.h" />
+    <ClInclude Include="src\CamData.h" />
     <ClInclude Include="src\Camera.h" />
     <ClInclude Include="src\CgrEngine.h" />
+    <ClInclude Include="src\ChaseCamera.h" />
     <ClInclude Include="src\Colour.h" />
     <ClInclude Include="src\Component.h" />
     <ClInclude Include="src\DirectionalLight.h" />
@@ -229,6 +233,7 @@
     <ClInclude Include="src\EventHandler.h" />
     <ClInclude Include="src\EventID.h" />
     <ClInclude Include="src\EventManager.h" />
+    <ClInclude Include="src\FlyCamera.h" />
     <ClInclude Include="src\Font.h" />
     <ClInclude Include="src\FontAlign.h" />
     <ClInclude Include="src\Frustum.h" />

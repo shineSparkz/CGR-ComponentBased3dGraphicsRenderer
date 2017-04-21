@@ -225,6 +225,15 @@
     <ClInclude Include="src\Camera.h">
       <Filter>Application\Component</Filter>
     </ClInclude>
+    <ClInclude Include="src\CamData.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="src\FlyCamera.h">
+      <Filter>Application\Component</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ChaseCamera.h">
+      <Filter>Application\Component</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -370,6 +379,12 @@
       <Filter>Application\Component</Filter>
     </ClCompile>
     <ClCompile Include="src\Camera.cpp">
+      <Filter>Application\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="src\FLyCamera.cpp">
+      <Filter>Application\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ChaseCamera.cpp">
       <Filter>Application\Component</Filter>
     </ClCompile>
   </ItemGroup>

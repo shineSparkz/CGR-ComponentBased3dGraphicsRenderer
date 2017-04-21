@@ -25,15 +25,15 @@ bool ShaderProgram::CreateProgram(const std::vector<Shader>& shaders, const std:
 
 	for (it = shaders.begin(); it != shaders.end(); ++it)
 	{
-		if (it->shader_type == GL_FRAGMENT_SHADER)
+		if (it->m_ShaderType == GL_FRAGMENT_SHADER)
 			has_fragment_shader = true;
 
-		glAttachShader(m_ShaderProgram, (*it).shader);
+		glAttachShader(m_ShaderProgram, (*it).m_Shader);
 
-		for (size_t j = 0; j < (*it).attributes.size(); ++j)
+		for (size_t j = 0; j < (*it).m_Attributes.size(); ++j)
 		{
-			glBindAttribLocation(m_ShaderProgram, (*it).attributes[j].layout_location,
-				(*it).attributes[j].name.c_str());
+			glBindAttribLocation(m_ShaderProgram, (*it).m_Attributes[j].layout_location,
+				(*it).m_Attributes[j].name.c_str());
 
 			if (OpenGLLayer::check_GL_error())
 			{
@@ -167,7 +167,7 @@ bool ShaderProgram::Reload()
 	
 	for (auto shader = m_Shaders.begin(); shader != m_Shaders.end(); ++shader)
 	{
-		if (!shader->LoadShader(shader->source_file.c_str()))
+		if (!shader->LoadShader(shader->m_SourceFile.c_str()))
 		{
 			return false;
 		}
@@ -180,7 +180,6 @@ bool ShaderProgram::Reload()
 
 Uniform* ShaderProgram::GetUniformByName(const std::string& name)
 {
-	//auto i = m_Uniforms.find(hash(name.c_str()));
 	auto i = m_Uniforms.find(name);
 	return ((i != m_Uniforms.end()) ? i->second : nullptr);
 }

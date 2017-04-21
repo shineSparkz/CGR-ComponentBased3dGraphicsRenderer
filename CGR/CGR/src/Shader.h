@@ -34,10 +34,10 @@ public:
 
 private:
 	friend class				ShaderProgram;
-	std::vector<ShaderAttrib>	attributes;
-	std::string					source_file;
-	GLenum						shader_type;
-	GLuint						shader;
+	std::vector<ShaderAttrib>	m_Attributes;
+	std::string					m_SourceFile;
+	GLenum						m_ShaderType;
+	GLuint						m_Shader;
 };
 
 #endif

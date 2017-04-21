@@ -3,6 +3,7 @@
 #include "Renderer.h"
 #include "Mesh.h"
 #include "Camera.h"
+#include "FlyCamera.h"
 #include "GameObject.h"
 #include "Screen.h"
 #include "ResId.h"

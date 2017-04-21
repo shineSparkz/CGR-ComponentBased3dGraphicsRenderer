@@ -40,7 +40,7 @@ public:
 		float tile_u,
 		float tile_v,
 		const std::string& heightmap = ""
-		);
+	);
 
 
 	bool CreateBez(
@@ -59,6 +59,17 @@ public:
 	);
 
 	void GenerateRandomPositions(const std::vector<Vertex>& vertsIN, std::vector<Vec3>& positionsOUT, int maxPositions);
+
+	float GetHeight() const;
+	float GetTexU() const;
+	float GetTexV() const;
+	void  OnReloadShaders();
+
+private:
+	ShaderProgram*	m_Shader;	//<-- Weak Ptr
+	float			m_Height;
+	float			m_TexU;
+	float			m_TexV;
 };
 
 #endif

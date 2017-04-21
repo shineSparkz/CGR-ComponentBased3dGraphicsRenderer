@@ -85,7 +85,6 @@ bool Application::Init(int width, int height, bool windowed, const char* title, 
 	std::string glewVersion = "GLEW_VERSION : " + (std::string)version;
 	WRITE_LOG(glewVersion, "none");
 
-	//glViewport(0, 0, s_FrameBuffWidth, s_FrameBuffHeight);
 	glfwSwapInterval(Maths::Clamp(vsync, 0, 1));
 
 	// Input system
@@ -128,7 +127,7 @@ bool Application::Init(int width, int height, bool windowed, const char* title, 
 		return false;
 	}
 
-	m_Renderer->SetDisplayInfo(m_ShouldRendedInfoStrings);
+	m_Renderer->SetDisplayInfo(m_ShouldRendedInfoStrings == GE_TRUE);
 
 	return true;
 }
@@ -202,7 +201,7 @@ void Application::Run()
 		while (time_now > next_tick && frame_count < MAX_FRAME_SKIP)
 		{
 			m_SceneGraph->UpdateActiveScene(Time::deltaTime);
-			next_tick += DELTA_TICK;
+			next_tick += Time::deltaTime;
 			frame_count++;
 		}
 

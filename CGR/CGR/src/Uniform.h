@@ -29,22 +29,17 @@ class Uniform
 public:
 	Uniform(int location, UniformTypes uniformType);
 
-	template<typename T>
-	void SetValue(const T* v);
-
-	void* GetValue() const
-	{
-		return m_CurrentValue;
-	}
+	template<typename T> void SetValue(const T* v);
+	void* GetValue() const;
 
 private:
 	virtual void SendGPU();
 
 private:
-	friend class ShaderProgram;
-	UniformTypes m_UType;
-	GLint m_Location;
-	void* m_CurrentValue;
+	friend class	ShaderProgram;
+	UniformTypes	m_UType;
+	GLint			m_Location;
+	void*			m_CurrentValue;
 };
 
 template<typename T>
