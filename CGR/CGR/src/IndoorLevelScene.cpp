@@ -66,11 +66,14 @@ int IndoorLevelScene::OnSceneLoad(ResourceManager* resManager)
 	levelt->SetPosition(Vec3(0.0f, -180.0f, 0.0f));
 	levelt->SetScale(Vec3(0.1f));
 	MeshRenderer* levelMr = level->AddComponent<MeshRenderer>();
-	levelMr->SetMesh(MESH_ID_LEVEL);
-	levelMr->SetMaterialSet(MATERIALS_LEVEL);
-	levelMr->SetToUseBumpMaps(false);
-	levelMr->SetShader(SHADER_LIGHTING_FWD);
-	levelMr->ReceiveShadows = true;
+	levelMr->SetMeshData(
+		MESH_ID_LEVEL,
+		SHADER_LIGHTING_FWD,
+		MATERIALS_LEVEL,
+		false,
+		true,
+		false,
+		false);
 	m_GameObjects.push_back(level);
 
 	// Create Bumped cube at origin
@@ -80,11 +83,14 @@ int IndoorLevelScene::OnSceneLoad(ResourceManager* resManager)
 		ct->SetPosition(Vec3(0.0f));
 		ct->SetScale(Vec3(5.0f));
 		MeshRenderer* cmr = cube->AddComponent<MeshRenderer>();
-		cmr->SetMesh(MESH_ID_CUBE);
-		cmr->SetMaterialSet(MATERIALS_BRICKS);
-		cmr->SetToUseBumpMaps(true);
-		cmr->SetShader(SHADER_LIGHTING_FWD);
-		cmr->ReceiveShadows = false;
+		cmr->SetMeshData(
+			MESH_ID_CUBE,
+			SHADER_LIGHTING_FWD,
+			MATERIALS_BRICKS,
+			true,
+			false,
+			false,
+			false);
 		m_Handle = m_GameObjects.size();
 		m_GameObjects.push_back(cube);
 	}

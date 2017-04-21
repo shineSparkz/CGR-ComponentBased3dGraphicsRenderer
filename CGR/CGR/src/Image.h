@@ -55,4 +55,4 @@ INLINE byte* Image::GetPixel(int x, int y) const
 	return data + offset;
 }
 
-#endif#pragma once
+#endif

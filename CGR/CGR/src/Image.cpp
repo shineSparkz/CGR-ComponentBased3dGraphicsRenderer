@@ -134,17 +134,16 @@ bool Image::LoadImg(const char* file_name_no_ext)
 	else if (extension == "jpg" || extension == "jpeg")
 	{
 		FILE* file = fopen(file_name_no_ext, "rb");  //open the file
-		struct my_error_mgr jerr;
-		struct jpeg_decompress_struct info;  //the jpeg decompress info
-
-		info.err = jpeg_std_error(&jerr.pub);
-		jpeg_create_decompress(&info); 
-
 		if (!file)
 		{
 			fprintf(stderr, "Error reading JPEG file %s!!!", file_name_no_ext);
 			return false;
 		}
+
+		struct my_error_mgr jerr;
+		struct jpeg_decompress_struct info;  //the jpeg decompress info
+		info.err = jpeg_std_error(&jerr.pub);
+		jpeg_create_decompress(&info);
 
 		jpeg_stdio_src(&info, file);
 		jpeg_read_header(&info, TRUE);   

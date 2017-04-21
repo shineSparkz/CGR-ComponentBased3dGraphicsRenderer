@@ -35,11 +35,14 @@ void SponzaScene::createGameObjects()
 	maleT->SetPosition(Vec3(-7.0f, 0.0f, -10.0f));
 	maleT->SetScale(Vec3(14.0f));
 	MeshRenderer* maleMr = male->AddComponent<MeshRenderer>();
-	maleMr->SetMesh(MESH_ID_MALE);
-	maleMr->SetMaterialSet(MATERIALS_MALE);
-	maleMr->SetToUseBumpMaps(false);
-	maleMr->SetShader(SHADER_LIGHTING_FWD);
-	maleMr->ReceiveShadows = false;
+	maleMr->SetMeshData(
+		MESH_ID_MALE,
+		SHADER_LIGHTING_FWD,
+		MATERIALS_MALE,
+		false,
+		false,
+		false,
+		false);
 	m_Handle = m_GameObjects.size();
 	m_GameObjects.push_back(male);
 
@@ -49,11 +52,14 @@ void SponzaScene::createGameObjects()
 	sponzat->SetPosition(Vec3(0.0f, 0.0f, 0.0f));
 	sponzat->SetScale(Vec3(0.2f));
 	MeshRenderer* sponzaMr = sponza->AddComponent<MeshRenderer>();
-	sponzaMr->SetMesh(MESH_ID_SPONZA);
-	sponzaMr->SetMaterialSet(MATERIALS_SPONZA);
-	sponzaMr->SetToUseBumpMaps(true);
-	sponzaMr->SetShader(SHADER_LIGHTING_FWD);
-	sponzaMr->ReceiveShadows = true;
+	sponzaMr->SetMeshData(
+		MESH_ID_SPONZA,
+		SHADER_LIGHTING_FWD,
+		MATERIALS_SPONZA,
+		true,
+		true,
+		false,
+		false);
 	m_GameObjects.push_back(sponza);
 	m_SponzaPtr = sponzaMr;
 
@@ -185,7 +191,7 @@ void SponzaScene::Update(float dt)
 	// Toggle Bump maps
 	if (Input::Keys[GLFW_KEY_N] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
 	{
-		m_SponzaPtr->SetToUseBumpMaps(!m_SponzaPtr->UsingBumpMaps());
+		m_SponzaPtr->SetUseBumpMaps(!m_SponzaPtr->UsingBumpMaps());
 		m_TimeNow = Time::ElapsedTime();
 	}
 

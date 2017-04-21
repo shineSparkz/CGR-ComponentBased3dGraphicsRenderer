@@ -11,6 +11,9 @@
 #define MESH_ID_SPONZA					6
 #define MESH_TERRAIN					7
 
+#define ANIM_MESH_GOBLIN				0
+#define NUM_ANIM_MESHES					1
+
 // Material Set IDs
 #define MATERIALS_MALE					0
 #define MATERIALS_GRASS					1
@@ -19,6 +22,7 @@
 // "User Defined"
 #define MATERIALS_SPONZA				4
 #define MATERIALS_LEVEL					5
+#define MATERIALS_GOBLIN				6
 
 
 // Texture ID's -- for now
@@ -40,7 +44,8 @@
 #define SHADER_NORMAL_DISP_FWD			11
 #define SHADER_FRUSTUM					12
 #define SHADER_SHADOW					13
-#define SHADER_ID_COUNT					13
+#define SHADER_ANIM						14
+#define SHADER_ID_COUNT					14
 
 #define FONT_COURIER					0
 #define FONT_ID_COUNT					0

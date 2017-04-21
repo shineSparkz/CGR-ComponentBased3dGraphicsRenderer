@@ -14,8 +14,6 @@ public:
 	static int		FrameBufferHeight();
 	static bool		IsFullScreen();
 
-	// TODO Later : screen resolution stuff
-
 private:
 	friend class	RenderWindow;
 	static int		m_ScreenWidth;

@@ -7,14 +7,10 @@
 
 /*
 List
-- Particles
-- Better water implementation
+- Tidy all code
+- Fix deferred
+- Make scenes nice and add more meshes etc
 - Make a use case for a new user, creating a scene, game objects, shader and using engine functionality or write docs
-
-Extra
-- picking
-- fog
-- AA
 
 Done
 - Tidy up terrain shader
@@ -31,7 +27,11 @@ Done
 
 Cuts
 - Instancing/Batching
-
+- AA
+- Particles
+- picking
+- fog
+- Better water implementation
 */
 
 

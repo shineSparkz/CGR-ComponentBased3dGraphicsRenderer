@@ -39,7 +39,6 @@ public:
 	~Input();
 
 	int Init();
-
 	static std::map<int, int> Keys;
 
 private:
@@ -49,7 +48,6 @@ private:
 private:
 	friend class Mouse;
 	//------------------------------ Call Backs ------------------------------------
-	// Input
 	static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 	static void mouse_position_callback(GLFWwindow* window, double xpos, double ypos);
 	static void mouse_enter_callback(GLFWwindow* window, int entered);

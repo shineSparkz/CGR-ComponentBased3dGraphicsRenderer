@@ -66,6 +66,7 @@ typedef unsigned long long	uint64;
 #define DIRECTION_LIGHT_COMPONENT	-4
 #define POINT_LIGHT_COMPONENT		-5
 #define SPOT_LIGHT_COMPONENT		-6
+#define ANIM_COMPONENT				-7
 
 // Transforms -- for now
 /*

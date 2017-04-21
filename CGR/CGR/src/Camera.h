@@ -45,7 +45,6 @@ struct SkyboxSettings
 	unsigned textureIndex;
 };
 
-
 class BaseCamera : public Component
 {
 public:

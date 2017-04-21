@@ -164,6 +164,8 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="src\AABB.cpp" />
+    <ClCompile Include="src\Animator.cpp" />
+    <ClCompile Include="src\AnimMesh.cpp" />
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="src\BillboardList.cpp" />
     <ClCompile Include="src\Camera.cpp" />
@@ -212,6 +214,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\AABB.h" />
+    <ClInclude Include="src\Animator.h" />
+    <ClInclude Include="src\AnimMesh.h" />
+    <ClInclude Include="src\anim_types.h" />
+    <ClInclude Include="src\anorms.h" />
     <ClInclude Include="src\Application.h" />
     <ClInclude Include="src\BillboardList.h" />
     <ClInclude Include="src\Camera.h" />

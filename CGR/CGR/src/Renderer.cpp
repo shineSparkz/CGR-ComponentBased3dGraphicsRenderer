@@ -16,6 +16,8 @@
 #include "UniformBlock.h"
 #include "Lights.h"
 #include "Frustum.h"
+#include "AnimMesh.h"
+#include "Animator.h"
 
 // Utils
 #include "LogFile.h"
@@ -179,8 +181,10 @@ void Renderer::Render(std::vector<GameObject*>& gameObjects, bool withShadows)
 	UniformBlock* scene = m_UniformBlockManager->GetBlock("scene");
 	if (scene)
 	{
+		float dt = Time::DeltaTime();
 		scene->SetValue("view_xform", (void*)glm::value_ptr(m_CameraPtr->View()));
 		scene->SetValue("proj_xform", (void*)glm::value_ptr(m_CameraPtr->Projection()));
+		scene->SetValue("delta_time", &dt);
 	}
 
 	// Copy all block data to the GPU (only if they have changed, which is checked internally) This will work for each shader that references the block
@@ -523,7 +527,7 @@ void Renderer::forwardRenderShadows(std::vector<GameObject*>& gameObjects)
 			if (!t || !mr)
 				continue;
 
-			if (!mr->ReceiveShadows)
+			if (!mr->m_ReceiveShadows)
 			{
 				const Mat4& model_xform = t->GetModelXform();
 
@@ -531,7 +535,19 @@ void Renderer::forwardRenderShadows(std::vector<GameObject*>& gameObjects)
 				{
 					sp->Use();
 					sp->SetUniformValue<Mat4>("u_wvp_xform", &(m_LightCamera->ProjXView() * model_xform));
-					this->renderMesh(mr, model_xform, false, GL_TRIANGLES);
+					
+					if (mr->m_HasAnimations)
+					{
+						Animator* anim = (*i)->GetComponent<Animator>();
+						if (anim)
+						{
+							this->renderAnimMesh(mr, anim, model_xform, false);
+						}
+					}
+					else
+					{
+						this->renderMesh(mr, model_xform, false, GL_TRIANGLES);
+					}
 				}
 			}
 		}
@@ -584,19 +600,29 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects, bool withSha
 			// Render Mesh normally
 			sp->Use();
 
-			if (withShadows && mr->ReceiveShadows)
+			if (withShadows && mr->m_ReceiveShadows)
 			{
 				m_ShadowFB->BindForReading(GL_TEXTURE6);
 				sp->SetUniformValue<Mat4>("u_light_xform", &(m_LightCamera->ProjXView() * model_xform));
 			}
 
-			int shadows = static_cast<int>(mr->ReceiveShadows);
-
 			sp->SetUniformValue<Mat4>("u_world_xform", &(model_xform));
 			sp->SetUniformValue<int>("u_use_bumpmap", &(mr->m_HasBumpMaps));
-			sp->SetUniformValue<int>("u_use_shadow", &(shadows));
+			sp->SetUniformValue<int>("u_use_shadow", &(mr->m_ReceiveShadows));
 
-			this->renderMesh(mr, model_xform, true, GL_TRIANGLES);
+			if (mr->m_HasAnimations)
+			{
+				Animator* anim = (*i)->GetComponent<Animator>();
+				if (anim)
+				{
+					sp->SetUniformValue<float>("u_lerp", &anim->m_AnimState.interpol);
+					this->renderAnimMesh(mr, anim, model_xform, true);
+				}
+			}
+			else
+			{
+				this->renderMesh(mr, model_xform, true, GL_TRIANGLES);
+			}
 
 			// Do a normal pass if required
 			if (m_ShouldDisplayNormals)
@@ -787,7 +813,7 @@ void Renderer::renderMesh(Mesh* thisMesh)
 void Renderer::renderMesh(MeshRenderer* meshRenderer, const Mat4& world_xform, bool withTextures, GLenum renderMode)
 {
 	// Get the pre-loaded mesh resource from the manager 
-	Mesh* thisMesh = m_ResManager->m_Meshes[meshRenderer->MeshIndex];
+	Mesh* thisMesh = m_ResManager->m_Meshes[meshRenderer->m_MeshIndex];
 	
 	if (!thisMesh)
 		return;
@@ -831,7 +857,7 @@ void Renderer::renderMesh(MeshRenderer* meshRenderer, const Mat4& world_xform, b
 					auto& materials = m_ResManager->m_Materials[MaterialSet];
 
 					// This flag is used when mesh/shader uses multiple diffuse textures such as terrain and binds them all
-					if (meshRenderer->MultiTextures)
+					if (meshRenderer->m_MultiTextures)
 					{
 						for (auto i = materials.begin(); i != materials.end(); ++i)
 						{
@@ -873,6 +899,75 @@ void Renderer::renderMesh(MeshRenderer* meshRenderer, const Mat4& world_xform, b
 	}
 
 	glBindVertexArray(0);
+}
+
+void Renderer::renderAnimMesh(MeshRenderer* meshRenderer, Animator* anim, const Mat4& world, bool withTextures)
+{
+	AnimMesh* thisMesh = m_ResManager->m_AnimMeshes[meshRenderer->m_MeshIndex];
+
+	if (!thisMesh)
+		return;
+
+	bool should_render = true;
+	if (m_ShouldFrustumCull)
+	{
+		Vec3 centre = Maths::Vec4To3(world * Vec4(thisMesh->m_AnimData[anim->m_AnimState.curr_frame].centre, 1.0f));
+		float r = Maths::Distance(
+			Maths::Vec4To3(world * Vec4(thisMesh->m_AnimData[anim->m_AnimState.curr_frame].min, 1.0f)),
+			Maths::Vec4To3(world * Vec4(thisMesh->m_AnimData[anim->m_AnimState.curr_frame].max, 1.0f)));
+		should_render = m_Frustum->SphereInFrustum(centre, r);
+	}
+
+	if (should_render)
+	{
+		glBindVertexArray(thisMesh->m_VAO);
+
+		int iTotalOffset = 0;
+
+		if (withTextures)
+		{
+			if (m_ResManager->MaterialSetExists(meshRenderer->m_MaterialIndex))
+			{
+				auto& materials = m_ResManager->m_Materials[meshRenderer->m_MaterialIndex];
+				for (auto i = materials.begin(); i != materials.end(); ++i)
+				{
+					i->second->Bind();
+				}
+			}
+		}
+
+		// Change vertices pointers to current frame
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, thisMesh->m_AnimData[anim->m_AnimState.curr_frame].vbo);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 2 * sizeof(Vec3), 0);
+
+		// Next position
+		glEnableVertexAttribArray(3);
+		glBindBuffer(GL_ARRAY_BUFFER, thisMesh->m_AnimData[anim->m_AnimState.next_frame].vbo);
+		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 2 * sizeof(Vec3), 0);
+
+		// Change normal pointers to current frame
+		glEnableVertexAttribArray(2);
+		glBindBuffer(GL_ARRAY_BUFFER, thisMesh->m_AnimData[anim->m_AnimState.curr_frame].vbo);
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 2 * sizeof(Vec3), 0);
+
+		// Next norm
+		glEnableVertexAttribArray(4);
+		glBindBuffer(GL_ARRAY_BUFFER, thisMesh->m_AnimData[anim->m_AnimState.next_frame].vbo);
+		glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 2 * sizeof(Vec3), 0);
+
+		for (int i = 0; i < thisMesh->m_RenderModes.size(); ++i)
+		{
+			glDrawArrays(thisMesh->m_RenderModes[i], iTotalOffset, thisMesh->m_NumRenderVertices[i]);
+			iTotalOffset += thisMesh->m_NumRenderVertices[i];
+		}
+
+		glBindVertexArray(0);
+	}
+	else
+	{
+		++m_CullCount;
+	}
 }
 
 void Renderer::renderSkybox(BaseCamera* cam)
@@ -1027,13 +1122,25 @@ bool Renderer::setStaticDefaultShaderValues()
 		lsp->SetUniformValue<int>("u_normal_sampler", &normal_sampler);
 	}
 
-	//--------------------------------------------------------------------------------
-
 	ShaderProgram* shadow = m_ResManager->GetShader(SHADER_SHADOW);
 	if (shadow)
 	{
 		shadow->Use();
 		shadow->SetUniformValue<int>("u_shadow_sampler", &shadow_sampler);
+	}
+
+	ShaderProgram* anim = m_ResManager->GetShader(SHADER_ANIM);
+	if (anim)
+	{
+		anim->Use();
+
+		int diff = 0;
+		int shad = 1;
+		int bump = 2;
+
+		anim->SetUniformValue<int>("u_sampler", &diff);
+		anim->SetUniformValue<int>("u_shadow_sampler", &shad);
+		anim->SetUniformValue<int>("u_normal_sampler", &bump);
 	}
 
 	return true;
@@ -1052,6 +1159,7 @@ bool Renderer::createUniformBlocks()
 	names.push_back("ambient_light");
 	names.push_back("view_xform");
 	names.push_back("proj_xform");
+	names.push_back("delta_time");
 	if (!m_UniformBlockManager->CreateBlock("scene", names))
 	{
 		WRITE_LOG("The renderer can't create a default uniform block with name 'scene' have you used this name for custom block..", "error");

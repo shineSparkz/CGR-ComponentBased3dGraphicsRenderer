@@ -26,6 +26,8 @@ class ShaderProgram;
 class ShadowFrameBuffer;
 class UniformBlockManager;
 class Frustum;
+class AnimMesh;
+class Animator;
 
 struct DeferredPointLightInfo
 {
@@ -102,6 +104,7 @@ private:
 	void deferredRender(std::vector<GameObject*>& gameObjects);
 	void renderMesh(Mesh* mesh);
 	void renderMesh(MeshRenderer* mesh, const Mat4& world, bool withTextures, GLenum renderMode = GL_TRIANGLES);
+	void renderAnimMesh(MeshRenderer* mesh, Animator* anim, const Mat4& world, bool withTextures);
 	void renderSkybox(BaseCamera* cam);
 
 	// Events

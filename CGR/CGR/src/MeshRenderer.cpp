@@ -4,7 +4,14 @@
 int MeshRenderer::m_Id = MESH_RENDER_COMPONENT;
 
 MeshRenderer::MeshRenderer(GameObject* go) :
-	Component(go)
+	Component(go),
+	m_MeshIndex(0),
+	m_MaterialIndex(0),
+	m_ShaderIndex(0),
+	m_HasBumpMaps(GE_FALSE),
+	m_ReceiveShadows(GE_FALSE),
+	m_MultiTextures(false),
+	m_HasAnimations(false)
 {
 }
 
@@ -20,30 +27,45 @@ void MeshRenderer::Update()
 {
 }
 
-void MeshRenderer::SetMesh(size_t meshIndex)
+void MeshRenderer::SetMeshData(
+	size_t	meshResourceIndex,
+	size_t	shaderProgramIndex,
+	size_t	materialSetIndex,
+	bool	useBumpMaps,
+	bool	receiveShadows,
+	bool	hasMultiTextures,
+	bool	isAnimatedMesh)
 {
-	this->MeshIndex = meshIndex;
-}
-
-void MeshRenderer::SetMaterialSet(size_t handle)
-{
-	m_MaterialIndex = handle;
-}
-
-void MeshRenderer::SetShader(size_t shader)
-{
-	m_ShaderIndex = shader;
-}
-
-void MeshRenderer::SetToUseBumpMaps(bool shouldUse)
-{
-	if (shouldUse)
-		m_HasBumpMaps = GE_TRUE;
-	else
-		m_HasBumpMaps = GE_FALSE;
+	m_MeshIndex = meshResourceIndex;
+	m_ShaderIndex = shaderProgramIndex;
+	m_MaterialIndex = materialSetIndex;
+	m_HasBumpMaps = useBumpMaps ? GE_TRUE : GE_FALSE;
+	m_ReceiveShadows = receiveShadows ? GE_TRUE : GE_FALSE;
+	m_MultiTextures = hasMultiTextures;
+	m_HasAnimations = isAnimatedMesh;
 }
 
 bool MeshRenderer::UsingBumpMaps() const
 {
 	return m_HasBumpMaps == GE_TRUE;
+}
+
+bool MeshRenderer::ReceivingShadows() const
+{
+	return m_ReceiveShadows == GE_TRUE;
+}
+
+bool MeshRenderer::HasAnimations() const
+{
+	return m_HasAnimations;
+}
+
+bool MeshRenderer::HasMultiTextures() const
+{
+	return m_MultiTextures;
+}
+
+void MeshRenderer::SetUseBumpMaps(bool should)
+{
+	m_HasBumpMaps = should ? GE_TRUE : GE_FALSE;
 }

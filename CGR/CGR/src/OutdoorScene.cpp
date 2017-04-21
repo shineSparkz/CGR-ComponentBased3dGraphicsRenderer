@@ -1,5 +1,7 @@
 #include "OutdoorScene.h"
 
+#include <glm/gtx/euler_angles.hpp>
+
 #include "Input.h"
 #include "Renderer.h"
 #include "Mesh.h"
@@ -10,18 +12,22 @@
 #include "utils.h"
 #include "Transform.h"
 #include "MeshRenderer.h"
+#include "Animator.h"
 #include "ResourceManager.h"
 #include "BillboardList.h"
 #include "Terrain.h"
+#include "AnimMesh.h"
 
 #include "CgrEngine.h"
 #include "DirectionalLight.h"
 #include "PointLight.h"
 #include "SpotLight.h"
 
+
 OutDoorScene::OutDoorScene(const std::string& name) :
 	IScene(name),
 	m_GameObjects(),
+	m_GoblinTransform(nullptr),
 	m_TreeBillboardList(nullptr)
 {
 }
@@ -43,7 +49,7 @@ int OutDoorScene::OnSceneLoad(ResourceManager* resManager)
 		Vec3(1.0f, 0.0f, 0.0f),																				// Right
 		Vec3(0.0f, 0.0f, -1.0f),																			// Fwd
 		45.0f,																								// FOV
-		static_cast<float>(Screen::ScreenWidth() / Screen::ScreenHeight()),			// Aspect
+		static_cast<float>(Screen::ScreenWidth() / Screen::ScreenHeight()),									// Aspect
 		0.1f,																								// Near
 		500.0f																								// Far
 	);
@@ -54,44 +60,77 @@ int OutDoorScene::OnSceneLoad(ResourceManager* resManager)
 	m_Renderer->SetSceneData(m_Camera, Vec3(0.1f));
 	m_GameObjects.push_back(cam);
 
-	// Create Cube
-	for (int y = 0; y < 5; ++y)
+	// Create Cubes
+	bool createCubes = false;
+	if (createCubes)
 	{
-		for (int x = 0; x < 5; ++x)
+		for (int y = 0; y < 5; ++y)
 		{
-			GameObject* cube = new GameObject();
-			Transform* ct = cube->AddComponent<Transform>();
-			ct->SetPosition(Vec3(x * 5.0f, 10.f, -y * 5.0f));
-			ct->SetScale(Vec3(1.0f));
-			ct->Rotate(Vec3(0));
-			MeshRenderer* cmr = cube->AddComponent<MeshRenderer>();
-			cmr->SetMesh(MESH_ID_CUBE);
-			cmr->SetMaterialSet(MATERIALS_BRICKS);
-			cmr->SetToUseBumpMaps(false);
-			cmr->SetShader(SHADER_LIGHTING_FWD);
-			cmr->ReceiveShadows = false;
-			m_GameObjects.push_back(cube);
+			for (int x = 0; x < 5; ++x)
+			{
+				GameObject* cube = new GameObject();
+				Transform* ct = cube->AddComponent<Transform>();
+				ct->SetPosition(Vec3(x * 5.0f, 10.f, -y * 5.0f));
+				ct->SetScale(Vec3(1.0f));
+				ct->Rotate(Vec3(0));
+				MeshRenderer* cmr = cube->AddComponent<MeshRenderer>();
+				cmr->SetMeshData(
+					MESH_ID_CUBE,
+					SHADER_LIGHTING_FWD,
+					MATERIALS_BRICKS,
+					false,
+					false,
+					false,
+					false);
+
+				m_GameObjects.push_back(cube);
+			}
 		}
 	}
 
-	bool createFloor = !false;
+	bool createFloor = false;
 	if(createFloor)
 	{
 		// Create Floor
 		GameObject* cube = new GameObject();
 		Transform* ct = cube->AddComponent<Transform>();
 		ct->SetPosition(Vec3(10.0f, 0.f, 0.0f));
-		//ct->SetPosition(Vec3(0.0f, 10.0f, 0.0f));
 		ct->SetScale(Vec3(10.0f, 2.0f, 10.0f));
 		MeshRenderer* cmr = cube->AddComponent<MeshRenderer>();
-		cmr->SetMesh(MESH_ID_CUBE);
-		cmr->SetMaterialSet(MATERIALS_BRICKS);
-		cmr->SetToUseBumpMaps(false);
-		cmr->SetShader(SHADER_LIGHTING_FWD);
-		cmr->ReceiveShadows = true;
+		cmr->SetMeshData(
+			MESH_ID_CUBE,
+			SHADER_LIGHTING_FWD,
+			MATERIALS_BRICKS,
+			false,
+			true,
+			false,
+			false);
 		m_GameObjects.push_back(cube);
 	}
 
+	// Create Animated Goblin
+	bool createGob = !false;
+	if (createGob)
+	{
+		// Create Animated goblin
+		GameObject* goblin = new GameObject();
+		m_GameObjects.push_back(goblin);
+		m_GoblinTransform = goblin->AddComponent<Transform>();
+		m_GoblinTransform->SetScale(Vec3(0.35f));
+		m_GoblinTransform->RotateX(30.0f);
+		m_GoblinTransform->SetPosition(Vec3(30, 30, -30));
+		MeshRenderer* gmr = goblin->AddComponent<MeshRenderer>();
+		gmr->SetMeshData(
+			ANIM_MESH_GOBLIN,
+			SHADER_ANIM,
+			MATERIALS_GOBLIN,
+			false,
+			false,
+			false,
+			true);
+		Animator* ga = goblin->AddComponent<Animator>();
+		ga->StartAnimation(STAND);
+	}
 
 	// Directional Light
 	GameObject* dlight = new GameObject();
@@ -100,8 +139,8 @@ int OutDoorScene::OnSceneLoad(ResourceManager* resManager)
 	m_DirLightHandle = dl;
 	m_GameObjects.push_back(dlight);
 
+	// Create Terrain
 	bool createTerrain = !false;
-
 	if (createTerrain)
 	{
 		// Try and create terrain
@@ -123,8 +162,7 @@ int OutDoorScene::OnSceneLoad(ResourceManager* resManager)
 				16,				// Tex U
 				16,				// Tex V,
 				"../resources/textures/terrain/heightmap.tga"
-			))
-				
+			))	
 				/*
 				if (!tcs.CreateBez(verts,
 					indices,
@@ -180,18 +218,20 @@ int OutDoorScene::OnSceneLoad(ResourceManager* resManager)
 		GameObject* terrain = new GameObject();
 		Transform* terT = terrain->AddComponent<Transform>();
 		terT->SetPosition(Vec3(0.0f, 0, 0.0f));
-		//terT->Rotate(Vec3(90, 0, 0));
 		terT->SetScale(Vec3(1.0f));
 		MeshRenderer* tmr = terrain->AddComponent<MeshRenderer>();
-		tmr->SetMesh(MESH_TERRAIN);//<-- TODO Use loaded terrain mesh
-		tmr->MultiTextures = true;
-		tmr->ReceiveShadows = true;
-		tmr->SetMaterialSet(MATERIALS_TERRAIN);
-		tmr->SetToUseBumpMaps(false);
-		tmr->SetShader(SHADER_TERRAIN_DEF);
+		tmr->SetMeshData(
+			MESH_TERRAIN,
+			SHADER_TERRAIN_DEF,
+			MATERIALS_TERRAIN,
+			false,
+			true,
+			true,
+			false);
 		m_GameObjects.push_back(terrain);
 	}
 
+	// Start Game objects
 	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
 	{
 		(*i)->Start();
@@ -215,58 +255,48 @@ void OutDoorScene::Update(float dt)
 {
 	const auto& d = m_DirLightHandle->GetDir();
 
-	const size_t HANDLE = 1;
-
 	if (Input::Keys[GLFW_KEY_UP] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
 	{
-		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, 0, -5));
-		//m_DirLightHandle->SetDirectionY(Maths::Max(-1.0f, d.y - 0.1f));
+		m_GoblinTransform->MovePosition(Vec3(0, 0, -2));
 		m_TimeNow = Time::ElapsedTime();
 	}
 	if (Input::Keys[GLFW_KEY_DOWN] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
 	{
-		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, 0, 5));
-		//m_DirLightHandle->SetDirectionY(Maths::Min(1.0f, d.y + 0.1f));
+		m_GoblinTransform->MovePosition(Vec3(0, 0, 2));
 		m_TimeNow = Time::ElapsedTime();
 	}
 	if (Input::Keys[GLFW_KEY_LEFT] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
 	{
-		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(-5, 0, 0));
-		//m_DirLightHandle->SetDirectionX(Maths::Max(-1.0f, d.x - 0.1f));
+		m_GoblinTransform->MovePosition(Vec3(-2, 0, 0));
 		m_TimeNow = Time::ElapsedTime();
 	}
 	if (Input::Keys[GLFW_KEY_RIGHT] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
 	{
-		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(5, 0, 0));
-		//m_DirLightHandle->SetDirectionX(Maths::Min(1.0f, d.x + 0.1f));
+		m_GoblinTransform->MovePosition(Vec3(2, 0, 0));
 		m_TimeNow = Time::ElapsedTime();
 	}
 	if (Input::Keys[GLFW_KEY_F] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
 	{
-		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, 5, 0));
-		//m_DirLightHandle->SetDirectionZ(Maths::Max(-1.0f, d.z - 0.1f));
+		m_GoblinTransform->MovePosition(Vec3(0, -2, 0));
 		m_TimeNow = Time::ElapsedTime();
 	}
 	if (Input::Keys[GLFW_KEY_V] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
 	{
-		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, -5, 0));
-
-		//m_DirLightHandle->SetDirectionZ(Maths::Min(1.0f, d.z + 0.1f));
+		m_GoblinTransform->MovePosition(Vec3(0, 2, 0));
 		m_TimeNow = Time::ElapsedTime();
 	}
-
 	if (Input::Keys[GLFW_KEY_P] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
 	{
 		m_Renderer->TogglePolygonMode();
 		m_TimeNow = Time::ElapsedTime();
 	}
-
 	if (Input::Keys[GLFW_KEY_F6] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
 	{
 		m_Renderer->ReloadShaders();
 		m_TimeNow = Time::ElapsedTime();
 	}
-
+	
+	// Update Game objects
 	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
 	{
 		(*i)->Update();
@@ -281,6 +311,7 @@ void OutDoorScene::Render()
 
 void OutDoorScene::RenderUI()
 {
+	//m_Renderer->RenderText(FONT_COURIER, "Angle: " + util::to_str(X), 8, 96);
 	m_Renderer->RenderText(FONT_COURIER, "Toggle wire frame: [P]", 8, 64);
 	//m_Renderer->RenderText(FONT_COURIER, "Point Light Pos: " + util::vec3_to_str(m_DirLightHandle->GetDir()), 8, 64);
 }

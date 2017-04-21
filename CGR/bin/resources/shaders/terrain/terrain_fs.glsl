@@ -46,6 +46,7 @@ layout (binding = 1, std140) uniform scene
 	mat4 view_xform;
 	vec3 camera_position;
 	vec3 ambient_light;
+	float delta_time;
 };
 
 /*

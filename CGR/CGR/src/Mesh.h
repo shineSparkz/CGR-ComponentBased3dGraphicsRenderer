@@ -64,9 +64,9 @@ private:
 private:
 	friend class Renderer;
 	std::vector<SubMesh>			m_SubMeshes;
-	GLuint							m_VAO;
 	GLuint							m_VertexVBO;
 	GLuint							m_IndexVBO;
+	GLuint							m_VAO;
 };
 
 INLINE size_t Mesh::GetNumSubMeshes() const

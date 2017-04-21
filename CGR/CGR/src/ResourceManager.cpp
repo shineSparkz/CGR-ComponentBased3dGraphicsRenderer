@@ -12,6 +12,7 @@
 #include "Font.h"
 #include "UniformBlockManager.h"
 #include "Material.h"
+#include "AnimMesh.h"
 
 const ShaderAttrib POS_ATTR{ 0, "vertex_position" };
 const ShaderAttrib NORM_ATTR{ 1, "vertex_normal" };
@@ -70,6 +71,39 @@ bool ResourceManager::loadDefaultForwardShaders()
 			return false;
 		}
 	}
+
+	// ---- Anim ----
+	{
+		Shader vert(GL_VERTEX_SHADER);
+		Shader fwd_fs(GL_FRAGMENT_SHADER);
+
+		if (!vert.LoadShader("../resources/shaders/animation_vs.glsl"))
+		{
+			WRITE_LOG("Forward Lighting vert shader failed compile", "error");
+			return false;
+		}
+
+		if (!fwd_fs.LoadShader("../resources/shaders/new_lights/forward_lights_fs.glsl"))
+		{
+			WRITE_LOG("Fwd Lighting frag shader failed compile", "error");
+			return false;
+		}
+
+		//vert.AddAttribute(POS_ATTR);
+		//vert.AddAttribute(NORM_ATTR);
+		//vert.AddAttribute(TEX_ATTR);
+
+		std::vector<Shader> shaders;
+		shaders.push_back(vert);
+		shaders.push_back(fwd_fs);
+
+		if (!this->CreateShaderProgram(shaders, SHADER_ANIM))
+		{
+			WRITE_LOG("Shader program Link failure: animation", "error");
+			return false;
+		}
+	}
+
 
 	// ---- Terrain (Fwd) ----
 	{
@@ -414,6 +448,7 @@ Texture* ResourceManager::LoadTexture(const std::string& textureFile, int textur
 	if (!t->Create(&i))
 	{
 		WRITE_LOG("Failed to create texture: " + textureFile, "error");
+		SAFE_DELETE(t);
 		return nullptr;
 	}
 
@@ -513,10 +548,15 @@ bool ResourceManager::loadDefaultTextures()
 bool ResourceManager::loadDefaultMeshes()
 {
 	bool success = true;
+	// Default Static Meshes
 	success &= LoadMesh("cube.obj", MESH_ID_CUBE, true, false, 0);
 	success &= LoadMesh("quad.obj", MESH_ID_QUAD, true, false, 0);
 	success &= LoadMesh("sphere.obj", MESH_ID_SPHERE, true, false, 0);
 	success &= LoadMesh("male.obj", MESH_ID_MALE, true, false, 0);
+
+	// Animation Example
+	success &= LoadAnimMesh("../resources/meshes/goblin/Model.MD2", ANIM_MESH_GOBLIN, MATERIALS_GOBLIN);
+
 	return success;
 }
 
@@ -540,6 +580,25 @@ bool ResourceManager::LoadFont(const std::string& path, size_t key, int size)
 	if (!m_Font->CreateFont(path, size))
 	{
 		WRITE_LOG("FONT LOAD FAIL", "error");
+		return false;
+	}
+
+	return true;
+}
+
+bool ResourceManager::LoadAnimMesh(const std::string& path, size_t key_store, unsigned materialSet)
+{
+	if (m_AnimMeshes.find(key_store) != m_AnimMeshes.end())
+	{
+		WRITE_LOG("Tried to use same anim mesh key twice", "error");
+		return false;
+	}
+
+	AnimMesh* anim_mesh = new AnimMesh();
+	m_AnimMeshes[key_store] = anim_mesh;
+	if (!anim_mesh->Load(path.c_str(), this, materialSet))
+	{
+		WRITE_LOG("Failed to load anim mesh: " + path, "error");
 		return false;
 	}
 
@@ -768,6 +827,13 @@ void ResourceManager::Close()
 		SAFE_DELETE(i->second);
 	}
 	m_Meshes.clear();
+
+	// Clear Anim meshes
+	for (auto i = m_AnimMeshes.begin(); i != m_AnimMeshes.end(); ++i)
+	{
+		SAFE_CLOSE(i->second);
+	}
+	m_AnimMeshes.clear();
 
 	// Clean shaders
 	for (auto i = m_Shaders.begin(); i != m_Shaders.end(); ++i)
