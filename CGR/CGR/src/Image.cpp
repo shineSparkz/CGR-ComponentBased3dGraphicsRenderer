@@ -13,52 +13,59 @@ extern "C"
 }
 #include <cctype>
 
-struct my_error_mgr {
-	struct jpeg_error_mgr pub;	/* "public" fields */
-
-	jmp_buf setjmp_buffer;	/* for return to caller */
-};
-
-typedef struct my_error_mgr * my_error_ptr;
-
-METHODDEF(void) my_error_exit(j_common_ptr cinfo)
-{
-	/* cinfo->err really points to a my_error_mgr struct, so coerce pointer */
-	my_error_ptr myerr = (my_error_ptr)cinfo->err;
-
-	/* Always display the message. */
-	/* We could postpone this until after returning, if we chose. */
-	(*cinfo->err->output_message) (cinfo);
-
-	/* Return control to the setjmp point */
-	longjmp(myerr->setjmp_buffer, 1);
-}
-
 const std::string BAD_FILE = "BAD_FILE";
 
-Image::Image()
+namespace jpg_info
+{
+	struct jpg_error_mgr
+	{
+		struct jpeg_error_mgr pub;
+		jmp_buf setjmp_buffer;
+	};
+
+	typedef struct jpg_error_mgr * jpg_error_ptr;
+
+	METHODDEF(void) jpeg_error_exit(j_common_ptr cinfo)
+	{
+		/* cinfo->err really points to a my_error_mgr struct, so coerce pointer */
+		jpg_error_ptr err = (jpg_error_ptr)cinfo->err;
+
+		// Always display the message.
+		/* We could postpone this until after returning, if we chose. */
+		(*cinfo->err->output_message) (cinfo);
+
+		// Return control to the setjmp point
+		longjmp(err->setjmp_buffer, 1);
+	}
+}
+
+Image::Image() :
+	m_Data(nullptr),
+	m_Width(0),
+	m_Height(0),
+	m_NumBytes(0)
 {
 }
 
 Image::Image(Image& rhs)
 {
-	this->width = rhs.width;
-	this->height = rhs.height;
-	this->num_bytes = rhs.num_bytes;
+	this->m_Width = rhs.m_Width;
+	this->m_Height = rhs.m_Height;
+	this->m_NumBytes = rhs.m_NumBytes;
 
 	// Deep copy
-	size_t buff_size = (rhs.width * rhs.height) * rhs.num_bytes;
-	this->data = new byte[buff_size];
+	size_t buff_size = (rhs.m_Width * rhs.m_Height) * rhs.m_NumBytes;
+	m_Data = new byte[buff_size];
 
 	for (size_t i = 0; i < buff_size; ++i)
 	{
-		this->data[i] = rhs.data[i];
+		m_Data[i] = rhs.m_Data[i];
 	}
 }
 
 Image::~Image()
 {
-	SAFE_DELETE_ARRAY(data);
+	SAFE_DELETE_ARRAY(m_Data);
 }
 
 bool Image::LoadImg(const char* file_name_no_ext)
@@ -90,8 +97,10 @@ bool Image::LoadImg(const char* file_name_no_ext)
 
 		// Get first 3 values from TGA header and read them into type
 		fread(&type, sizeof(byte), 3, file);
+		
 		// Skip 12 bytes into the header, we already have the first 3, and we skip the two word values
 		fseek(file, 12, SEEK_SET);
+		
 		// Read the rest of the info into these arrays
 		fread(&info, sizeof(byte), 6, file);
 
@@ -104,29 +113,29 @@ bool Image::LoadImg(const char* file_name_no_ext)
 		}
 
 		// Get the image widtth ( note the type from the tga header is a word, so use both pointers
-		width = info[0] + info[1] * 256;	// Little endian
-		height = info[2] + info[3] * 256;
-		this->num_bytes = info[4] / 8;
+		m_Width = info[0] + info[1] * 256;	// Little endian
+		m_Height = info[2] + info[3] * 256;
+		m_NumBytes = info[4] / 8;
 
 		// Check byte count
-		if (num_bytes < 3 || num_bytes > 4)
+		if (m_NumBytes < 3 || m_NumBytes > 4)
 		{
 			fclose(file);
 			WRITE_LOG("Error: Incorrect num bytes for TGA file: " + fileIn, "error");
 		}
 
 		// Finally allocate the memory now that we have all of the information loaded from file
-		dword image_size = width * height * num_bytes;
-		data = new byte[image_size];
+		dword image_size = m_Width * m_Height * m_NumBytes;
+		m_Data = new byte[image_size];
 
 		// read in data
-		fread(data, sizeof(byte), image_size, file);
+		fread(m_Data, sizeof(byte), image_size, file);
 
 		fclose(file);
 
 #ifdef _DEBUG
 		std::stringstream file_props;
-		file_props << "Info: Image file: " << file_name_no_ext << " loaded ok, Width: " << width << ", Height: " << height << ", Size: " << image_size << std::endl;
+		file_props << "Info: Image file: " << file_name_no_ext << " loaded ok, Width: " << m_Width << ", Height: " << m_Height << ", Size: " << image_size << std::endl;
 		WRITE_LOG(file_props.str(), "none");
 #endif
 		return true;
@@ -140,8 +149,8 @@ bool Image::LoadImg(const char* file_name_no_ext)
 			return false;
 		}
 
-		struct my_error_mgr jerr;
-		struct jpeg_decompress_struct info;  //the jpeg decompress info
+		struct jpg_info::jpg_error_mgr  jerr;
+		struct jpeg_decompress_struct info;
 		info.err = jpeg_std_error(&jerr.pub);
 		jpeg_create_decompress(&info);
 
@@ -149,21 +158,21 @@ bool Image::LoadImg(const char* file_name_no_ext)
 		jpeg_read_header(&info, TRUE);   
 		jpeg_start_decompress(&info); 
 
-		this->width = info.output_width;
-		this->height = info.output_height;
-		this->num_bytes = info.num_components;
+		m_Width = info.output_width;
+		m_Height = info.output_height;
+		m_NumBytes = info.num_components;
 
-		int size = this->width * this->height * this->num_bytes;
-		this->data = new byte[size];
+		int size = m_Width * m_Height * m_NumBytes;
+		m_Data = new byte[size];
 
 		//  Read data into this buffer
-		byte* p1 = data;
+		byte* p1 = m_Data;
 		byte** p2 = &p1;
 		int numlines = 0;
 		while (info.output_scanline < info.output_height)
 		{
 			numlines = jpeg_read_scanlines(&info, p2, 1);
-			*p2 += numlines * this->num_bytes * info.output_width;
+			*p2 += numlines * m_NumBytes * info.output_width;
 		}
 
 		// Finish decompressing this 
