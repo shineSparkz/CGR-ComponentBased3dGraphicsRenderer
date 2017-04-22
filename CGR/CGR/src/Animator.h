@@ -17,10 +17,13 @@ public:
 
 	void StartAnimation(animType_t anim);
 
+	animType_t GetCurrentAnim() const;
+
 private:
 	friend class Renderer;
 	static int	m_Id;
 	animState_t	m_AnimState;
+	animType_t	m_CurrentAnim;
 };
 
 INLINE int Animator::GetId()

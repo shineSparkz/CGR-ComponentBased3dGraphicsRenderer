@@ -160,12 +160,14 @@ void Application::Run()
 {
 	// TODO : Put this check back later
 
+#ifndef _DEBUG
 	// Check that state manager has been set first, need at least one state
-	//if (!m_SceneGraph || (m_SceneGraph && m_SceneGraph->IsEmpty()))
-	//{
-	//	WRITE_LOG("Error: The state manager in applicaiton has not been init, need to add states and call 'InformAllStatesSet'", "error");
-	//	return;
-	//}
+	if (!m_SceneGraph || (m_SceneGraph && m_SceneGraph->IsEmpty()))
+	{
+		WRITE_LOG("Error: The state manager in applicaiton has not been init, need to add states and call 'InformAllStatesSet'", "error");
+		m_ShouldClose = GE_TRUE;
+	}
+#endif
 
 	const float FPS = 60.0f;
 	const float DELTA_TICK = 1.0f / FPS;
@@ -219,7 +221,7 @@ void Application::Run()
 
 void Application::renderInfo()
 {
-	int numItems = 2;		// <-- Hacky, it's from renderer
+	int numItems = 2;		// <-- Hacky, it's from renderer, using this position
 	const float divider = 32.0f;
 	const float top = static_cast<float>(Screen::FrameBufferHeight());
 

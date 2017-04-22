@@ -7,12 +7,14 @@
 
 /*
 List
-- Tidy all code
+- Bounding boxes
+- Fix normals
 - Fix deferred
 - Make scenes nice and add more meshes etc
 - Make a use case for a new user, creating a scene, game objects, shader and using engine functionality or write docs
 
 Done
+- Tidy all code
 - Tidy up terrain shader
 - Switch scenes
 - Normal display tool
@@ -40,7 +42,7 @@ int main(void)
 	
 	Application* app = new Application();
 
-	if (app->Init(1280, 720, true, "CGR Render Engine - Alex Spellman", 0, 16, 9, 4, 5))
+	if (app->Init(1920, 1080, !true, "CGR Render Engine - Alex Spellman", 0, 16, 9, 4, 5))
 	{
 		// User Adds scenes here
 		if (app->AddScene<IndoorLevelScene>(new IndoorLevelScene("indoor")) != GE_OK)

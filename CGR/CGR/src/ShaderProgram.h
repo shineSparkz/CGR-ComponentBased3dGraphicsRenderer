@@ -19,7 +19,6 @@ public:
 	void SetUniformValue(const std::string& name, const T* v);
 
 	void Use();
-
 	bool Reload();
 
 	void Close();

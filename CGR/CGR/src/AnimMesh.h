@@ -21,8 +21,11 @@ public:
 	~AnimMesh();
 
 	void Close();
-	bool Load(const char* sFilename, ResourceManager* resMan, unsigned materialSet);
+	bool Load(const char* sFilename, ResourceManager* resMan, unsigned materialSet, bool flipUVs);
 	static anim_t	animlist[21];
+
+	Vec3 GetMinVertex() const;
+	Vec3 GetMaxVertex() const;
 
 private:
 	friend class						Renderer;

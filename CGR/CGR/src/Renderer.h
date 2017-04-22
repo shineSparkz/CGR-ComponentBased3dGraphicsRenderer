@@ -65,9 +65,6 @@ public:
 	bool					ReloadShaders();
 
 	// Get Resources
-	size_t					GetNumSubMeshesInMesh(size_t meshIndex) const;
-	size_t					GetNumTextures() const;
-	Texture*				GetTexture(size_t index) const;
 	ResourceManager* const	GetResourceManager() const;
 
 	// Get Light info

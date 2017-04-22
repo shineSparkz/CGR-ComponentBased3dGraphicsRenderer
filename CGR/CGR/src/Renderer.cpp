@@ -95,7 +95,7 @@ bool Renderer::Init()
 	success &= createUniformBlocks();
 
 	// Create all default engine resources - This needs to be moved as it's a user defined thing 
-	success &= m_ResManager->CreateDefaultResources();
+	success &= m_ResManager->createDefaultResources();
 
 	// G Buffer for deferred 
 	success &= setFrameBuffers();
@@ -340,7 +340,7 @@ void Renderer::RenderBillboardList(BillboardList* billboard)
 		glEnable(GL_SAMPLE_ALPHA_TO_COVERAGE);
 
 		// Bind the texture we get from renderer. This needs sorting too
-		Texture* t = this->GetTexture(billboard->m_TextureIndex);
+		Texture* t = m_ResManager->GetTexture(billboard->m_TextureIndex);
 		if (t) t->Bind();
 
 		// I think we shoulf be asking renderer to do this 
@@ -366,22 +366,6 @@ bool Renderer::ReloadShaders()
 	}
 
 	return this->setStaticDefaultShaderValues();
-}
-
-
-size_t Renderer::GetNumSubMeshesInMesh(size_t meshIndex) const
-{
-	return m_ResManager->GetNumSubMeshesInMesh(meshIndex);
-}
-
-size_t Renderer::GetNumTextures() const
-{
-	return m_ResManager->GetNumTextures();
-}
-
-Texture* Renderer::GetTexture(size_t index) const
-{
-	return m_ResManager->GetTexture(index);
 }
 
 int Renderer::GetDirLightIndex()
@@ -853,7 +837,7 @@ void Renderer::renderMesh(MeshRenderer* meshRenderer, const Mat4& world_xform, b
 				const unsigned	MaterialIndex = subMesh.MaterialIndex;
 
 				// Check this mat set is valid
-				if (m_ResManager->MaterialSetExists(MaterialSet))
+				if (m_ResManager->CheckMaterialSetExists(MaterialSet))
 				{
 					auto& materials = m_ResManager->m_Materials[MaterialSet];
 
@@ -927,7 +911,7 @@ void Renderer::renderAnimMesh(MeshRenderer* meshRenderer, Animator* anim, const 
 
 		if (withTextures)
 		{
-			if (m_ResManager->MaterialSetExists(meshRenderer->m_MaterialIndex))
+			if (m_ResManager->CheckMaterialSetExists(meshRenderer->m_MaterialIndex))
 			{
 				auto& materials = m_ResManager->m_Materials[meshRenderer->m_MaterialIndex];
 				for (auto i = materials.begin(); i != materials.end(); ++i)

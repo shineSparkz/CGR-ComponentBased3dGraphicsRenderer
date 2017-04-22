@@ -10,9 +10,12 @@
 #define MESH_ID_LEVEL					5
 #define MESH_ID_SPONZA					6
 #define MESH_TERRAIN					7
+#define MESH_PISTOL						8
+#define MESH_ROCKS						9
 
 #define ANIM_MESH_GOBLIN				0
-#define NUM_ANIM_MESHES					1
+#define ANIM_MESH_SAMOURAI				1
+#define NUM_ANIM_MESHES					2
 
 // Material Set IDs
 #define MATERIALS_MALE					0
@@ -23,7 +26,10 @@
 #define MATERIALS_SPONZA				4
 #define MATERIALS_LEVEL					5
 #define MATERIALS_GOBLIN				6
-
+#define MATERIALS_SAMOURAI				7
+#define MATERIALS_PISTOL				8
+#define MATERIALS_ROCK					9
+#define MATERIALS_WOOD					10
 
 // Texture ID's -- for now
 #define TEX_SKYBOX_DEFAULT				1

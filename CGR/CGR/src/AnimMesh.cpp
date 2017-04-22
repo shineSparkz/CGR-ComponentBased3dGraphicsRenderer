@@ -88,7 +88,7 @@ void AnimMesh::Close()
 	OpenGLLayer::clean_GL_vao(&m_VAO, 1);
 }
 
-bool AnimMesh::Load(const char* sFilename, ResourceManager* resMan, unsigned materialSet)
+bool AnimMesh::Load(const char* sFilename, ResourceManager* resMan, unsigned materialSet, bool flipUvs)
 {
 	// Load Mesh file
 	FILE* mesh_file = fopen(sFilename, "rb");
@@ -180,8 +180,10 @@ bool AnimMesh::Load(const char* sFilename, ResourceManager* resMan, unsigned mat
 			// Extract texture coordinates
 			float s = *((float*)(&glCommands[i++])); 
 			float t = *((float*)(&glCommands[i++]));
+			
 			// Flip t, because it is (from some reasons) stored from top to bottom
-			t = 1.0f - t; 
+			if(flipUvs)
+				t = 1.0f - t; 
 
 			int vi = glCommands[i++];
 
@@ -290,7 +292,7 @@ bool AnimMesh::Load(const char* sFilename, ResourceManager* resMan, unsigned mat
 		{
 			std::string sTry = sDirectory + sStripped + sTextureExtensions[i];
 
-			Texture* t = resMan->LoadTexture(sTry, GL_TEXTURE0);
+			Texture* t = resMan->LoadAndGetTexture(sTry, GL_TEXTURE0);
 			if (t)
 			{
 				std::map<unsigned, Material*> mat;
@@ -306,4 +308,18 @@ bool AnimMesh::Load(const char* sFilename, ResourceManager* resMan, unsigned mat
 
 	SAFE_DELETE_ARRAY(buffer);
 	return true;
+}
+
+Vec3 AnimMesh::GetMinVertex() const
+{
+	if (m_AnimData.empty())
+		return Vec3(0.0f);
+	return m_AnimData[0].min;
+}
+
+Vec3 AnimMesh::GetMaxVertex() const
+{
+	if (m_AnimData.empty())
+		return Vec3(0.0f);
+	return m_AnimData[0].max;
 }

@@ -215,7 +215,7 @@ void IndoorLevelScene::Update(float dt)
 
 void IndoorLevelScene::Render()
 {
-	m_Renderer->Render(m_GameObjects, true);
+	m_Renderer->Render(m_GameObjects, !true);
 }
 
 void IndoorLevelScene::RenderUI()

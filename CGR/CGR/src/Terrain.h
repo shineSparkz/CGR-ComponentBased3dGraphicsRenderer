@@ -65,11 +65,18 @@ public:
 	float GetTexV() const;
 	void  OnReloadShaders();
 
+	float GetHeightFromPosition(const Vec3& p);
+
 private:
-	ShaderProgram*	m_Shader;	//<-- Weak Ptr
-	float			m_Height;
-	float			m_TexU;
-	float			m_TexV;
+	std::vector<Vertex>	m_Vertices;
+	ShaderProgram*		m_Shader;	//<-- Weak Ptr
+	float				m_Height;
+	float				m_TexU;
+	float				m_TexV;
+	uint32				m_subU;
+	uint32				m_subV;
+	float				m_SizeX;
+	float				m_SizeZ;
 };
 
 #endif

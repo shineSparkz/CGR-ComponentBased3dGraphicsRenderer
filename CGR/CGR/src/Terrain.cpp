@@ -111,8 +111,44 @@ namespace bez
 	}
 }
 
+float TerrainConstructor::GetHeightFromPosition(const Vec3& p)
+{
+	/*
+		// Need Inverse of the equation used to gen terrain
+		 -- float x_pos = (sizeX / subU) * x;
+
+		E.g. 
+		size x = 100
+		subU =	 50
+
+		0 : (100 / 50) * 0 = 0;
+		1 : (100 / 50) * 1 = 2;
+		2 : (100 / 50) * 2 = 4
+		3 : (100 / 50) * 3 = 6
+		.. etc
+
+		Given: p.x = 4;
+		p.x / (sizeX * subU);
+		4   / (100   * 50)
+		p.x = 6;	<-- X Index
+	*/
+
+	// Note, Negate z position
+	int x = static_cast<int>(p.x / m_SizeX * m_subU);
+	int z = -static_cast<int>(p.z / m_SizeZ * m_subV);
+
+	// Clamp - note the actual width is (subU + 1)
+	x = Maths::Clamp(x, 0, (int)m_subU);
+	z = Maths::Clamp(z, 0, (int)m_subV);
+	
+	// Use actual height (suv V + 1)
+	int offset = x + z * (m_subV + 1);
+
+	return  m_Vertices[offset].position.y;
+}
+
 bool TerrainConstructor::CreateTerrain(
-	std::vector<Vertex>& m_Vertices,
+	std::vector<Vertex>& verts_out,
 	std::vector<uint32>& m_Indices,
 	ShaderProgram* shader,
 	float sizeX,
@@ -128,6 +164,10 @@ bool TerrainConstructor::CreateTerrain(
 	m_TexU = tile_u;
 	m_TexV = tile_v;
 	m_Shader = shader;
+	m_SizeX = sizeX;
+	m_SizeZ = sizeZ;
+	m_subU = subU;
+	m_subV = subV;
 
 	if (!shader)
 	{
@@ -158,7 +198,7 @@ bool TerrainConstructor::CreateTerrain(
 				U = ((float)x / x_verts) * (clampUV ? 1.0f : tile_u);
 				V = ((float)z / z_verts) * (clampUV ? 1.0f : tile_v);
 
-				m_Vertices.push_back(
+				verts_out.push_back(
 					Vertex
 				{
 					Vec3(static_cast<float>(x_pos), 0.0f, -static_cast<float>(z_pos)),
@@ -182,7 +222,7 @@ bool TerrainConstructor::CreateTerrain(
 				return false;
 			}
 
-			if (m_Vertices.empty())
+			if (verts_out.empty())
 			{
 				WRITE_LOG("Can't create height map with no vertices for surface mesh", "error");
 				return false;
@@ -199,7 +239,7 @@ bool TerrainConstructor::CreateTerrain(
 					float height_map_val = static_cast<float>(*(byte*)height_map.GetPixel(x, z));
 					float y_pos = ((1.0f / 255) * height_map_val) * size_y;
 
-					m_Vertices[offset].position.y = y_pos;
+					verts_out[offset].position.y = y_pos;
 				}
 			}
 		}
@@ -266,9 +306,9 @@ bool TerrainConstructor::CreateTerrain(
 		for (dword i = 0; i < m_Indices.size(); i += 3)
 		{
 			// Get the vertices for each triangle in the element array
-			Vec3 p1 = m_Vertices[m_Indices[i]].position;
-			Vec3 p2 = m_Vertices[m_Indices[i + 1]].position;
-			Vec3 p3 = m_Vertices[m_Indices[i + 2]].position;
+			Vec3 p1 = verts_out[m_Indices[i]].position;
+			Vec3 p2 = verts_out[m_Indices[i + 1]].position;
+			Vec3 p3 = verts_out[m_Indices[i + 2]].position;
 
 			Vec3 u = p2 - p1;
 			Vec3 v = p3 - p1;
@@ -276,23 +316,26 @@ bool TerrainConstructor::CreateTerrain(
 			temp_norm = glm::cross(u, v);
 
 			// change the new values of normal in the interleaved vertex
-			m_Vertices[m_Indices[i]].normal += temp_norm;
-			m_Vertices[m_Indices[i + 1]].normal += temp_norm;
-			m_Vertices[m_Indices[i + 2]].normal += temp_norm;
+			verts_out[m_Indices[i]].normal += temp_norm;
+			verts_out[m_Indices[i + 1]].normal += temp_norm;
+			verts_out[m_Indices[i + 2]].normal += temp_norm;
 
 		}
 
-		for (size_t v = 0; v < m_Vertices.size(); ++v)
+		for (size_t v = 0; v < verts_out.size(); ++v)
 		{
-			m_Vertices[v].normal = glm::normalize(m_Vertices[v].normal);
+			verts_out[v].normal = glm::normalize(verts_out[v].normal);
 		}
 	}
+
+	// Copy them locally 
+	m_Vertices = verts_out;
 
 	return true;
 }
 
 bool TerrainConstructor::CreateBez(
-	std::vector<Vertex>& m_Vertices,
+	std::vector<Vertex>& verts_out,
 	std::vector<uint32>& m_Indices,
 	ShaderProgram* shader,
 	const std::string& heightmap,
@@ -309,6 +352,11 @@ bool TerrainConstructor::CreateBez(
 	m_Height = heightmapSizeY;
 	m_TexU = tileU;
 	m_TexV = tileV;
+	m_Shader = shader;
+	m_SizeX = sizeX;
+	m_SizeZ = sizeZ;
+	m_subU = subU;
+	m_subV = subV;
 
 	if (!shader)
 	{
@@ -500,7 +548,7 @@ bool TerrainConstructor::CreateBez(
 					U = ((float)x / x_verts) * (clampUV ? 1.0f : tileU);
 					V = ((float)z / z_verts) * (clampUV ? 1.0f : tileV);
 
-					m_Vertices.push_back(
+					verts_out.push_back(
 						Vertex
 					{
 						Vec3(static_cast<float>(x_pos), 0.0f, -static_cast<float>(z_pos)),
@@ -524,8 +572,8 @@ bool TerrainConstructor::CreateBez(
 				size_t offset = x + y * x_verts;
 
 				// Algorithm I created to get first control point, use global uv and multiply by the amount of subs in cps
-				float X = (m_Vertices[offset].texcoord.x * ((float)height_subu));
-				float Y = (m_Vertices[offset].texcoord.y * ((float)height_subv));
+				float X = (verts_out[offset].texcoord.x * ((float)height_subu));
+				float Y = (verts_out[offset].texcoord.y * ((float)height_subv));
 
 				// Use this for patches that share control points to lerp and smooth them
 				size_t x_patch_offset = (size_t)X - (size_t)X % 3;
@@ -557,10 +605,10 @@ bool TerrainConstructor::CreateBez(
 				points[14] = height_map_verts[patch_id + ((size_t)height_x * 3) + 2].position;
 				points[15] = height_map_verts[patch_id + ((size_t)height_x * 3) + 3].position;
 
-				m_Vertices[offset].position =
+				verts_out[offset].position =
 					// Lerp
 					//0.5f + 
-					m_Vertices[offset].position +
+					verts_out[offset].position +
 					bez::bezierSurface_16(U, V, points);
 
 				patches.clear();
@@ -571,11 +619,11 @@ bool TerrainConstructor::CreateBez(
 		{
 			if (withBrowian)
 			{
-				for (size_t v = 0; v < m_Vertices.size(); ++v)
+				for (size_t v = 0; v < verts_out.size(); ++v)
 				{
-					m_Vertices[v].position.y =
-						0.5f + m_Vertices[v].position.y +
-						bez::brownian(m_Vertices[v].position, heightmapSizeY, 8, 2.0f, 0.4f).y;
+					verts_out[v].position.y =
+						0.5f + verts_out[v].position.y +
+						bez::brownian(verts_out[v].position, heightmapSizeY, 8, 2.0f, 0.4f).y;
 				}
 			}
 		}
@@ -641,9 +689,9 @@ bool TerrainConstructor::CreateBez(
 			for (dword i = 0; i < m_Indices.size(); i += 3)
 			{
 				// Get the vertices for each triangle in the element array
-				Vec3 p1 = m_Vertices[m_Indices[i]].position;
-				Vec3 p2 = m_Vertices[m_Indices[i + 1]].position;
-				Vec3 p3 = m_Vertices[m_Indices[i + 2]].position;
+				Vec3 p1 = verts_out[m_Indices[i]].position;
+				Vec3 p2 = verts_out[m_Indices[i + 1]].position;
+				Vec3 p3 = verts_out[m_Indices[i + 2]].position;
 
 				Vec3 u = p2 - p1;
 				Vec3 v = p3 - p1;
@@ -651,15 +699,15 @@ bool TerrainConstructor::CreateBez(
 				temp_norm = glm::cross(u, v);
 
 				// change the new values of normal in the interleaved vertex
-				m_Vertices[m_Indices[i]].normal += temp_norm;
-				m_Vertices[m_Indices[i + 1]].normal += temp_norm;
-				m_Vertices[m_Indices[i + 2]].normal += temp_norm;
+				verts_out[m_Indices[i]].normal += temp_norm;
+				verts_out[m_Indices[i + 1]].normal += temp_norm;
+				verts_out[m_Indices[i + 2]].normal += temp_norm;
 
 			}
 
-			for (size_t v = 0; v < m_Vertices.size(); ++v)
+			for (size_t v = 0; v < verts_out.size(); ++v)
 			{
-				m_Vertices[v].normal = glm::normalize(m_Vertices[v].normal);
+				verts_out[v].normal = glm::normalize(verts_out[v].normal);
 			}
 		}
 
@@ -675,7 +723,7 @@ bool TerrainConstructor::CreateBez(
 					float x_pos = (sizeX / subU) * x;
 					float z_pos = (sizeZ / subV) * z;
 
-					m_Vertices[x + z * x_verts].texcoord =
+					verts_out[x + z * x_verts].texcoord =
 						Vec2((float)x / (x_verts)* tileU,
 						(float)z / (z_verts)* tileV
 						);
@@ -684,6 +732,9 @@ bool TerrainConstructor::CreateBez(
 		}
 
 	}
+
+	// Copy them locally 
+	m_Vertices = verts_out;
 
 	return true;
 }

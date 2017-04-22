@@ -51,4 +51,10 @@ void Animator::StartAnimation(animType_t type)
 	res.interpol = 0.0f;
 
 	m_AnimState = res;
+	m_CurrentAnim = type;
+}
+
+animType_t Animator::GetCurrentAnim() const
+{
+	return m_CurrentAnim;
 }

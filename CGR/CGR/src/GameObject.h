@@ -36,7 +36,6 @@ private:
 private:
 	ComponentHash m_Components;
 	bool m_Enabled;
-
 };
 
 template <class T>

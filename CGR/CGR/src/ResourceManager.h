@@ -16,39 +16,47 @@ class UniformBlockManager;
 class ResourceManager
 {
 public:
-	bool LoadFont(const std::string& path, size_t key, int size);
-	bool LoadMesh(const std::string& path, size_t key_store, bool tangents, bool withTextures, unsigned materialSet);
-	bool LoadAnimMesh(const std::string& path, size_t key_store, unsigned materialSet);
-	bool CreateMesh(size_t key, const std::vector<Vertex>&, const std::vector<uint32>& indices, unsigned materialSet);
-	bool LoadTexture(const std::string& path, size_t key_store, int glTextureIndex);
-	bool LoadCubeMap(std::string path[6], size_t key_store, int glTextureIndex);
-	bool CreateShaderProgram(std::vector<Shader>& shaders, size_t key);
+	// ---- Load Functions: Will be stored in this ----
+	bool				LoadFont(const std::string& path, size_t key, int size);
+	bool				LoadMesh(const std::string& path, size_t key_store, bool tangents, bool withTextures, unsigned materialSet);
+	bool				LoadAnimMesh(const std::string& path, size_t key_store, unsigned materialSet, bool flipUvs);
+	bool				CreateMesh(size_t key, const std::vector<Vertex>&, const std::vector<uint32>& indices, unsigned materialSet);	
+	bool				LoadTexture(const std::string& path, size_t key_store, int glTextureIndex);
+	bool				LoadCubeMap(std::string path[6], size_t key_store, int glTextureIndex);
+	bool				CreateShaderProgram(std::vector<Shader>& shaders, size_t key);
+	void				AddMaterialSet(size_t key, const std::map<unsigned, Material*> materials);
+	
+	// ---- Query Functions ----
+	bool				CheckMeshExists(size_t key) const;
+	bool				CheckAnimMeshExists(size_t key) const;
+	bool				CheckTextureExists(size_t key) const;
+	bool				CheckShaderExists(size_t key) const;
+	bool				CheckFontExists(size_t key) const;
+	bool				CheckMaterialSetExists(size_t key) const;
 
-	bool CheckMeshExists(size_t key);
-	bool CheckTextureExists(size_t key);
-	bool CheckShaderExists(size_t key);
-	bool CheckFontExists(size_t key);
+	// ---- Get Resource Funcitons ----
+	ShaderProgram*		GetShader(size_t index) const;
+	Texture*			GetTexture(size_t index) const;
+	Mesh*				GetMesh(size_t index) const;
+	AnimMesh*			GetAnimMesh(size_t index) const;
+	Font*				GetFont(size_t index) const;
 
-	void AddMaterialSet(size_t key, const std::map<unsigned, Material*> materials);
-	bool MaterialSetExists(size_t key) const;
-
-	size_t GetNumSubMeshesInMesh(size_t meshIndex) const;
-	size_t GetNumTextures() const;
-	Texture* GetTexture(size_t index);
-	ShaderProgram* GetShader(size_t index);
-	Mesh* GetMesh(size_t index) const;
-
-	Texture* LoadTexture(const std::string& textureFile, int textureSampler);
+	// ---- Load Functions: Will NOT be stored in this and shoud be cleaned by caller ----
+	ShaderProgram*		LoadAndGetShaderProgram(std::vector<Shader>& shaders);
+	Texture*			LoadAndGetTexture(const std::string& textureFile, int textureSampler);
+	Mesh*				LoadAndGetMesh(const std::string& path, bool tangents, bool withTextures, unsigned materialSet);
+	Mesh*				CreateAndGetMesh(const std::vector<Vertex>& verts, const std::vector<uint32>& indices, unsigned materialSet);
+	AnimMesh*			LoadAndGetAnimMesh(const std::string& path, unsigned materialSet, bool flipUvs);
+	Font*				LoadAndGetFont(const std::string& path, int size);
 
 private:
-	bool CreateDefaultResources();
+	bool				createDefaultResources();
 
-private:
-	bool loadDefaultTextures();
-	bool loadDefaultMeshes();
-	bool loadDefaultFonts();
-	bool loadDefaultForwardShaders();
-	bool loadDefaultDeferredShaders();
+	bool				loadDefaultTextures();
+	bool				loadDefaultMeshes();
+	bool				loadDefaultFonts();
+	bool				loadDefaultForwardShaders();
+	bool				loadDefaultDeferredShaders();
 
 	void Close();
 
@@ -60,7 +68,6 @@ private:
 	std::map<size_t, Mesh*>								m_Meshes;
 	std::map<size_t, AnimMesh*>							m_AnimMeshes;
 	std::map<size_t, Font*>								m_Fonts;
-
 };
 
 #endif

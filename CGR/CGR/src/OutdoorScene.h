@@ -11,6 +11,7 @@ class SurfaceMesh;
 class DirectionalLightC;
 class AnimMesh;
 class Transform;
+class Animator;
 class TerrainConstructor;
 
 class OutDoorScene : public IScene
@@ -30,8 +31,12 @@ private:
 	BillboardList*				m_TreeBillboardList;
 	DirectionalLightC*			m_DirLightHandle;
 	Transform*					m_GoblinTransform;
+	Transform*					m_PistolTransform;
+	Transform*					m_CamTransform;
+	Animator*					m_GoblinAnim;
 	TerrainConstructor*			m_TerrainConstructor;
 	float						m_TimeNow;
+	float						m_GoblinHeight;
 };
 
 #endif
