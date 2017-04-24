@@ -72,6 +72,7 @@ public:
 	int						GetSpotLightIndex();
 	int						GetPointLightIndex();
 	void					UpdatePointLight(int index, const Vec3& position, float range);
+	void					UpdateDirLight(const Vec3& direction, const Vec3& range);
 
 	// Modes
 	void					ToggleShadingMode();
@@ -100,7 +101,7 @@ private:
 	void forwardRender(std::vector<GameObject*>& gameObjects, bool withShadows = false);
 	void deferredRender(std::vector<GameObject*>& gameObjects);
 	void renderMesh(Mesh* mesh);
-	void renderMesh(MeshRenderer* mesh, const Mat4& world, bool withTextures, GLenum renderMode = GL_TRIANGLES);
+	void renderMesh(MeshRenderer* mesh, const Mat4& world, bool withTextures, GLenum renderMode, bool shadow_pass);
 	void renderAnimMesh(MeshRenderer* mesh, Animator* anim, const Mat4& world, bool withTextures);
 	void renderSkybox(BaseCamera* cam);
 

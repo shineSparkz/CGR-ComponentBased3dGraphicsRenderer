@@ -16,6 +16,8 @@ public:
 	void Start() override;
 	void Update() override;
 
+	void UseQuatsForRotation(bool use);
+
 	void SetPosition(const Vec3& p);
 	void SetScale(const Vec3& p);
 	void MovePosition(const Vec3& p);
@@ -37,6 +39,7 @@ private:
 	Vec3 position;
 	Vec3 scale;
 	Vec3 euler;
+	bool use_quats = false;
 };
 
 INLINE int Transform::GetId()
@@ -69,7 +72,10 @@ INLINE const Vec3& Transform::Scale() const
 	return scale;
 }
 
-
+INLINE void Transform::UseQuatsForRotation(bool use)
+{
+	this->use_quats = use;
+}
 
 INLINE void Transform::RotateX(float angle)
 {

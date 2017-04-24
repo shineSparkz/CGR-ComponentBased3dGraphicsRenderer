@@ -22,17 +22,11 @@
     <Filter Include="Application\Component">
       <UniqueIdentifier>{d8b81f3b-92f8-4bc7-952e-755b83f4cf5e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shaders">
-      <UniqueIdentifier>{59c97b1e-26dc-47b9-b1b2-f89335c07515}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Shaders\NewLighting">
-      <UniqueIdentifier>{e33dc64d-6205-4f1b-8f01-789ab14d22a3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Shaders\Deferred">
-      <UniqueIdentifier>{28949f33-323f-47a0-8ff0-a3b534502de4}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Physics">
       <UniqueIdentifier>{5f2724e4-d603-425b-aff4-d2c2b4f47b76}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\Scripts">
+      <UniqueIdentifier>{dddd88f1-3c3a-4110-bed6-d96ea068e7f8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -234,6 +228,15 @@
     <ClInclude Include="src\ChaseCamera.h">
       <Filter>Application\Component</Filter>
     </ClInclude>
+    <ClInclude Include="src\SpaceScene.h">
+      <Filter>Game</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ShipController.h">
+      <Filter>Game\Scripts</Filter>
+    </ClInclude>
+    <ClInclude Include="src\VivaScene.h">
+      <Filter>Game</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -387,82 +390,14 @@
     <ClCompile Include="src\ChaseCamera.cpp">
       <Filter>Application\Component</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\bin\resources\shaders\billboard_fs.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\billboard_gs.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\billboard_vs.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\font_fs.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\font_vs.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\lava_fs.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\lighting_fs.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\lighting_vs.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\shadowmap_fs.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\shadowmap_vs.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\skybox_fs.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\skybox_vs.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\terrain_fs.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\terrain_vs.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\new_lights\forward_render_fs.glsl">
-      <Filter>Shaders\NewLighting</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\new_lights\geom_vs.glsl">
-      <Filter>Shaders\NewLighting</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\new_lights\lights_fs.glsl">
-      <Filter>Shaders\NewLighting</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\new_lights\reflection_model_fs.glsl">
-      <Filter>Shaders\NewLighting</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\deferred\dir_light_pass_fs.glsl">
-      <Filter>Shaders\Deferred</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\deferred\geometry_pass_fs.glsl">
-      <Filter>Shaders\Deferred</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\deferred\geometry_pass_vs.glsl">
-      <Filter>Shaders\Deferred</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\deferred\light_pass_vs.glsl">
-      <Filter>Shaders\Deferred</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\deferred\point_light_pass_fs.glsl">
-      <Filter>Shaders\Deferred</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\deferred\stencil_pass_fs.glsl">
-      <Filter>Shaders\Deferred</Filter>
-    </None>
-    <None Include="..\bin\resources\shaders\deferred\stencil_pass_vs.glsl">
-      <Filter>Shaders\Deferred</Filter>
-    </None>
+    <ClCompile Include="src\SpaceScene.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ShipController.cpp">
+      <Filter>Game\Scripts</Filter>
+    </ClCompile>
+    <ClCompile Include="src\VivaScene.cpp">
+      <Filter>Game</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

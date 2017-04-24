@@ -16,12 +16,14 @@ public:
 	void Start() override;
 	void Update() override;
 
-	bool SetLight(Renderer* renderer, const Vec3& direction, const Vec3& intensity);
+	bool SetLight(Renderer* renderer, const Vec3& direction, const Vec3& intensity, const Vec3& range);
 	
 	void SetDirection(const Vec3& newDir);
 	void SetDirectionX(float x);
 	void SetDirectionY(float x);
 	void SetDirectionZ(float x);
+
+	void SetRange(const Vec3& newRange);
 
 	void SetColour(const Vec3& newCol);
 	void SetColR(float r);
@@ -29,15 +31,18 @@ public:
 	void SetColB(float b);
 
 	const Vec3& GetDir() const;
+	const Vec3& GetRange() const;
 
 	static int GetId();
 
 private:
 	static int m_Id;
-	UniformBlock* m_LightBlock;	// Weak ptr
-	Vec3 m_Direction;
-	Vec3 m_Intensity;
-	int m_LightValid;
+	Renderer*		m_Renderer;		//<-- Weak Ptr
+	UniformBlock*	m_LightBlock;	//<-- Weak ptr
+	Vec3			m_Direction;
+	Vec3			m_Intensity;
+	Vec3			m_Range;	
+	int				m_LightValid;
 };
 
 INLINE int DirectionalLightC::GetId()

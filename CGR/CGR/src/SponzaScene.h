@@ -20,13 +20,14 @@ public:
 	void RenderUI() override;
 
 private:
-	void createGameObjects();
+	void createDragon(const Vec3& position);
 
 private:
 	std::vector<GameObject*>	m_GameObjects;
-	MeshRenderer*				m_SponzaPtr;	// <-- Weak Ptr
 	float						m_TimeNow{ 0 };
-	size_t						m_Handle = 0;
+	MeshRenderer*				m_SponzaMeshRen;
+	
+	bool						m_UsingBumpmaps{ true };
 };
 
 #endif

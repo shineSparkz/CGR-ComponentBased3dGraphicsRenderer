@@ -202,6 +202,8 @@
     <ClCompile Include="src\ShaderProgram.cpp" />
     <ClCompile Include="src\Shaders.cpp" />
     <ClCompile Include="src\ShadowFrameBuffer.cpp" />
+    <ClCompile Include="src\ShipController.cpp" />
+    <ClCompile Include="src\SpaceScene.cpp" />
     <ClCompile Include="src\SponzaScene.cpp" />
     <ClCompile Include="src\SpotLight.cpp" />
     <ClCompile Include="src\Terrain.cpp" />
@@ -213,6 +215,7 @@
     <ClCompile Include="src\UniformBlock.cpp" />
     <ClCompile Include="src\UniformBlockManager.cpp" />
     <ClCompile Include="src\utils.cpp" />
+    <ClCompile Include="src\VivaScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\AABB.h" />
@@ -267,7 +270,9 @@
     <ClInclude Include="src\Shader.h" />
     <ClInclude Include="src\ShaderProgram.h" />
     <ClInclude Include="src\ShadowFrameBuffer.h" />
+    <ClInclude Include="src\ShipController.h" />
     <ClInclude Include="src\Singleton.h" />
+    <ClInclude Include="src\SpaceScene.h" />
     <ClInclude Include="src\SponzaScene.h" />
     <ClInclude Include="src\SpotLight.h" />
     <ClInclude Include="src\Terrain.h" />
@@ -281,33 +286,7 @@
     <ClInclude Include="src\UniformBlockManager.h" />
     <ClInclude Include="src\utils.h" />
     <ClInclude Include="src\Vertex.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\bin\resources\shaders\billboard_fs.glsl" />
-    <None Include="..\bin\resources\shaders\billboard_gs.glsl" />
-    <None Include="..\bin\resources\shaders\billboard_vs.glsl" />
-    <None Include="..\bin\resources\shaders\deferred\dir_light_pass_fs.glsl" />
-    <None Include="..\bin\resources\shaders\deferred\geometry_pass_fs.glsl" />
-    <None Include="..\bin\resources\shaders\deferred\geometry_pass_vs.glsl" />
-    <None Include="..\bin\resources\shaders\deferred\light_pass_vs.glsl" />
-    <None Include="..\bin\resources\shaders\deferred\point_light_pass_fs.glsl" />
-    <None Include="..\bin\resources\shaders\deferred\stencil_pass_fs.glsl" />
-    <None Include="..\bin\resources\shaders\deferred\stencil_pass_vs.glsl" />
-    <None Include="..\bin\resources\shaders\font_fs.glsl" />
-    <None Include="..\bin\resources\shaders\font_vs.glsl" />
-    <None Include="..\bin\resources\shaders\lava_fs.glsl" />
-    <None Include="..\bin\resources\shaders\lighting_fs.glsl" />
-    <None Include="..\bin\resources\shaders\lighting_vs.glsl" />
-    <None Include="..\bin\resources\shaders\new_lights\forward_render_fs.glsl" />
-    <None Include="..\bin\resources\shaders\new_lights\geom_vs.glsl" />
-    <None Include="..\bin\resources\shaders\new_lights\lights_fs.glsl" />
-    <None Include="..\bin\resources\shaders\new_lights\reflection_model_fs.glsl" />
-    <None Include="..\bin\resources\shaders\shadowmap_fs.glsl" />
-    <None Include="..\bin\resources\shaders\shadowmap_vs.glsl" />
-    <None Include="..\bin\resources\shaders\skybox_fs.glsl" />
-    <None Include="..\bin\resources\shaders\skybox_vs.glsl" />
-    <None Include="..\bin\resources\shaders\terrain_fs.glsl" />
-    <None Include="..\bin\resources\shaders\terrain_vs.glsl" />
+    <ClInclude Include="src\VivaScene.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

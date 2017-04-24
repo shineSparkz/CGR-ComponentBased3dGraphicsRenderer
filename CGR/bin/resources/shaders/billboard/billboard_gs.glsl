@@ -5,7 +5,7 @@ layout (triangle_strip) out;
 layout (max_vertices = 12) out;
 
 uniform float u_time;
-uniform float u_scale = 3.0;
+uniform float u_scale = 4.0;
 uniform mat4 u_view_xform;
 uniform mat4 u_proj_xform;
 uniform mat4 u_model_xform;
@@ -34,7 +34,7 @@ void main()
 		vec3(float(cos(-45.0*pIover180)), 0.0f, float(sin(-45.0*pIover180)))
 	};
 	
-	const float wind_strength = 1.3;
+	const float wind_strength = 2.0;
 	
 	vec3 wind_direction = vec3(1.0, 0.0, 1.0);
 	wind_direction = normalize(wind_direction);

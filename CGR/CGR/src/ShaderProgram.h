@@ -7,7 +7,9 @@
 #include "Shader.h"
 #include "Uniform.h"
 
+#ifdef _DEBUG
 #define LOG_SHADER_ERRORS
+#endif // _DEBUG
 
 class ShaderProgram
 {

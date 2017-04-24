@@ -61,10 +61,8 @@ void BaseCamera::Update()
 	}
 	else if (m_CamType == CamType::Light)
 	{
-		const float fRangeX = 150, fRangeY = 150, fMinZ = 0.05f, fMaxZ = 400;
-		m_Projection = glm::ortho<float>(-fRangeX, fRangeX, -fRangeY, fRangeY, fMinZ, fMaxZ);
-		Vec3 vLightPos = -m_Forward * 150.0f;
-		m_View = glm::lookAt(vLightPos, Vec3(0.0f), m_Up);
+		m_Projection = glm::ortho<float>(-m_Range.x, m_Range.x, -m_Range.y, m_Range.y, m_PerspectiveSettings.near, m_PerspectiveSettings.far);
+		m_View = glm::lookAt(-m_Forward * m_Range.z, Vec3(0.0f), m_Up);
 	}
 }
 
@@ -129,9 +127,19 @@ void BaseCamera::SetDirection(const Vec3& p)
 	m_Forward = p;
 }
 
+void BaseCamera::SetTarget(Transform* target)
+{
+	m_Target = target;
+}
+
 void BaseCamera::SetUp(const Vec3& u)
 {
 	m_Up = u;
+}
+
+void BaseCamera::SetRange(const Vec3& range)
+{
+	m_Range = range;
 }
 
 bool BaseCamera::HasSkybox() const

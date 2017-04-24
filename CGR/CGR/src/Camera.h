@@ -29,6 +29,8 @@ public:
 	void SetPosition(const Vec3& p);
 	void SetDirection(const Vec3& p);
 	void SetUp(const Vec3& u);
+	void SetRange(const Vec3& range);
+	void SetTarget(Transform* target);
 
 	bool HasSkybox() const;
 	SkyboxSettings* SkyBoxParams() const;
@@ -46,9 +48,11 @@ public:
 protected:
 	static int				m_Id;
 	Transform*				m_Transform;
+	Transform*				m_Target{ nullptr };
 	Vec3					m_Up;
 	Vec3					m_Forward;
 	Vec3					m_Right;
+	Vec3					m_Range;	//<-- Only used for light camera
 
 private:
 	CamType					m_CamType;

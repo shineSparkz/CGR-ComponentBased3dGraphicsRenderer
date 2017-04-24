@@ -5,6 +5,7 @@
 #include "IScene.h"
 
 class GameObject;
+class MeshRenderer;
 
 class IndoorLevelScene: public IScene
 {
@@ -20,8 +21,9 @@ public:
 
 private:
 	std::vector<GameObject*>	m_GameObjects;
-	float m_TimeNow{ 0 };
-	size_t m_Handle = 0;
+	MeshRenderer*				m_LvlMeshRenderer;
+	float						m_TimeNow{ 0 };
+	size_t						m_Handle = 0;
 };
 
 #endif

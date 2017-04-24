@@ -9,8 +9,8 @@
 FlyCamera::FlyCamera(GameObject* go) :
 	BaseCamera(go),
 	m_Velocity(0.0f),
-	m_MoveSpeed(50.0f),
-	m_MouseSpeed(1.4f),
+	m_MoveSpeed(20.0f),
+	m_MouseSpeed(1.2f),
 	m_WindowFocused(1),
 	m_Fkey(false),
 	m_Bkey(false),

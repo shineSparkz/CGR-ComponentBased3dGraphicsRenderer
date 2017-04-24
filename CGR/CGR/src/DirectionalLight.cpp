@@ -24,7 +24,7 @@ void DirectionalLightC::Start()
 {
 }
 
-bool DirectionalLightC::SetLight(Renderer* renderer, const Vec3& direction, const Vec3& intensity)
+bool DirectionalLightC::SetLight(Renderer* renderer, const Vec3& direction, const Vec3& intensity, const Vec3& range)
 {
 	if (!renderer)
 	{
@@ -62,12 +62,16 @@ bool DirectionalLightC::SetLight(Renderer* renderer, const Vec3& direction, cons
 		return false;
 	}
 
+	m_Renderer = renderer;
 	m_Direction = direction;
 	m_Intensity = intensity;
+	m_Range = range;
 	m_LightValid = GE_TRUE;
 
 	m_LightBlock->SetValue("directionLight.direction", (void*)glm::value_ptr(m_Direction));
 	m_LightBlock->SetValue("directionLight.intensity", (void*)glm::value_ptr(m_Intensity));
+
+	m_Renderer->UpdateDirLight(m_Direction, m_Range);
 	return true;
 }
 
@@ -81,6 +85,16 @@ void DirectionalLightC::SetDirection(const Vec3& newDir)
 	{
 		m_Direction = newDir;
 		m_LightBlock->SetValue("directionLight.direction", (void*)glm::value_ptr(m_Direction));
+		m_Renderer->UpdateDirLight(m_Direction, m_Range);
+	}
+}
+
+void DirectionalLightC::SetRange(const Vec3& range)
+{
+	if (m_LightValid && m_LightBlock)
+	{
+		m_Range = range;
+		m_Renderer->UpdateDirLight(m_Direction, m_Range);
 	}
 }
 
@@ -90,6 +104,7 @@ void DirectionalLightC::SetDirectionX(float x)
 	{
 		m_Direction.x = x;
 		m_LightBlock->SetValue("directionLight.direction", (void*)glm::value_ptr(m_Direction));
+		m_Renderer->UpdateDirLight(m_Direction, m_Range);
 	}
 }
 
@@ -99,6 +114,7 @@ void DirectionalLightC::SetDirectionY(float y)
 	{
 		m_Direction.y = y;
 		m_LightBlock->SetValue("directionLight.direction", (void*)glm::value_ptr(m_Direction));
+		m_Renderer->UpdateDirLight(m_Direction, m_Range);
 	}
 }
 
@@ -108,6 +124,7 @@ void DirectionalLightC::SetDirectionZ(float z)
 	{
 		m_Direction.z = z;
 		m_LightBlock->SetValue("directionLight.direction", (void*)glm::value_ptr(m_Direction));
+		m_Renderer->UpdateDirLight(m_Direction, m_Range);
 	}
 }
 
@@ -150,5 +167,10 @@ void DirectionalLightC::SetColB(float b)
 const Vec3& DirectionalLightC::GetDir() const
 {
 	return m_Direction;
+}
+
+const Vec3& DirectionalLightC::GetRange() const
+{
+	return m_Range;
 }
 

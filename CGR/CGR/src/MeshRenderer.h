@@ -43,6 +43,8 @@ public:
 	bool HasMultiTextures() const;
 
 	void SetUseBumpMaps(bool should);
+	void SetReceiveShadows(bool should);
+	void SetMaterialIndex(size_t index);
 
 private:
 	friend class						Renderer;

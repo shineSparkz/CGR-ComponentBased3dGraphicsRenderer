@@ -806,6 +806,16 @@ float TerrainConstructor::GetTexV() const
 	return m_TexV;
 }
 
+float TerrainConstructor::GetSizeX() const
+{
+	return m_SizeX;
+}
+
+float TerrainConstructor::GetSizeZ() const
+{
+	return m_SizeZ;
+}
+
 void  TerrainConstructor::OnReloadShaders()
 {
 	if (m_Shader)

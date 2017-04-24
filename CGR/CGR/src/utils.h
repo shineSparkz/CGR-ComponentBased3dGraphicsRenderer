@@ -86,7 +86,7 @@ namespace util
 		return false;
 	}
 
-	INLINE int32 str_to_int(char* str)
+	INLINE int32 str_to_int(const char* str)
 	{
 		int32 value = 0;
 		while ( *str != NULL )

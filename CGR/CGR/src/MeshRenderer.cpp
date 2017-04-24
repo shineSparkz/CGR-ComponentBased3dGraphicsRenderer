@@ -69,3 +69,13 @@ void MeshRenderer::SetUseBumpMaps(bool should)
 {
 	m_HasBumpMaps = should ? GE_TRUE : GE_FALSE;
 }
+
+void MeshRenderer::SetReceiveShadows(bool should)
+{
+	m_ReceiveShadows = should ? GE_TRUE : GE_FALSE;
+}
+
+void MeshRenderer::SetMaterialIndex(size_t index)
+{
+	m_MaterialIndex = index;
+}

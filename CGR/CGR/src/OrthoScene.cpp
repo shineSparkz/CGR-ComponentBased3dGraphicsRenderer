@@ -1,5 +1,8 @@
 #include "OrthoScene.h"
 
+#include "Input.h"
+#include "AnimMesh.h"
+#include "Animator.h"
 #include "Renderer.h"
 #include "Mesh.h"
 #include "Camera.h"
@@ -11,6 +14,7 @@
 #include "Transform.h"
 #include "MeshRenderer.h"
 #include "ResourceManager.h"
+#include "DirectionalLight.h"
 
 OrthoScene::OrthoScene(const std::string& name) :
 	IScene(name)
@@ -23,35 +27,13 @@ OrthoScene::~OrthoScene()
 
 int OrthoScene::OnSceneLoad(ResourceManager* resManager)
 {
-	// BG Quad
-	bool withQuad = !false;
-	if (withQuad)
-	{
-		GameObject* quad = new GameObject();
-		Transform* quadT = quad->AddComponent<Transform>();
-		quadT->SetPosition(Vec3(0.0f, 0.0f, -50.0f));
-		quadT->SetScale(Vec3(850, 600, 1));
-		MeshRenderer* quadMr = quad->AddComponent<MeshRenderer>();
-
-		quadMr->SetMeshData(
-			MESH_ID_QUAD,
-			SHADER_LIGHTING_FWD,
-			MATERIALS_GRASS,
-			false,
-			false,
-			false,
-			false);
-
-		m_GameObjects.push_back(quad);
-	}
-
 	// Create floor
-	for (int i = 0; i < 50; ++i)
+	for (int i = 0; i < 1; ++i)
 	{
 		GameObject* cube1 = new GameObject();
 		Transform* cubet = cube1->AddComponent<Transform>();
-		cubet->SetPosition(Vec3(i*64, 0.0f, -1.0f));
-		cubet->SetScale(Vec3(32.0f, 32, 1));
+		cubet->SetPosition(Vec3(i*64, -320.0f, -1.0f));
+		cubet->SetScale(Vec3(2640.0f, 320, 1));
 		MeshRenderer* cube1Mr = cube1->AddComponent<MeshRenderer>();
 		cube1Mr->SetMeshData(
 			MESH_ID_CUBE,
@@ -70,7 +52,7 @@ int OrthoScene::OnSceneLoad(ResourceManager* resManager)
 	m_Camera->Start();
 	m_Camera->Init(
 		CamType::Orthographic,
-		Vec3(0.0f, 0.0f, 1.0f),																				// Pos
+		Vec3(-500.0f, -250.0f, 1.0f),																				// Pos
 		Vec3(0.0f, 1.0f, 0.0f),																				// Up
 		Vec3(1.0f, 0.0f, 0.0f),																				// Right
 		Vec3(0.0f, 0.0f, -1.0f),																			// Fwd
@@ -83,6 +65,36 @@ int OrthoScene::OnSceneLoad(ResourceManager* resManager)
 	// Set Pointer in renderer
 	m_Renderer->SetSceneData(m_Camera, Vec3(0.1f));
 	m_GameObjects.push_back(cam);
+
+
+	// Create Animated goblin
+	GameObject* goblin = new GameObject();
+	m_GameObjects.push_back(goblin);
+	m_GoblinTransform = goblin->AddComponent<Transform>();
+	m_GoblinTransform->SetScale(Vec3(3.0f));
+	m_GoblinTransform->RotateX(30.0f);
+	m_GoblinTransform->SetPosition(Vec3(-450, 60, -50));
+	MeshRenderer* gmr = goblin->AddComponent<MeshRenderer>();
+	gmr->SetMeshData(
+		ANIM_MESH_GOBLIN,
+		SHADER_ANIM,
+		MATERIALS_GOBLIN,
+		false,
+		false,
+		false,
+		true);
+	m_GoblinAnim = goblin->AddComponent<Animator>();
+	m_GoblinAnim->StartAnimation(STAND);
+
+	// Follow goblin
+	m_Camera->SetTarget(m_GoblinTransform);
+	
+	// Directional Light
+	GameObject* dlight = new GameObject();
+	DirectionalLightC* dl = dlight->AddComponent<DirectionalLightC>();
+	dl->SetLight(m_Renderer, Vec3(0.1f, -0.8f, 0.1f), Vec3(0.5f), Vec3(400.0f, 400.0f, 300.0f));
+	m_GameObjects.push_back(dlight);
+
 	return GE_OK;
 }
 
@@ -97,11 +109,27 @@ void OrthoScene::OnSceneExit()
 
 void OrthoScene::Update(float dt)
 {
-	// Hack to make bg same pos as cam
-	Vec3 camPos = m_Camera->Position();
-	Vec3 bgScale = m_GameObjects[0]->GetComponent<Transform>()->Scale();
-	m_GameObjects[0]->GetComponent<Transform>()->SetPosition(
-		Vec3(camPos.x + (bgScale.x * 0.5f), camPos.y + (bgScale.y * 0.5f), -50));
+	bool move_request = false;
+	const float SPEED = 285.0f;
+	const Vec3& gob_euler = m_GoblinTransform->Euler();
+
+	if (Input::Keys[GLFW_KEY_LEFT] == GLFW_PRESS || Input::Keys[GLFW_KEY_LEFT] == GLFW_REPEAT)
+	{
+		m_GoblinTransform->MovePosition(Vec3(-SPEED * dt, 0, 0));
+		m_GoblinTransform->Rotate(Vec3(gob_euler.x, -110.0f, gob_euler.z));
+		move_request = true;
+	}
+	if (Input::Keys[GLFW_KEY_RIGHT] == GLFW_PRESS || Input::Keys[GLFW_KEY_RIGHT] == GLFW_REPEAT)
+	{
+		m_GoblinTransform->MovePosition(Vec3(SPEED * dt, 0, 0));
+		m_GoblinTransform->Rotate(Vec3(gob_euler.x, 0.0f, gob_euler.z));
+		move_request = true;
+	}
+
+	if (move_request && m_GoblinAnim->GetCurrentAnim() != RUN)
+		m_GoblinAnim->StartAnimation(RUN);
+	else if (!move_request && m_GoblinAnim->GetCurrentAnim() != STAND)
+		m_GoblinAnim->StartAnimation(STAND);
 
 	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
 	{
@@ -116,7 +144,4 @@ void OrthoScene::Render()
 
 void OrthoScene::RenderUI()
 {
-	m_Renderer->RenderText(FONT_COURIER, "Cam Pos: " + util::vec3_to_str(m_Camera->Position()), 8, 16);
-	m_Renderer->RenderText(FONT_COURIER, "Cam Fwd: " + util::vec3_to_str(m_Camera->Forward()), 8, 32);
-	m_Renderer->RenderText(FONT_COURIER, "Cam Up: " + util::vec3_to_str(m_Camera->Up()), 8, 48);
 }

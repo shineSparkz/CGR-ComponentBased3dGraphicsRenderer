@@ -229,6 +229,11 @@ namespace Maths
 		);
 	}
 
+	INLINE Mat4 RotateXYZ(const Vec3& euler)
+	{
+		return RotateX(euler.x) * RotateY(euler.y) * RotateZ(euler.z);
+	}
+
 	INLINE Mat4 Translate(const Vec3& p)
 	{
 		return Mat4(

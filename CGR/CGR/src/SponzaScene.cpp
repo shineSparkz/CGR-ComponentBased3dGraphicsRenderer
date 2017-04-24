@@ -18,9 +18,9 @@
 #include "PointLight.h"
 #include "SpotLight.h"
 
-
 SponzaScene::SponzaScene(const std::string& name) :
-	IScene(name)
+	IScene(name),
+	m_SponzaMeshRen(nullptr)
 {
 }
 
@@ -28,9 +28,44 @@ SponzaScene::~SponzaScene()
 {
 }
 
-void SponzaScene::createGameObjects()
+int SponzaScene::OnSceneLoad(ResourceManager* resManager)
 {
-	// Create Male
+	// ---- Load Resources ----
+	if (!resManager->CheckMeshExists(MESH_ID_SPONZA))
+	{
+		if (!resManager->LoadMesh("sponza/sponza.obj", MESH_ID_SPONZA, true, true, MATERIALS_SPONZA))
+			return GE_MAJOR_ERROR;
+	}
+
+	if (!resManager->CheckMeshExists(MESH_DRAGON))
+	{
+		if (!resManager->LoadMesh("dragon/dragon.obj", MESH_DRAGON, true, true, MATERIALS_DRAGON))
+			return GE_MAJOR_ERROR;
+	}
+
+	// Create Camera
+	GameObject* cam = new GameObject();
+	m_Camera = cam->AddComponent<FlyCamera>();
+	m_Camera->Start();
+	m_Camera->Init(
+		CamType::Perspective,
+		Vec3(0.0f, 20.0f, 1.0f),																			// Pos
+		Vec3(0.0f, 1.0f, 0.0f),																				// Up
+		Vec3(1.0f, 0.0f, 0.0f),																				// Right
+		Vec3(0.0f, 0.0f, -1.0f),																			// Fwd
+		45.0f,																								// FOV
+		static_cast<float>(Screen::ScreenWidth() / Screen::ScreenHeight()),									// Aspect
+		0.1f,																								// Near
+		800.0f																								// Far
+	);
+
+	// Set Pointer in renderer
+	m_Camera->AddSkybox(30.0f, TEX_SKYBOX_DEFAULT);
+	m_Renderer->SetSceneData(m_Camera, Vec3(0.1f));
+	m_GameObjects.push_back(cam);
+
+
+	// Create Male mesh
 	GameObject* male = new GameObject();
 	Transform* maleT = male->AddComponent<Transform>();
 	maleT->SetPosition(Vec3(-7.0f, 0.0f, -10.0f));
@@ -44,16 +79,15 @@ void SponzaScene::createGameObjects()
 		false,
 		false,
 		false);
-	m_Handle = m_GameObjects.size();
 	m_GameObjects.push_back(male);
 
-	// Create Sponza
+	// Create Sponza scene
 	GameObject* sponza = new GameObject();
 	Transform* sponzat = sponza->AddComponent<Transform>();
 	sponzat->SetPosition(Vec3(0.0f, 0.0f, 0.0f));
 	sponzat->SetScale(Vec3(0.2f));
-	MeshRenderer* sponzaMr = sponza->AddComponent<MeshRenderer>();
-	sponzaMr->SetMeshData(
+	m_SponzaMeshRen = sponza->AddComponent<MeshRenderer>();
+	m_SponzaMeshRen->SetMeshData(
 		MESH_ID_SPONZA,
 		SHADER_LIGHTING_FWD,
 		MATERIALS_SPONZA,
@@ -62,12 +96,18 @@ void SponzaScene::createGameObjects()
 		false,
 		false);
 	m_GameObjects.push_back(sponza);
-	m_SponzaPtr = sponzaMr;
+
+	// Create some dragons
+	createDragon(Vec3(50, 2, 100));
+	createDragon(Vec3(-50, 2, 0));
+	createDragon(Vec3(25, 70, -300));
+	createDragon(Vec3(150, 90, -100));
+	createDragon(Vec3(-150, 30, 100));
 
 	// Point Lights
-	GameObject* p1 = CgrEngine::CreatePointLight(m_Renderer, Vec3(20.0f, 15.0f, -20.0f), Vec3(0.7f,0,0), 0.02f);
-	GameObject* p2 = CgrEngine::CreatePointLight(m_Renderer, Vec3(-50.0f, 15.0f, 30.0f), Vec3(0.7f), 0.02f);
-	GameObject* p3 = CgrEngine::CreatePointLight(m_Renderer, Vec3(70.0f, 15.0f, 10.0f), Vec3(0.7f), 0.02f);
+	GameObject* p1 = CgrEngine::CreatePointLight(m_Renderer, Vec3(20.0f, 15.0f, -20.0f), Vec3(0.5f, 0, 0), 0.02f);
+	GameObject* p2 = CgrEngine::CreatePointLight(m_Renderer, Vec3(-50.0f, 15.0f, 30.0f), Vec3(0.5f), 0.02f);
+	GameObject* p3 = CgrEngine::CreatePointLight(m_Renderer, Vec3(70.0f, 15.0f, 10.0f), Vec3(0.5f), 0.02f);
 
 	if (p1)
 		m_GameObjects.push_back(p1);
@@ -76,71 +116,23 @@ void SponzaScene::createGameObjects()
 	if (p3)
 		m_GameObjects.push_back(p3);
 
-	/*
-	GameObject* s1 = CgrEngine::CreateSpotLight(m_Renderer, m_Camera->Position(), Vec3(0, 1, 0), m_Camera->Forward(), 12.0f, 1);
+
+	// Create Spot Light
+	GameObject* s1 = CgrEngine::CreateSpotLight(m_Renderer, Vec3(0, 30, 0), Vec3(0, 0.1f, 0), Vec3(0.1f, -0.9f, 0.1f), 0.2f, 1);
 	if (s1)
 		m_GameObjects.push_back(s1);
-	*/
 
 	// Directional Light
 	GameObject* dlight = new GameObject();
 	DirectionalLightC* dl = dlight->AddComponent<DirectionalLightC>();
-	dl->SetLight(m_Renderer, Vec3(0, -1, 0), Vec3(0.7f));
+	dl->SetLight(m_Renderer, Vec3(0.1f, -0.8f, 0.1f), Vec3(0.2f), Vec3(300.0f, 300.0f, 200.0f));
 	m_GameObjects.push_back(dlight);
-	
-	/*
-	GameObject* lava = new GameObject();
-	Transform* lt = lava->AddComponent<Transform>();
-	lt->SetPosition(Vec3(2, 5.0f, -3.0f));
-	lt->SetScale(Vec3(3.0f, 3.0f, 3.0f));
-	MeshRenderer* lmr = lava->AddComponent<MeshRenderer>();
-	lmr->SetMesh(CUBE_MESH, m_Meshes[CUBE_MESH]->m_SubMeshes.size());
-	lmr->AddTexture(LAVA_NOISE_TEX);
-	//lmr->m_ShaderIndex = LAVA_SHADER;
-	lmr->m_ShaderIndex = STD_DEF_GEOM_SHADER;
-	m_GameObjects.push_back(lava);
-	*/
 
+	// Start Game objects
 	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
 	{
 		(*i)->Start();
 	}
-}
-
-int SponzaScene::OnSceneLoad(ResourceManager* resManager)
-{
-	// Load sponza
-	if (!resManager->CheckMeshExists(MESH_ID_SPONZA))
-	{
-		if (!resManager->LoadMesh("sponza/sponza.obj", MESH_ID_SPONZA, true, true, MATERIALS_SPONZA))
-			return GE_MAJOR_ERROR;
-	}
-
-	auto s = resManager->GetMesh(MESH_ID_SPONZA);
-
-	// Create Camera
-	GameObject* cam = new GameObject();
-	m_Camera = cam->AddComponent<FlyCamera>();
-	m_Camera->Start();
-	m_Camera->Init(
-		CamType::Perspective,
-		Vec3(0.0f, 20.0f, 1.0f),																			// Pos
-		Vec3(0.0f, 1.0f, 0.0f),																				// Up
-		Vec3(1.0f, 0.0f, 0.0f),																				// Right
-		Vec3(0.0f, 0.0f, -1.0f),																			// Fwd
-		45.0f,																								// FOV
-		static_cast<float>(Screen::ScreenWidth() / Screen::ScreenHeight()),			// Aspect
-		0.1f,																								// Near
-		500.0f																								// Far
-	);
-
-	m_Camera->AddSkybox(30.0f, TEX_SKYBOX_DEFAULT);
-	// Set Pointer in renderer
-	m_Renderer->SetSceneData(m_Camera, Vec3(0.1f));
-	m_GameObjects.push_back(cam);
-
-	// Add Other Objecst
-	this->createGameObjects();
 
 	return GE_OK;
 }
@@ -156,56 +148,57 @@ void SponzaScene::OnSceneExit()
 
 void SponzaScene::Update(float dt)
 {
-	auto HANDLE = m_Handle;
-	float SPEED = 2;
-	if (Input::Keys[GLFW_KEY_UP] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
+	// Toggle Shadows
+	if (Input::Keys[GLFW_KEY_1] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
 	{
-		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, 0, -SPEED));
-		m_TimeNow = Time::ElapsedTime();
-	}
-	if (Input::Keys[GLFW_KEY_DOWN] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
-	{
-		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, 0, SPEED));
-		m_TimeNow = Time::ElapsedTime();
-	}
-	if (Input::Keys[GLFW_KEY_LEFT] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
-	{
-		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(-SPEED, 0, 0));
-		m_TimeNow = Time::ElapsedTime();
-	}
-	if (Input::Keys[GLFW_KEY_RIGHT] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
-	{
-		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(SPEED, 0, 0));
-		m_TimeNow = Time::ElapsedTime();
-	}
-	if (Input::Keys[GLFW_KEY_F] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
-	{
-		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, SPEED, 0));
-		m_TimeNow = Time::ElapsedTime();
-	}
-	if (Input::Keys[GLFW_KEY_V] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.1f)
-	{
-		m_GameObjects[HANDLE]->GetComponent<Transform>()->MovePosition(Vec3(0, -SPEED, 0));
+		m_SponzaMeshRen->SetReceiveShadows(!m_SponzaMeshRen->ReceivingShadows());
 		m_TimeNow = Time::ElapsedTime();
 	}
 
 	// Toggle Bump maps
-	if (Input::Keys[GLFW_KEY_N] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	if (Input::Keys[GLFW_KEY_2] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
 	{
-		m_SponzaPtr->SetUseBumpMaps(!m_SponzaPtr->UsingBumpMaps());
+		m_SponzaMeshRen->SetUseBumpMaps(!m_SponzaMeshRen->UsingBumpMaps());
 		m_TimeNow = Time::ElapsedTime();
 	}
 
-	// Hack Test
-	m_GameObjects.back()->GetComponent<DirectionalLightC>()->SetDirectionY(cosf(Time::ElapsedTime()));
-
-	auto* spot = m_GameObjects[m_GameObjects.size() - 2]->GetComponent<SpotLightC>();
-	if (spot)
+	// Toggle Wire frame
+	if (Input::Keys[GLFW_KEY_3] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
 	{
-		spot->SetDirection(m_Camera->Forward());
-		spot->SetPosition(m_Camera->Position());
+		m_Renderer->TogglePolygonMode();
+		m_TimeNow = Time::ElapsedTime();
 	}
 
+	// Toggle Deferred
+	if (Input::Keys[GLFW_KEY_4] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{ 
+		m_Renderer->ToggleShadingMode();
+		m_TimeNow = Time::ElapsedTime();
+	}
+
+	// Display Normals
+	if (Input::Keys[GLFW_KEY_5] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		m_Renderer->DisplayNormals(!m_Renderer->IsDisplayingNormals());
+		m_TimeNow = Time::ElapsedTime();
+	}
+
+	auto* spot = m_GameObjects[m_GameObjects.size() - 2]->GetComponent<SpotLightC>();
+	
+	// Toggle spot light
+	if (Input::Keys[GLFW_KEY_P] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		spot->ToggleLight();
+		m_TimeNow = Time::ElapsedTime();
+	}
+
+	// Move spot light
+	if (spot)
+	{
+		spot->SetDirection((Vec3(cosf(Time::ElapsedTime() * 0.1f), -1.0f, sinf(Time::ElapsedTime() * 0.1f))));
+	}
+
+	// Update Objects and components
 	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
 	{
 		(*i)->Update();
@@ -219,9 +212,28 @@ void SponzaScene::Render()
 
 void SponzaScene::RenderUI()
 {
-	m_Renderer->RenderText(FONT_COURIER, "Cam Pos: " + util::vec3_to_str(m_Camera->Position()), 8, 32);
-	m_Renderer->RenderText(FONT_COURIER, "Cam Fwd: " + util::vec3_to_str(m_Camera->Forward()), 8, 64);
-	m_Renderer->RenderText(FONT_COURIER, "Cam Up: " + util::vec3_to_str(m_Camera->Up()), 8, 96);
-	m_Renderer->RenderText(FONT_COURIER, "[N] Toggle Bump maps: " + util::vec3_to_str(m_Camera->Up()), 8, 128);
+	m_Renderer->RenderText(FONT_COURIER, "[1] Toggle shadows ", 8, 64);
+	m_Renderer->RenderText(FONT_COURIER, "[2] Toggle Bump maps ", 8, 96);
+	m_Renderer->RenderText(FONT_COURIER, "[3] Toggle wire frame mode ", 8, 128);
+	m_Renderer->RenderText(FONT_COURIER, "[4] Toggle deferred ", 8, 160);
+	m_Renderer->RenderText(FONT_COURIER, "[5] Toggle normal displays ", 8, 192);
+	m_Renderer->RenderText(FONT_COURIER, "[P] Toggle spot light ", 8, 224);
+}
 
+void SponzaScene::createDragon(const Vec3& position)
+{
+	GameObject* dragon = new GameObject();
+	Transform* t = dragon->AddComponent<Transform>();
+	t->SetScale(Vec3(1.0f));
+	t->SetPosition(position);
+	MeshRenderer* mr = dragon->AddComponent<MeshRenderer>();
+	mr->SetMeshData(
+		MESH_DRAGON,
+		SHADER_LIGHTING_FWD,
+		MATERIALS_DRAGON,
+		false,
+		false,
+		false,
+		false);
+	m_GameObjects.push_back(dragon);
 }

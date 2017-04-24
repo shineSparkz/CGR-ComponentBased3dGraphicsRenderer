@@ -526,7 +526,7 @@ bool ResourceManager::loadDefaultTextures()
 	}
 
 	// From Loaded Scene
-	success &= this->LoadTexture("../resources/textures/billboards/grass_sheet.tga", TEX_GRASS_BILLBOARD, GL_TEXTURE0);
+	success &= this->LoadTexture("../resources/textures/billboards/grass_sheet2.tga", TEX_GRASS_BILLBOARD, GL_TEXTURE0);
 	success &= this->LoadTexture("../resources/textures/noise.tga", TEX_NOISE, GL_TEXTURE0);
 
 	std::string s[6] =
@@ -555,7 +555,6 @@ bool ResourceManager::loadDefaultMeshes()
 
 	// Animation Example
 	success &= LoadAnimMesh("../resources/meshes/goblin/Model.MD2", ANIM_MESH_GOBLIN, MATERIALS_GOBLIN, true);
-	success &= LoadAnimMesh("../resources/meshes/samourai/Samourai.md2", ANIM_MESH_SAMOURAI, MATERIALS_SAMOURAI, false);
 
 	return success;
 }
@@ -564,6 +563,7 @@ bool ResourceManager::loadDefaultFonts()
 {
 	bool success = true;
 	success &= this->LoadFont("../resources/fonts/cour.ttf", FONT_COURIER, 24);
+	success &= this->LoadFont("../resources/fonts/consola.ttf", FONT_CONSOLA, 24);
 	return success;
 }
 
@@ -990,29 +990,6 @@ void ResourceManager::Close()
 	}
 	m_Fonts.clear();
 }
-
-
-
-/*
-size_t ResourceManager::GetNumSubMeshesInMesh(size_t meshIndex) const
-{
-	auto r = m_Meshes.find(meshIndex);
-	if (r != m_Meshes.end())
-	{
-		return r->second->GetNumSubMeshes();
-	}
-	else
-	{
-		WRITE_LOG("error invalid mesh", "error");
-		return 0;
-	}
-}
-
-size_t ResourceManager::GetNumTextures() const
-{
-	return m_Textures.size();
-}
-*/
 
 
 

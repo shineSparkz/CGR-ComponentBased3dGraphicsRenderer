@@ -72,7 +72,7 @@ vec4 reflection(vec3 light_intensity, float light_ambient_intensity, vec3 light_
 vec4 getDirectionalLightColour(in vec3 n);
 vec4 getPointLightColor(const PointLight ptLight, vec3 p, vec3 n);
 vec4 getSpotLightColor(const Spotlight spotLight, vec3 p);
-
+vec4 getSpecularColor(vec3 p, vec3 camPos, vec3 n, vec3 direction, vec3 light_colour);
 
 void main()
 {
@@ -94,13 +94,30 @@ void main()
 	frag_colour = vec4(ambient_light, tex_colour.a) + total_light * tex_colour;
 }
 
+vec4 getSpecularColor(vec3 p, vec3 camPos, vec3 n, vec3 direction, vec3 light_colour)
+{
+	const float spec_power = 0.5;
+	const float spec_intensity = 0.8;
+	vec4 result = vec4(0.0);
+   
+	vec3 r = normalize(reflect(direction, n));
+	vec3 vertexToEyeVector = normalize(camPos - p);
+	float specularFactor = dot(vertexToEyeVector, r);
+	specularFactor = pow(specularFactor, spec_power);
+   
+	if (specularFactor > 0)
+		result = vec4(light_colour, 1.0) * spec_intensity * specularFactor;
+   
+	return result;
+}
+
 vec4 reflection(vec3 light_intensity, float light_ambient_intensity, vec3 light_dir, vec3 p, vec3 n)
 {
 	vec4 ambColour = vec4(light_intensity * light_ambient_intensity, 1.0);
 	vec4 difColour = vec4(0.0);
 	vec4 specularColor = vec4(0, 0, 0, 0);
 	
-	float diffCoeff = dot(n, -light_dir);
+	float diffCoeff = max( 0.0, dot(n, -light_dir));
 	
 	if(diffCoeff > 0)
 	{
@@ -129,7 +146,7 @@ vec4 getDirectionalLightColour(in vec3 n)
 	float diffuse_intensity = max(0.0, dot(n, -directionLight.direction));
 	float fMult = clamp(0.1 + diffuse_intensity, 0.0, 1.0);
 	float shadowFactor = u_use_shadow == 1 ? calcShadowFactor(varying_light_position) : 1.0;
-	return vec4(directionLight.intensity * fMult * shadowFactor, 1.0);
+	return vec4(directionLight.intensity * fMult, 1.0) + getSpecularColor(P, camera_position, n, directionLight.direction, directionLight.intensity) * shadowFactor;
 }
 
 vec4 getPointLightColor(const PointLight ptLight, vec3 p, vec3 n) 

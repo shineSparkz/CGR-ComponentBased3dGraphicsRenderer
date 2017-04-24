@@ -106,29 +106,6 @@ bool Renderer::Init()
 	if(!m_Frustum)
 		m_Frustum = new Frustum();
 
-	if (!m_LightCamObj)
-	{
-		m_LightCamObj = new GameObject();
-		m_LightCamera = m_LightCamObj->AddComponent<BaseCamera>();
-
-		m_LightCamera->Init(
-			CamType::Light, 
-			Vec3(1, 20, 1),		// Pos
-			Vec3(0, 1, 0),		// Up
-			Vec3(1, 0, 0),		// Right
-			Vec3(0, -1.0, 0.1f),	// Fwd(Dir)
-			45,
-			static_cast<float>(Screen::FrameBufferWidth() / Screen::FrameBufferHeight()),
-			0.1f,
-			500.0f);
-
-		//m_LightCamera->SetDirection( glm::normalize(Vec3(0, 0, 0) - Vec3(1, 20, 1)));
-		//m_LightCamera->SetUp(glm::cross(m_LightCamera->Forward(), m_LightCamera->Right()));
-
-		m_LightCamObj->Start();
-		m_LightCamObj->Update();
-	}
-
 	return success;
 }
 
@@ -178,7 +155,7 @@ void Renderer::Render(std::vector<GameObject*>& gameObjects, bool withShadows)
 
 	// The renderer updates the scene block
 	UniformBlock* scene = m_UniformBlockManager->GetBlock("scene");
-	if (scene)
+	if (scene && m_CameraPtr)
 	{
 		float dt = Time::DeltaTime();
 		scene->SetValue("view_xform", (void*)glm::value_ptr(m_CameraPtr->View()));
@@ -194,7 +171,7 @@ void Renderer::Render(std::vector<GameObject*>& gameObjects, bool withShadows)
 	}
 
 	// Update the frustum once per frame if frustum culling is allowed
-	if (m_ShouldFrustumCull)
+	if (m_ShouldFrustumCull && m_CameraPtr)
 	{
 		m_Frustum->UpdateFrustum(m_CameraPtr->Projection(), m_CameraPtr->View());
 	}
@@ -401,6 +378,36 @@ void Renderer::UpdatePointLight(int index, const Vec3& position, float range)
 	}
 }
 
+void Renderer::UpdateDirLight(const Vec3& direction, const Vec3& range)
+{
+	if (m_LightCamObj && m_LightCamera)
+	{
+		m_LightCamera->SetDirection(direction);
+		m_LightCamera->SetRange(range);
+	}
+	else
+	{
+		m_LightCamObj = new GameObject();
+		m_LightCamera = m_LightCamObj->AddComponent<BaseCamera>();
+
+		m_LightCamera->Init(
+			CamType::Light,
+			Vec3(0, 0, 0),				// Pos
+			Vec3(0, 1, 0),				// Up
+			Vec3(1, 0, 0),				// Right
+			direction,					// Fwd(Dir)
+			45,
+			static_cast<float>(Screen::FrameBufferWidth() / Screen::FrameBufferHeight()),
+			0.05f,		// Near
+			900.0f);	// Far	(for shadows here)
+
+		m_LightCamera->SetRange(range);
+		m_LightCamObj->Start();
+	}
+	
+	m_LightCamObj->Update();
+}
+
 void Renderer::ToggleShadingMode()
 {
 	if (m_ShadingMode == ShadingMode::Deferred)
@@ -496,6 +503,10 @@ void Renderer::SetDisplayInfo(bool should)
 
 void Renderer::forwardRenderShadows(std::vector<GameObject*>& gameObjects)
 {
+	// Need to check if a light has been created
+	if (!m_LightCamera)
+		return;
+
 	m_ShadowFB->BindForWriting();
 	glClear(GL_DEPTH_BUFFER_BIT);
 
@@ -531,7 +542,7 @@ void Renderer::forwardRenderShadows(std::vector<GameObject*>& gameObjects)
 					}
 					else
 					{
-						this->renderMesh(mr, model_xform, false, GL_TRIANGLES);
+						this->renderMesh(mr, model_xform, false, GL_TRIANGLES, true);
 					}
 				}
 			}
@@ -585,7 +596,7 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects, bool withSha
 			// Render Mesh normally
 			sp->Use();
 
-			if (withShadows && mr->m_ReceiveShadows)
+			if (withShadows && mr->m_ReceiveShadows && m_LightCamera)	// and light cam exists
 			{
 				m_ShadowFB->BindForReading(GL_TEXTURE6);
 				sp->SetUniformValue<Mat4>("u_light_xform", &(m_LightCamera->ProjXView() * model_xform));
@@ -606,7 +617,7 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects, bool withSha
 			}
 			else
 			{
-				this->renderMesh(mr, model_xform, true, GL_TRIANGLES);
+				this->renderMesh(mr, model_xform, true, GL_TRIANGLES, false);
 			}
 
 			// Do a normal pass if required
@@ -615,7 +626,7 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects, bool withSha
 				np->Use();
 				np->SetUniformValue<Mat4>("u_wvp", &(m_CameraPtr->ProjXView() * model_xform));
 				np->SetUniformValue<Mat4>("u_world_xform", &(model_xform));
-				this->renderMesh(mr, IDENTITY, GL_POINTS);
+				this->renderMesh(mr, IDENTITY, false, GL_POINTS, true);
 			}
 		}
 	}
@@ -662,7 +673,7 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 				// Render Mesh here
 				sp->Use();
 				sp->SetUniformValue<Mat4>("u_world_xform", &(model_xform));
-				this->renderMesh(mr, model_xform, true, GL_TRIANGLES);
+				this->renderMesh(mr, model_xform, true, GL_TRIANGLES, false);
 			}
 
 			// Do a normal pass if required
@@ -671,7 +682,7 @@ void Renderer::deferredRender(std::vector<GameObject*>& gameObjects)
 				np->Use();
 				np->SetUniformValue<Mat4>("u_wvp", &(m_CameraPtr->ProjXView() * model_xform));
 				np->SetUniformValue<Mat4>("u_world_xform", &(model_xform));
-				this->renderMesh(mr, model_xform, GL_POINTS);
+				this->renderMesh(mr, model_xform, false, GL_POINTS, true);
 			}
 		}
 
@@ -795,7 +806,7 @@ void Renderer::renderMesh(Mesh* thisMesh)
 	glBindVertexArray(0);
 }
 
-void Renderer::renderMesh(MeshRenderer* meshRenderer, const Mat4& world_xform, bool withTextures, GLenum renderMode)
+void Renderer::renderMesh(MeshRenderer* meshRenderer, const Mat4& world_xform, bool withTextures, GLenum renderMode, bool shadow_pass)
 {
 	// Get the pre-loaded mesh resource from the manager 
 	Mesh* thisMesh = m_ResManager->m_Meshes[meshRenderer->m_MeshIndex];
@@ -813,9 +824,9 @@ void Renderer::renderMesh(MeshRenderer* meshRenderer, const Mat4& world_xform, b
 		// Get the sub mesh
 		SubMesh subMesh = (*j);
 
-		// Flag for culling, we won't draw if out of frustum
+		// Flag for culling, we won't draw if out of frustum, but still want to when its shadow pass
 		bool should_render = true;
-		if (m_ShouldFrustumCull)
+		if (m_ShouldFrustumCull && !shadow_pass)	
 		{
 			Vec3 centre = Maths::Vec4To3(world_xform * Vec4(subMesh.centre, 1.0f));
 			float r = Maths::Distance(
@@ -1040,6 +1051,8 @@ void Renderer::sceneChange()
 	m_NumDirLightsInScene = -1;
 	m_NumPointLightsInScene = -1;
 	m_NumSpotLightsInScene = -1;
+
+	m_CameraPtr = nullptr;
 
 	// Reset blocks
 	for (auto i = m_UniformBlockManager->m_Blocks.begin(); i != m_UniformBlockManager->m_Blocks.end(); ++i)

@@ -6,6 +6,10 @@
 #include "Vertex.h"
 #include <map>
 
+#define DIFFUSE_MAP_SAMPLER		GL_TEXTURE0
+#define NORMAL_MAP_SAMPLER		GL_TEXTURE2
+#define SHADOW_MAP_SAMPLER		GL_TEXTURE6
+
 struct Material;
 class Texture;
 class Mesh;

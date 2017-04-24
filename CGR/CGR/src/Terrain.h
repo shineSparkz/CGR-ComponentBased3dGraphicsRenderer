@@ -63,6 +63,8 @@ public:
 	float GetHeight() const;
 	float GetTexU() const;
 	float GetTexV() const;
+	float GetSizeX() const;
+	float GetSizeZ() const;
 	void  OnReloadShaders();
 
 	float GetHeightFromPosition(const Vec3& p);

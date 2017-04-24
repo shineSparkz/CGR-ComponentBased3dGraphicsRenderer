@@ -17,7 +17,7 @@ in vec3 N[];
 
 void main()
 {
-	const float normal_length = 15.0f;
+	const float normal_length = 3.0f;
 	mat4 wvp = (proj_xform * view_xform * u_world_xform);
 	
 	vec3 n = (u_world_xform * vec4( N[0] * normal_length, 0.0)).xyz;

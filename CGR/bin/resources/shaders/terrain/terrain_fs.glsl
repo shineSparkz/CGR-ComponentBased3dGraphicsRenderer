@@ -136,6 +136,18 @@ void main()
 
 //---------------------------------
 //Forward rendering
+uniform sampler2D 	u_LowHeightMap;
+uniform sampler2D 	u_MediumHeightMap;
+uniform sampler2D 	u_HighHeightMap;
+uniform sampler2D 	u_PathMap;
+uniform sampler2D 	u_PathSampler;
+uniform sampler2D 	u_shadow_sampler;
+uniform int			u_use_bumpmap;
+uniform int			u_use_shadow;
+uniform float 		u_MaxHeight;
+uniform float 		u_MaxTexU;
+uniform float 		u_MaxTexV;
+
 in vec3 N;
 in vec3 P;
 in vec2 varying_texcoord;
@@ -144,20 +156,6 @@ in vec4 varying_light_position;
 
 out vec4 frag_colour;
                                                                                
-uniform sampler2D 	u_LowHeightMap;
-uniform sampler2D 	u_MediumHeightMap;
-uniform sampler2D 	u_HighHeightMap;
-uniform sampler2D 	u_PathMap;
-uniform sampler2D 	u_PathSampler;
-uniform sampler2D 	u_shadow_sampler;
-
-uniform int			u_use_bumpmap;
-uniform int			u_use_shadow;
-
-uniform float 		u_MaxHeight;
-uniform float 		u_MaxTexU;
-uniform float 		u_MaxTexV;
-
 // Definitions
 float calcShadowFactor(vec4 lightSpacePos);
 vec3 calcBumpedNormal();

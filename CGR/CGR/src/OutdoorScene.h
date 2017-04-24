@@ -13,6 +13,7 @@ class AnimMesh;
 class Transform;
 class Animator;
 class TerrainConstructor;
+class MeshRenderer;
 
 class OutDoorScene : public IScene
 {
@@ -27,12 +28,17 @@ public:
 	void RenderUI() override;
 
 private:
+	int loadResources(ResourceManager* resManager);
+	int createGameOjects(ResourceManager* resManager);
+
+private:
 	std::vector<GameObject*>	m_GameObjects;
 	BillboardList*				m_TreeBillboardList;
 	DirectionalLightC*			m_DirLightHandle;
 	Transform*					m_GoblinTransform;
 	Transform*					m_PistolTransform;
 	Transform*					m_CamTransform;
+	MeshRenderer*				m_TerrainMeshRen;
 	Animator*					m_GoblinAnim;
 	TerrainConstructor*			m_TerrainConstructor;
 	float						m_TimeNow;

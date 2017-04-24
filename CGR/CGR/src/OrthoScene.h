@@ -5,6 +5,8 @@
 #include <vector>
 
 class GameObject;
+class Transform;
+class Animator;
 
 class OrthoScene : public IScene
 {
@@ -19,7 +21,9 @@ public:
 	void RenderUI() override;
 
 private:
-	std::vector<GameObject*> m_GameObjects;
+	std::vector<GameObject*>	m_GameObjects;
+	Transform*					m_GoblinTransform{ nullptr };
+	Animator*					m_GoblinAnim{ nullptr };
 };
 
 #endif

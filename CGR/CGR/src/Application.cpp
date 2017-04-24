@@ -21,7 +21,7 @@ Application::Application() :
 	m_Input(nullptr),
 	m_ShouldClose(GE_FALSE),
 	m_PendingSceneChange(GE_FALSE),
-	m_ShouldRendedInfoStrings(GE_FALSE),
+	m_ShouldRendedInfoStrings(GE_TRUE),
 	m_ShouldRenderSceneUI(GE_FALSE)
 {
 	// Create Logger first
@@ -226,13 +226,13 @@ void Application::renderInfo()
 	const float top = static_cast<float>(Screen::FrameBufferHeight());
 
 	if(!m_ShouldRenderSceneUI)
-		m_Renderer->RenderText(FONT_COURIER, "Press [Tab] to toggle scene UI layer", 8, 32);
+		m_Renderer->RenderText(FONT_CONSOLA, "[Tab] Scene UI, [F11] Info strings, [F10] Frame count, [F9] Culling, [F1-F6] Scenes ", 8, 64, FontAlign::Left, Colour::Red());
 	
-	m_Renderer->RenderText(FONT_COURIER, m_Renderer->GetHardwareStr(),		8, top - (++numItems * divider), FontAlign::Left, Colour::Blue());
-	m_Renderer->RenderText(FONT_COURIER, m_Renderer->GetShadingModeStr(),	8, top - (++numItems * divider), FontAlign::Left, Colour::Blue());
-	m_Renderer->RenderText(FONT_COURIER, "Displaying Normals: " + util::bool_to_str(m_Renderer->IsDisplayingNormals()), 8, top - (++numItems * divider), FontAlign::Left, Colour::Blue());
-	m_Renderer->RenderText(FONT_COURIER, "Num Verts: " + util::to_str(Mesh::NumVerts) + ", Num Meshes: " + util::to_str(Mesh::NumMeshes), 8, top - (++numItems * divider), FontAlign::Left, Colour::Green());
-	m_Renderer->RenderText(FONT_COURIER, m_SceneGraph->GetActiveSceneName() + " scene example", 8, top - (++numItems * divider), FontAlign::Left, Colour::Red());
+	m_Renderer->RenderText(FONT_CONSOLA, m_Renderer->GetHardwareStr(),		8, top - (++numItems * divider), FontAlign::Left, Colour::Blue());
+	m_Renderer->RenderText(FONT_CONSOLA, m_Renderer->GetShadingModeStr(),	8, top - (++numItems * divider), FontAlign::Left, Colour::Blue());
+	m_Renderer->RenderText(FONT_CONSOLA, "Displaying Normals: " + util::bool_to_str(m_Renderer->IsDisplayingNormals()), 8, top - (++numItems * divider), FontAlign::Left, Colour::Blue());
+	m_Renderer->RenderText(FONT_CONSOLA, "Num Verts: " + util::to_str(Mesh::NumVerts) + ", Num Meshes: " + util::to_str(Mesh::NumMeshes), 8, top - (++numItems * divider), FontAlign::Left, Colour::Green());
+	m_Renderer->RenderText(FONT_CONSOLA, m_SceneGraph->GetActiveSceneName() + " scene example", 8, top - (++numItems * divider), FontAlign::Left, Colour::Red());
 }
 
 void Application::ShouldRenderInfoStrings(bool should)
@@ -292,6 +292,15 @@ void Application::HandleEvent(Event* e)
 			else if (ke->key == GLFW_KEY_F4 && ke->action == GLFW_RELEASE)
 			{
 				this->ChangeScene("ortho");
+			}
+			// Space Scene
+			else if (ke->key == GLFW_KEY_F5 && ke->action == GLFW_RELEASE)
+			{
+				this->ChangeScene("space");
+			}
+			else if (ke->key == GLFW_KEY_F6 && ke->action == GLFW_RELEASE)
+			{
+				this->ChangeScene("viva");
 			}
 			// Toggle Culling
 			else if (ke->key == GLFW_KEY_F9 && ke->action == GLFW_RELEASE)

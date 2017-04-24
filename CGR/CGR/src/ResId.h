@@ -12,10 +12,15 @@
 #define MESH_TERRAIN					7
 #define MESH_PISTOL						8
 #define MESH_ROCKS						9
+#define MESH_SPACESHIP					10
+#define MESH_ASTEROID_1					11
+#define MESH_ASTEROID_2					12
+#define MESH_DRAGON						13
 
 #define ANIM_MESH_GOBLIN				0
 #define ANIM_MESH_SAMOURAI				1
-#define NUM_ANIM_MESHES					2
+#define ANIM_MESH_BLADE					2
+#define NUM_ANIM_MESHES					3
 
 // Material Set IDs
 #define MATERIALS_MALE					0
@@ -30,10 +35,17 @@
 #define MATERIALS_PISTOL				8
 #define MATERIALS_ROCK					9
 #define MATERIALS_WOOD					10
+#define MATERIALS_SPACESHIP				11
+#define MATERIALS_ASTEROID_1			12
+#define MATERIALS_ASTEROID_2			13
+#define MATERIALS_BLADE_GUY				14
+#define MATERIALS_DRAGON				15
+#define MATERIALS_TERRAIN2				16
 
 // Texture ID's -- for now
 #define TEX_SKYBOX_DEFAULT				1
 #define TEX_GRASS_BILLBOARD				5
+#define TEX_SKYBOX_SPACE				2
 #define TEX_NOISE						11
 
 // Shader ID's -- for now
@@ -54,6 +66,7 @@
 #define SHADER_ID_COUNT					14
 
 #define FONT_COURIER					0
-#define FONT_ID_COUNT					0
+#define FONT_CONSOLA					1
+#define FONT_ID_COUNT					1
 
 #endif
