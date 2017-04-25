@@ -124,8 +124,8 @@ int SponzaScene::OnSceneLoad(ResourceManager* resManager)
 
 	// Directional Light
 	GameObject* dlight = new GameObject();
-	DirectionalLightC* dl = dlight->AddComponent<DirectionalLightC>();
-	dl->SetLight(m_Renderer, Vec3(0.1f, -0.8f, 0.1f), Vec3(0.2f), Vec3(300.0f, 300.0f, 200.0f));
+	m_DlightPtr = dlight->AddComponent<DirectionalLightC>();
+	m_DlightPtr->SetLight(m_Renderer, Vec3(0.1f, -0.8f, 0.1f), Vec3(0.2f), Vec3(300.0f, 300.0f, 200.0f));
 	m_GameObjects.push_back(dlight);
 
 	// Start Game objects
@@ -148,6 +148,11 @@ void SponzaScene::OnSceneExit()
 
 void SponzaScene::Update(float dt)
 {
+	if (m_DlightPtr)
+	{
+		m_DlightPtr->SetColour(Vec3(Maths::Min(cosf(Time::ElapsedTime()) * 0.5f + 0.5f, 0.7f)));
+	}
+
 	// Toggle Shadows
 	if (Input::Keys[GLFW_KEY_1] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
 	{

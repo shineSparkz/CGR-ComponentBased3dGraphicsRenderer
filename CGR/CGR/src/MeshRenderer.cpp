@@ -79,3 +79,8 @@ void MeshRenderer::SetMaterialIndex(size_t index)
 {
 	m_MaterialIndex = index;
 }
+
+void MeshRenderer::SetShaderIndex(size_t index)
+{
+	m_ShaderIndex = index;
+}

@@ -30,6 +30,7 @@ public:
 private:
 	std::vector<GameObject*>	m_GameObjects;
 	Transform*					m_CamTransform;
+	TerrainConstructor*			m_Terrain;
 	float						m_TimeNow;
 };
 

@@ -6,6 +6,7 @@
 
 class GameObject;
 class MeshRenderer;
+class DirectionalLightC;
 
 class SponzaScene : public IScene
 {
@@ -26,7 +27,7 @@ private:
 	std::vector<GameObject*>	m_GameObjects;
 	float						m_TimeNow{ 0 };
 	MeshRenderer*				m_SponzaMeshRen;
-	
+	DirectionalLightC*			m_DlightPtr;
 	bool						m_UsingBumpmaps{ true };
 };
 

@@ -22,7 +22,6 @@ struct ShaderAttrib
 class Shader
 {
 public:
-	Shader();
 	Shader(GLenum type);
 	~Shader();
 

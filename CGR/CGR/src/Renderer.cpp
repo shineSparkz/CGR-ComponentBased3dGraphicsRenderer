@@ -332,6 +332,8 @@ void Renderer::RenderBillboardList(BillboardList* billboard)
 
 bool Renderer::ReloadShaders()
 {
+	glFlush();
+
 	for (auto sp = m_ResManager->m_Shaders.begin(); sp != m_ResManager->m_Shaders.end(); ++sp)
 	{
 		if (!sp->second->Reload())

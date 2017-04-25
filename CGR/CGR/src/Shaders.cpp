@@ -21,13 +21,6 @@ dword hash(const char *str)
 	return hash;
 }
 
-Shader::Shader() :
-	m_Attributes(),
-	m_SourceFile(""),
-	m_ShaderType(-1),
-	m_Shader(0)
-{
-}
 
 Shader::Shader(GLenum type) :
 	m_Attributes(),

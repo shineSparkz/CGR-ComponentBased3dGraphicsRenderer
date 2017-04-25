@@ -283,7 +283,7 @@ bool AnimMesh::Load(const char* sFilename, ResourceManager* resMan, unsigned mat
 	std::string sDirectory = index != -1 ? sPath.substr(0, index + 1) : "";
 	std::string sPureFilename = index != -1 ? sPath.substr(index + 1) : sFilename;
 
-	std::string sTextureExtensions[] = { "jpg", "jpeg", "png", "bmp", "tga" };
+	std::string sTextureExtensions[] = { "jpg", "jpeg", "tga" };
 	index = (int)sPureFilename.find_last_of(".");
 	if (index != -1)
 	{

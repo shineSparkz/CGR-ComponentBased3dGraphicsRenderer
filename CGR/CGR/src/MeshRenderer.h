@@ -45,6 +45,7 @@ public:
 	void SetUseBumpMaps(bool should);
 	void SetReceiveShadows(bool should);
 	void SetMaterialIndex(size_t index);
+	void SetShaderIndex(size_t index);
 
 private:
 	friend class						Renderer;
