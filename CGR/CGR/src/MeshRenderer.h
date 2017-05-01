@@ -46,6 +46,7 @@ public:
 	void SetReceiveShadows(bool should);
 	void SetMaterialIndex(size_t index);
 	void SetShaderIndex(size_t index);
+	void SetMeshIndex(size_t index);
 
 private:
 	friend class						Renderer;

@@ -402,7 +402,7 @@ void Renderer::UpdateDirLight(const Vec3& direction, const Vec3& range)
 			static_cast<float>(Screen::FrameBufferWidth() / Screen::FrameBufferHeight()),
 			0.05f,		// Near
 			900.0f);	// Far	(for shadows here)
-
+		
 		m_LightCamera->SetRange(range);
 		m_LightCamObj->Start();
 	}
@@ -598,7 +598,8 @@ void Renderer::forwardRender(std::vector<GameObject*>& gameObjects, bool withSha
 			// Render Mesh normally
 			sp->Use();
 
-			if (withShadows && mr->m_ReceiveShadows && m_LightCamera)	// and light cam exists
+			if(withShadows && m_LightCamera)
+			//if (withShadows && mr->m_ReceiveShadows && m_LightCamera)	// and light cam exists
 			{
 				m_ShadowFB->BindForReading(GL_TEXTURE6);
 				sp->SetUniformValue<Mat4>("u_light_xform", &(m_LightCamera->ProjXView() * model_xform));
@@ -1113,6 +1114,7 @@ bool Renderer::setStaticDefaultShaderValues()
 	int shadow_sampler = 6;
 	int normal_sampler = 2;
 
+	// Forward lighting
 	ShaderProgram* lsp = m_ResManager->GetShader(SHADER_LIGHTING_FWD);
 	if (lsp)
 	{
@@ -1126,6 +1128,7 @@ bool Renderer::setStaticDefaultShaderValues()
 		return false;
 	}
 
+	// Shadow
 	ShaderProgram* shadow = m_ResManager->GetShader(SHADER_SHADOW);
 	if (shadow)
 	{
@@ -1137,6 +1140,7 @@ bool Renderer::setStaticDefaultShaderValues()
 		return false;
 	}
 
+	// Anim shader
 	ShaderProgram* anim = m_ResManager->GetShader(SHADER_ANIM);
 	if (anim)
 	{
@@ -1151,11 +1155,60 @@ bool Renderer::setStaticDefaultShaderValues()
 		return false;
 	}
 
+	// Billboard shader
 	ShaderProgram* bill = m_ResManager->GetShader(SHADER_BILLBOARD_FWD);
 	if (bill)
 	{
 		bill->Use();
 		bill->SetUniformValue<int>("u_TextureMap", &sampler);
+	}
+	else
+	{
+		return false;
+	}
+
+	// Deferred geom
+	ShaderProgram* ds_geom = m_ResManager->GetShader(SHADER_GEOM_PASS_DEF);
+	if(ds_geom)
+	{
+		ds_geom->Use();
+		ds_geom->SetUniformValue<int>("u_ColourMap", &sampler);
+	}
+	else
+	{
+		return false;
+	}
+	
+	// For deferred samplers
+	Vec2 screenSize((float)Screen::FrameBufferWidth(), (float)Screen::FrameBufferHeight());
+	int p = (int)GBuffer::TexTypes::Position;
+	int d = (int)GBuffer::TexTypes::Diffuse;
+	int n = (int)GBuffer::TexTypes::Normal;
+	
+	// Deferred point light
+	ShaderProgram* ds_pt = m_ResManager->GetShader(SHADER_POINT_LIGHT_PASS_DEF);
+	if (ds_pt)
+	{
+		ds_pt->Use();
+		ds_pt->SetUniformValue<int>("u_PositionMap", &p);
+		ds_pt->SetUniformValue<int>("u_ColourMap", &d);
+		ds_pt->SetUniformValue<int>("u_NormalMap", &n);
+		ds_pt->SetUniformValue<Vec2>("u_ScreenSize", &screenSize);
+	}
+	else
+	{
+		return false;
+	}
+
+	// Deferred dir light
+	ShaderProgram* ds_dl = m_ResManager->GetShader(SHADER_DIR_LIGHT_PASS_DEF);
+	if (ds_dl)
+	{
+		ds_dl->Use();
+		ds_dl->SetUniformValue<int>("u_PositionMap", &p);
+		ds_dl->SetUniformValue<int>("u_ColourMap", &d);
+		ds_dl->SetUniformValue<int>("u_NormalMap", &n);
+		ds_dl->SetUniformValue<Vec2>("u_ScreenSize", &screenSize);
 	}
 	else
 	{

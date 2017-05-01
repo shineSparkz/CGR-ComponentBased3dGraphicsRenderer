@@ -8,7 +8,9 @@
 #include "Mesh.h"
 #include "Camera.h"
 #include "FlyCamera.h"
+#include "FpsCamera.h"
 #include "GameObject.h"
+
 #include "Screen.h"
 #include "ResId.h"
 #include "utils.h"
@@ -31,7 +33,12 @@ OutDoorScene::OutDoorScene(const std::string& name) :
 	m_GameObjects(),
 	m_GoblinTransform(nullptr),
 	m_TreeBillboardList(nullptr),
-	m_TerrainConstructor(nullptr)
+	m_TerrainConstructor(nullptr),
+	m_DirLightHandle(nullptr),
+	m_PistolTransform(nullptr),
+	m_CamTransform(nullptr),
+	m_TerrainMeshRen(nullptr),
+	m_GoblinAnim(nullptr)
 {
 }
 
@@ -179,11 +186,11 @@ int OutDoorScene::createGameOjects(ResourceManager* resManager)
 {
 	// ---- Create Camera ----
 	GameObject* cam = new GameObject();
-	m_Camera = cam->AddComponent<FlyCamera>();
-	m_Camera->Start();
-	m_Camera->Init(
+	FpsCamera* fpscam = cam->AddComponent<FpsCamera>();
+	fpscam->Start();
+	fpscam->Init(
 		CamType::Perspective,
-		Vec3(30.0f, 70.0f, -31.0f),																			// Pos
+		Vec3(60.0f, 70.0f, -70.0f),																			// Pos
 		Vec3(0.0f, 1.0f, 0.0f),																				// Up
 		Vec3(1.0f, 0.0f, 0.0f),																				// Right
 		Vec3(0.0f, 0.0f, -1.0f),																			// Fwd
@@ -192,9 +199,9 @@ int OutDoorScene::createGameOjects(ResourceManager* resManager)
 		0.1f,																								// Near
 		500.0f																								// Far
 	);
+
 	m_CamTransform = cam->GetComponent<Transform>();
-	m_Camera->AddSkybox(30.0f, TEX_SKYBOX_SPACE);
-	m_Renderer->SetSceneData(m_Camera, Vec3(0.1f));
+	fpscam->AddSkybox(30.0f, TEX_SKYBOX_SPACE);
 	m_GameObjects.push_back(cam);
 
 
@@ -262,9 +269,9 @@ int OutDoorScene::createGameOjects(ResourceManager* resManager)
 	if (!m_TerrainConstructor->CreateTerrain(verts,
 		indices,
 		resManager->GetShader(SHADER_TERRAIN_DEF),
-		300,			// Sz X
+		500,			// Sz X
 		45.f,			// Sz Y
-		300,			// Sz Z
+		500,			// Sz Z
 		199,			// Sub U
 		199,			// Sub V
 		64,				// Tex U
@@ -334,7 +341,7 @@ int OutDoorScene::createGameOjects(ResourceManager* resManager)
 
 	// Create random Samourai's from terrain
 	std::vector<Vec3> samarai_positions;
-	m_TerrainConstructor->GenerateRandomPositions(verts, samarai_positions, 8);
+	m_TerrainConstructor->GenerateRandomPositions(verts, samarai_positions, 5);
 	for (int i = 0; i < samarai_positions.size(); ++i)
 	{
 		GameObject* sam = new GameObject();
@@ -367,7 +374,7 @@ int OutDoorScene::createGameOjects(ResourceManager* resManager)
 
 	// Create random boxes from terrain
 	std::vector<Vec3> box_positions;
-	m_TerrainConstructor->GenerateRandomPositions(verts, box_positions, 15);
+	m_TerrainConstructor->GenerateRandomPositions(verts, box_positions, 10);
 	for (int i = 0; i < box_positions.size(); ++i)
 	{
 		GameObject* cube = new GameObject();
@@ -389,7 +396,7 @@ int OutDoorScene::createGameOjects(ResourceManager* resManager)
 	}
 
 	// Create random Rocks from terrain
-	for (int i = 0; i < 8; ++i)
+	for (int i = 0; i < 7; ++i)
 	{
 		GameObject* rock = new GameObject();
 		m_GameObjects.push_back(rock);
@@ -411,6 +418,10 @@ int OutDoorScene::createGameOjects(ResourceManager* resManager)
 			false
 		);
 	}
+
+	fpscam->SetTerrain(m_TerrainConstructor);
+	m_Camera = fpscam;
+	m_Renderer->SetSceneData(m_Camera, Vec3(0.1f));
 
 	return GE_TRUE;
 }
@@ -548,14 +559,20 @@ void OutDoorScene::Update(float dt)
 		m_TimeNow = Time::ElapsedTime();
 	}
 
-	if (move_request && m_GoblinAnim->GetCurrentAnim() != RUN)
-		m_GoblinAnim->StartAnimation(RUN);
-	else if(!move_request && m_GoblinAnim->GetCurrentAnim() != STAND)
-		m_GoblinAnim->StartAnimation(STAND);
+	if (m_GoblinAnim)
+	{
+		if (move_request && m_GoblinAnim->GetCurrentAnim() != RUN)
+			m_GoblinAnim->StartAnimation(RUN);
+		else if (!move_request && m_GoblinAnim->GetCurrentAnim() != STAND)
+			m_GoblinAnim->StartAnimation(STAND);
+	}
 
 	// Set Positions
-	const Vec3& gob_pos = m_GoblinTransform->Position();
-	m_GoblinTransform->SetPosition(Vec3(gob_pos.x, m_TerrainConstructor->GetHeightFromPosition(gob_pos) + m_GoblinHeight, gob_pos.z));
+	if (m_GoblinTransform)
+	{
+		const Vec3& gob_pos = m_GoblinTransform->Position();
+		m_GoblinTransform->SetPosition(Vec3(gob_pos.x, m_TerrainConstructor->GetHeightFromPosition(gob_pos) + m_GoblinHeight, gob_pos.z));
+	}
 	
 	// Update Game objects
 	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
@@ -564,9 +581,9 @@ void OutDoorScene::Update(float dt)
 	}
 
 	// Set cam to terrain
-	const Vec3& cam_pos = m_CamTransform->Position();
-	m_CamTransform->SetPosition(Maths::LerpV3(m_CamTransform->Position(), Vec3(cam_pos.x, m_TerrainConstructor->GetHeightFromPosition(cam_pos) + (m_GoblinHeight * 1.5f), cam_pos.z), dt));
-	m_CamTransform->Update();
+	//const Vec3& cam_pos = m_CamTransform->Position();
+	//m_CamTransform->SetPosition(Maths::LerpV3(m_CamTransform->Position(), Vec3(cam_pos.x, m_TerrainConstructor->GetHeightFromPosition(cam_pos) + (m_GoblinHeight * 1.5f), cam_pos.z), dt));
+	//m_CamTransform->Update();
 
 	// Set pistol to cam
 	m_PistolTransform->SetPosition(
@@ -591,6 +608,9 @@ void OutDoorScene::Render()
 void OutDoorScene::RenderUI()
 {
 	//m_Renderer->RenderText(FONT_COURIER, "Angle: " + util::to_str(X), 8, 96);
+	m_Renderer->RenderText(FONT_COURIER, "CamPos:" + util::vec3_to_str(m_Camera->Position()), 8, 64);
+
+	/*
 	m_Renderer->RenderText(FONT_COURIER, "[1] Toggle shadows ", 8, 64);
 	m_Renderer->RenderText(FONT_COURIER, "[2] Reload shaders ", 8, 96);
 	m_Renderer->RenderText(FONT_COURIER, "[3] Toggle wire frame mode ", 8, 128);
@@ -601,4 +621,5 @@ void OutDoorScene::RenderUI()
 	m_Renderer->RenderText(FONT_COURIER, "[WASD] Move Camera", 8, 288);
 	m_Renderer->RenderText(FONT_COURIER, "[U/I] Change Skybox ", 8, 320);
 	m_Renderer->RenderText(FONT_COURIER, "[T/Y] Change terrain texture ", 8, 352);
+	*/
 }

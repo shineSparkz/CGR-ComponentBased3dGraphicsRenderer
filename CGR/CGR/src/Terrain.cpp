@@ -13,6 +13,8 @@
 #include "Shader.h"
 #include "ShaderProgram.h"
 
+#include "FpsCamera.h"
+
 namespace bez
 {
 	float noise(int32 x, int32 y)
@@ -149,7 +151,7 @@ float TerrainConstructor::GetHeightFromPosition(const Vec3& p)
 
 bool TerrainConstructor::CreateTerrain(
 	std::vector<Vertex>& verts_out,
-	std::vector<uint32>& m_Indices,
+	std::vector<uint32>& indices_out,
 	ShaderProgram* shader,
 	float sizeX,
 	float size_y,
@@ -330,13 +332,14 @@ bool TerrainConstructor::CreateTerrain(
 
 	// Copy them locally 
 	m_Vertices = verts_out;
+	indices_out = m_Indices;
 
 	return true;
 }
 
 bool TerrainConstructor::CreateBez(
 	std::vector<Vertex>& verts_out,
-	std::vector<uint32>& m_Indices,
+	std::vector<uint32>& indices_out,
 	ShaderProgram* shader,
 	const std::string& heightmap,
 	float heightmapSizeY,
@@ -735,7 +738,7 @@ bool TerrainConstructor::CreateBez(
 
 	// Copy them locally 
 	m_Vertices = verts_out;
-
+	indices_out = m_Indices;
 	return true;
 }
 
@@ -847,3 +850,458 @@ void  TerrainConstructor::OnReloadShaders()
 		m_Shader->SetUniformValue<float>("u_MaxTexV", &m_TexV);
 	}
 }
+
+
+// ---- Collision ----
+const Vec3 GRAVITY = Vec3(0, -0.981f, 0);
+const float UNITS_PER_METRE = 100.0f;
+const float UNIT_SCALE = UNITS_PER_METRE / 100.0f;
+const float VERY_CLOSE_DIST = 0.005f * UNIT_SCALE;
+
+Vec3 TerrainConstructor::CollisionSlide(CollisionPacket& cP)
+{
+	// Transform velocity vector to the ellipsoid space (e_ denotes ellipsoid space)
+	cP.e_vel = cP.w_vel / cP.ellipsoidSpace;
+
+	// Transform position vector to the ellipsoid space
+	cP.e_pos = cP.w_pos / cP.ellipsoidSpace;
+
+	// Now we check for a collision with our world, this function will
+	// call itself 5 times at most, or until the velocity vector is
+	// used up (very small (near zero to zero length))
+	cP.collision_recursion_depth = 0;
+	Vec3 finalPosition = CollideWithWorld(cP);
+
+	// Add gravity pull:
+	cP.e_vel = GRAVITY / cP.ellipsoidSpace;	// We defined gravity in world space, so now we have
+											// to convert it to ellipsoid space
+	cP.e_pos = finalPosition;
+	cP.collision_recursion_depth = 0;
+	finalPosition = CollideWithWorld(cP);
+
+	// Convert our final position from ellipsoid space to world space
+	finalPosition = finalPosition * cP.ellipsoidSpace;
+
+	// Return our final position!
+	return finalPosition;
+}
+
+Vec3 TerrainConstructor::CollideWithWorld(CollisionPacket& colpak)
+{
+	// Prevent infinite loop
+	if (colpak.collision_recursion_depth > 5)
+		return colpak.e_pos;
+
+	// Normalize
+	colpak.e_norm_vel = glm::normalize(colpak.e_vel);
+
+	colpak.found_collision = false;
+	colpak.nearest_distance = 0.0f;
+	
+	// Loop polygons
+	for (int i = 0; i < m_Indices.size() - 3; i += 3)
+		{
+			Vec3 p0(m_Vertices[m_Indices[i]].position);
+			Vec3 p1(m_Vertices[m_Indices[i + 1]].position);
+			Vec3 p2(m_Vertices[m_Indices[i + 2]].position);
+
+			if (glm::distance(colpak.w_pos, (p0 + p2) * 0.5f) > 15.0f)
+				continue;
+
+			// Convert triangle into elipsoid space
+			p0 = p0 / colpak.ellipsoidSpace;
+			p1 = p1 / colpak.ellipsoidSpace;
+			p2 = p2 / colpak.ellipsoidSpace;
+
+			// Calc normal for this triangle
+			Vec3 tri_norm = glm::normalize(glm::cross(p1 - p0, p2 - p0));
+
+			// Check if sphere is colliding with triange
+			SphereCollidingWithTriangle(colpak, p0, p1, p2, tri_norm);
+		}
+
+	// If no collision return position + velocity
+	if (colpak.found_collision == false)
+	{
+		return colpak.e_pos + colpak.e_vel;
+	}
+
+	// A Collision has occured
+	// destinationPoint is where the sphere would travel if there was
+	// no collisions, however, at this point, there has a been a collision
+	// detected. We will use this vector to find the new "sliding" vector
+	// based off the plane created from the sphere and collision point
+	Vec3 dest_point = colpak.e_pos + colpak.e_vel;
+	Vec3 new_pos = colpak.e_pos;
+
+	if (colpak.nearest_distance >= VERY_CLOSE_DIST)
+	{
+		// Move the new position down velocity vector to ALMOST touch the collision point
+		Vec3 v = glm::normalize(colpak.e_vel);
+		v *= (colpak.nearest_distance - VERY_CLOSE_DIST);
+		new_pos = colpak.e_pos + v;
+
+		// Adjust polygon intersection point (so sliding
+		// plane will be unaffected by the fact that we
+		// move slightly less than collision tells us)
+		v = glm::normalize(v);
+		colpak.intersection_point -= VERY_CLOSE_DIST * v;
+	}
+
+	// Sliding point in plane
+	Vec3 slide_plane_origin = colpak.intersection_point;
+	Vec3 slide_plane_norm = glm::normalize(new_pos - colpak.intersection_point);
+
+	// Use slide plane to compute new dest point
+	float x = slide_plane_origin.x;
+	float y = slide_plane_origin.y;
+	float z = slide_plane_origin.z;
+
+	// Plane normal
+	float A = slide_plane_norm.x;
+	float B = slide_plane_norm.y;
+	float C = slide_plane_norm.z;
+	float D = -((A * x) + (B * y) + (C * z));
+
+	float plane_constant = D;
+
+	float signedDistFromDestPointToSlidingP = (glm::dot(dest_point, slide_plane_norm)) + plane_constant;
+
+	Vec3 new_dest_point = dest_point - signedDistFromDestPointToSlidingP * slide_plane_norm;
+	Vec3 new_vel = new_dest_point - colpak.intersection_point;
+
+	// After this check, we will recurse. This check makes sure that we have not
+	// come to the end of our velocity vector (or very close to it, because if the velocity
+	// vector is very small, there is no reason to lose performance by doing an extra recurse
+	// when we won't even notice the distance "thrown away" by this check anyway) before
+	// we recurse
+	if (glm::length(new_vel) <  VERY_CLOSE_DIST)
+	{
+		return new_pos;
+	}
+
+	// We are going to recurse now since a collision was found and the velocity
+	// changed directions. we need to check if the new velocity vector will
+	// cause the sphere to collide with other geometry.
+	colpak.collision_recursion_depth++;
+	colpak.e_pos = new_pos;
+	colpak.e_vel = new_vel;
+
+	return CollideWithWorld(colpak);
+}
+
+bool TerrainConstructor::SphereCollidingWithTriangle(CollisionPacket& cP, const Vec3& p0, const Vec3& p1, const Vec3& p2, const Vec3& tri_norm)
+{
+	float facing = glm::dot(tri_norm, cP.e_norm_vel);
+
+	if (facing <= 0)
+	{
+		Vec3 velocity = cP.e_vel;
+		Vec3 pos = cP.e_pos;
+
+		float t0 = 0.0f, t1 = 0.0f;
+
+		bool sphere_in_plane = false;
+
+		float x = p0.x;
+		float y = p0.y;
+		float z = p0.z;
+
+		float A = tri_norm.x;
+		float B = tri_norm.y;
+		float C = tri_norm.z;
+		float D = -((A * x) + (B * y) + (C * z));
+
+		float planeConstant = D;
+		float signedDist = glm::dot(pos, tri_norm) + planeConstant;
+		float planeNormalDotVel = glm::dot(tri_norm, velocity);
+
+		if (planeNormalDotVel == 0.0f)
+		{
+			//FABS?
+			if (fabs(signedDist) >= 1.0f)
+			{
+				return false;
+			}
+			else
+			{
+				sphere_in_plane = true;
+			}
+		}
+		else
+		{
+			t0 = (1.0f - signedDist) / planeNormalDotVel;
+			t1 = (-1.0f - signedDist) / planeNormalDotVel;
+			// We will make sure that t0 is smaller than t1, which means that t0 is when the sphere FIRST
+			// touches the planes surface
+			if (t0 > t1)
+			{
+				float temp = t0;
+				t0 = t1;
+				t1 = temp;
+			}
+
+			// If the swept sphere touches the plane outside of the 0 to 1 "timeframe", we know that
+			// the sphere is not going to intersect with the plane (and of course triangle) this frame
+			if (t0 > 1.0f || t1 < 0.0f)
+			{
+				return false;
+			}
+
+			// If t0 is smaller than 0 then we will make it 0
+			// and if t1 is greater than 1 we will make it 1
+			if (t0 < 0.0f) t0 = 0.0f;
+			if (t1 > 1.0f) t1 = 1.0f;
+
+
+		}
+
+		Vec3 collisionPoint = Vec3(0.0f);
+		bool collidingWithTri = false;
+		float t = 1.0f;
+
+		if (!sphere_in_plane)
+		{
+			Vec3 planeIntersectionPoint = (pos + t0 * velocity - tri_norm);
+
+			if (CheckPointInTriangle(planeIntersectionPoint, p0, p1, p2))
+			{
+				collidingWithTri = true;
+				t = t0;
+				collisionPoint = planeIntersectionPoint;
+			}
+		}
+
+		if (collidingWithTri == false)
+		{
+			float a, b, c;
+
+			// We can use the squared velocities length below when checking for collisions with the edges of the triangles
+			// to, so to keep things clear, we won't set a directly
+			float velocityLengthSquared = glm::length(velocity);// velocity.Length();
+			velocityLengthSquared *= velocityLengthSquared;
+
+			// We'll start by setting 'a', since all 3 point equations use this 'a'
+			a = velocityLengthSquared;
+
+			// This is a temporary variable to hold the distance down the velocity vector that
+			// the sphere will touch the vertex.
+			float newT = 0.0f;
+
+			// P0 - Collision test with sphere and p0
+			b = 2.0f * glm::dot(velocity, pos - p0);
+			Vec3 temp = p0 - pos;
+			c = glm::length(temp);// temp.Length();
+			c = (c * c) - 1.0f;
+			if (GetLowestRoot(a, b, c, t, newT))
+			{	// Check if the equation can be solved
+				// If the equation was solved, we can set a couple things. First we set t (distance
+				// down velocity vector the sphere first collides with vertex) to the temporary newT,
+				// Then we set collidingWithTri to be true so we know there was for sure a collision
+				// with the triangle, then we set the exact point the sphere collides with the triangle,
+				// which is the position of the vertex it collides with
+				t = newT;
+				collidingWithTri = true;
+				collisionPoint = p0;
+			}
+
+			// P1 - Collision test with sphere and p1
+			b = 2.0f * glm::dot(velocity, pos - p1);
+			Vec3 P = p1 - pos;
+			c = glm::length(P);// P.Length();
+			c = (c*c) - 1.0f;
+			if (GetLowestRoot(a, b, c, t, newT))
+			{
+				t = newT;
+				collidingWithTri = true;
+				collisionPoint = p1;
+			}
+
+			// P2 - Collision test with sphere and p2
+			b = 2.0f * glm::dot(velocity, pos - p2);
+			Vec3 Q = p2 - pos;
+			c = glm::length(Q);// Q.Length();
+			c = (c*c) - 1.0f;
+			if (GetLowestRoot(a, b, c, t, newT))
+			{
+				t = newT;
+				collidingWithTri = true;
+				collisionPoint = p2;
+			}
+			//////////////////////////////////////////////Sphere-Edge Collision Test//////////////////////////////////////////////
+			// Even though there might have been a collision with a vertex, we will still check for a collision with an edge of the
+			// triangle in case an edge was hit before the vertex. Again we will solve a quadratic equation to find where (and if)
+			// the swept sphere's position is 1 unit away from the edge of the triangle. The equation parameters this time are a 
+			// bit more complex: (still "Ax^2 + Bx + C = 0")
+			// a = edgeLength^2 * -velocityLength^2 + (edge . velocity)^2
+			// b = edgeLength^2 * 2(velocity . spherePositionToVertex) - 2((edge . velocity)(edge . spherePositionToVertex))
+			// c =  edgeLength^2 * (1 - spherePositionToVertexLength^2) + (edge . spherePositionToVertex)^2
+			// . denotes dot product
+
+			// Edge (p0, p1):
+			Vec3 edge = p1 - p0;
+			Vec3 spherePositionToVertex = p0 - pos;
+			float edgeLengthSquared = glm::length(edge);// edge.Length();
+			edgeLengthSquared *= edgeLengthSquared;
+			float edgeDotVelocity = glm::dot(edge, velocity);
+			float edgeDotSpherePositionToVertex = glm::dot(edge, spherePositionToVertex);
+			float spherePositionToVertexLengthSquared = glm::length(spherePositionToVertex);// spherePositionToVertex.Length();
+			spherePositionToVertexLengthSquared = spherePositionToVertexLengthSquared * spherePositionToVertexLengthSquared;
+
+			// Equation parameters
+			a = edgeLengthSquared * -velocityLengthSquared + (edgeDotVelocity * edgeDotVelocity);
+			b = edgeLengthSquared * (2.0f * glm::dot(velocity, spherePositionToVertex)) - (2.0f * edgeDotVelocity * edgeDotSpherePositionToVertex);
+			c = edgeLengthSquared * (1.0f - spherePositionToVertexLengthSquared) + (edgeDotSpherePositionToVertex * edgeDotSpherePositionToVertex);
+
+			// We start by finding if the swept sphere collides with the edges "infinite line"
+			if (GetLowestRoot(a, b, c, t, newT))
+			{
+				// Now we check to see if the collision happened between the two vertices that make up this edge
+				// We can calculate where on the line the collision happens by doing this:
+				// f = (edge . velocity)newT - (edge . spherePositionToVertex) / edgeLength^2
+				// if f is between 0 and 1, then we know the collision happened between p0 and p1
+				// If the collision happened at p0, the f = 0, if the collision happened at p1 then f = 1
+				float f = (edgeDotVelocity * newT - edgeDotSpherePositionToVertex) / edgeLengthSquared;
+				if (f >= 0.0f && f <= 1.0f)
+				{
+					// If the collision with the edge happened, we set the results
+					t = newT;
+					collidingWithTri = true;
+					collisionPoint = p0 + f * edge;
+				}
+			}
+
+			// Edge (p1, p2):
+			edge = p2 - p1;
+			spherePositionToVertex = p1 - pos;
+			edgeLengthSquared = glm::length(edge);// edge.Length();
+			edgeLengthSquared = edgeLengthSquared * edgeLengthSquared;
+			edgeDotVelocity = glm::dot(edge, cP.e_vel);
+			edgeDotSpherePositionToVertex = glm::dot(edge, spherePositionToVertex);
+			spherePositionToVertexLengthSquared = glm::length(spherePositionToVertex);// spherePositionToVertex.Length();
+			spherePositionToVertexLengthSquared = spherePositionToVertexLengthSquared * spherePositionToVertexLengthSquared;
+
+			a = edgeLengthSquared * -velocityLengthSquared + (edgeDotVelocity * edgeDotVelocity);
+			b = edgeLengthSquared * (2.0f * glm::dot(velocity, spherePositionToVertex)) - (2.0f * edgeDotVelocity * edgeDotSpherePositionToVertex);
+			c = edgeLengthSquared * (1.0f - spherePositionToVertexLengthSquared) + (edgeDotSpherePositionToVertex * edgeDotSpherePositionToVertex);
+
+			if (GetLowestRoot(a, b, c, t, newT))
+			{
+				float f = (edgeDotVelocity * newT - edgeDotSpherePositionToVertex) / edgeLengthSquared;
+				if (f >= 0.0f && f <= 1.0f)
+				{
+					t = newT;
+					collidingWithTri = true;
+					collisionPoint = p1 + f * edge;
+				}
+			}
+
+			// Edge (p2, p0):
+			edge = p0 - p2;
+			spherePositionToVertex = p2 - pos;
+			edgeLengthSquared = glm::length(edge);// Squared * edgeLengthSquared;
+			edgeDotVelocity = glm::dot(edge, velocity);
+			edgeDotSpherePositionToVertex = glm::dot(edge, spherePositionToVertex);
+			spherePositionToVertexLengthSquared = glm::length(spherePositionToVertex);// spherePositionToVertex.Length();
+			spherePositionToVertexLengthSquared = spherePositionToVertexLengthSquared * spherePositionToVertexLengthSquared;
+
+			a = edgeLengthSquared * -velocityLengthSquared + (edgeDotVelocity * edgeDotVelocity);
+			b = edgeLengthSquared * (2.0f * glm::dot(velocity, spherePositionToVertex)) - (2.0f * edgeDotVelocity * edgeDotSpherePositionToVertex);
+			c = edgeLengthSquared * (1.0f - spherePositionToVertexLengthSquared) + (edgeDotSpherePositionToVertex * edgeDotSpherePositionToVertex);
+
+			if (GetLowestRoot(a, b, c, t, newT))
+			{
+				float f = (edgeDotVelocity * newT - edgeDotSpherePositionToVertex) / edgeLengthSquared;
+				if (f >= 0.0f && f <= 1.0f)
+				{
+					t = newT;
+					collidingWithTri = true;
+					collisionPoint = p2 + f * edge;
+				}
+			}
+		}
+
+		// If we have found a collision, we will set the results of the collision here
+		if (collidingWithTri == true)
+		{
+			// We find the distance to the collision using the time variable (t) times the length of the velocity vector
+			float distToCollision = t * glm::length(velocity);// velocity.Length();
+
+			// Now we check if this is the first triangle that has been collided with OR it is 
+			// the closest triangle yet that was collided with
+			if (cP.found_collision == false || distToCollision < cP.nearest_distance)
+			{
+
+				// Collision response information (used for "sliding")
+				cP.nearest_distance = distToCollision;
+				cP.intersection_point = collisionPoint;
+
+				// Make sure this is set to true if we've made it this far
+				cP.found_collision = true;
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool TerrainConstructor::CheckPointInTriangle(const Vec3& point, const Vec3& tri_p1, const Vec3& tri_p2, const Vec3& tri_p3)
+{
+	Vec3 cp1 = glm::cross((tri_p3 - tri_p2), (point - tri_p2));
+	Vec3 cp2 = glm::cross((tri_p3 - tri_p2), (tri_p1 - tri_p2));
+	if (glm::dot(cp1, cp2) >= 0)
+	{
+		cp1 = glm::cross((tri_p3 - tri_p1), (point - tri_p1));
+		cp2 = glm::cross((tri_p3 - tri_p1), (tri_p2 - tri_p1));
+		if (glm::dot(cp1, cp2) >= 0)
+		{
+			cp1 = glm::cross((tri_p2 - tri_p1), (point - tri_p1));
+			cp2 = glm::cross((tri_p2 - tri_p1), (tri_p3 - tri_p1));
+			if (glm::dot(cp1, cp2) >= 0)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool TerrainConstructor::GetLowestRoot(float a, float b, float c, float MAX, float& root)
+{
+	// Check if a solution exists
+	float determinant = b * b - 4.0f * a * c;
+
+	// If determinant is negative it means no solutions.
+	if (determinant < 0.0f) return false;
+
+	// calculate the two roots: (if determinant == 0 then
+	// x1==x2 but lets disregard that slight optimization)
+	float sqrtD = sqrtf(determinant);
+	float r1 = (-b - sqrtD) / (2 * a);
+	float r2 = (-b + sqrtD) / (2 * a);
+	
+	// Sort so x1 <= x2
+	if (r1 > r2)
+	{
+		float temp = r2;
+		r2 = r1;
+		r1 = temp;
+	}
+	// Get lowest root:
+	if (r1 > 0 && r1 < MAX)
+	{
+		root = r1;
+		return true;
+	}
+	// It is possible that we want x2 - this can happen
+	// if x1 < 0
+	if (r2 > 0 && r2 < MAX)
+	{
+		root = r2;
+		return true;
+	}
+
+	// No (valid) solutions
+	return false;
+}
+	

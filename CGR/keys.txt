@@ -11,5 +11,7 @@ F1 	: Change to Indoor Scene
 F2 	: Change to Ourdoor Scene
 F3 	: Change to Sponza Scene
 F4 	: Change to Ortho Scene
+F5  : Space Scene
+F6  : Viva Scene
 
 

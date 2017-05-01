@@ -20,6 +20,7 @@
 #include "Terrain.h"
 #include "AnimMesh.h"
 #include "ShipController.h"
+#include "EventManager.h"
 
 #include "CgrEngine.h"
 #include "DirectionalLight.h"
@@ -51,7 +52,11 @@ int VivaScene::OnSceneLoad(ResourceManager* resManager)
 	GameObject* dirLightObj = new GameObject();
 	m_GameObjects.push_back(dirLightObj);
 	DirectionalLightC* dirLight = dirLightObj->AddComponent<DirectionalLightC>();
-	dirLight->SetLight(m_Renderer, Vec3(0.1f, -0.8f, 0.1f), Vec3(0.5f), Vec3(100, 100, 80));
+	dirLight->SetLight(m_Renderer, Vec3(0.0f, -0.9f, 0.1f), Vec3(0.5f), Vec3(100, 100, 100));
+
+	//GameObject* point = CgrEngine::CreatePointLight(m_Renderer, Vec3(20, 55, -35), Vec3(0.8f, 0, 0), 0.1f);
+	//if (point)
+	//	m_GameObjects.push_back(point);
 
 	// TODO : Load any resources that you want, such as shaders, materials, meshes, fonts
 
@@ -119,7 +124,7 @@ int VivaScene::OnSceneLoad(ResourceManager* resManager)
 	m_Terrain = new TerrainConstructor();
 	std::vector<Vertex> verts;
 	std::vector<unsigned> indices;
-	if (!m_Terrain->CreateTerrain(verts, indices, resManager->GetShader(SHADER_TERRAIN_DEF), 50, 0, 50, 8, 8, 4, 4))
+	if (!m_Terrain->CreateTerrain(verts, indices, resManager->GetShader(SHADER_TERRAIN_DEF), 50, 8, 90, 199, 199, 4, 4, "../resources/textures/terrain/heightmap.tga"))
 	{
 		WRITE_LOG("terrain construction failed", "error");
 		return GE_FATAL_ERROR;
@@ -136,35 +141,39 @@ int VivaScene::OnSceneLoad(ResourceManager* resManager)
 	m_GameObjects.push_back(terrain);
 	terrain->AddComponent<Transform>();
 	MeshRenderer* tmr = terrain->AddComponent<MeshRenderer>();
-	tmr->SetMeshData(101,
+	tmr->SetMeshData(
+		101,
 		SHADER_TERRAIN_DEF,
 		MATERIALS_TERRAIN,
 		false,
 		true,
 		true,
 		false);
+	
 
-	// TODO : Create game objects, attach components
+	// Create game objects, attach components
 	GameObject* obj = new GameObject();
 	m_GameObjects.push_back(obj);
 	Transform* t = obj->AddComponent<Transform>();
-	t->SetPosition(Vec3(20.0f, 5.0f, -35.0f));
+	t->SetPosition(Vec3(20.0f, 10.0f, -35.0f));
 	t->SetScale(Vec3(0.5f));
 	MeshRenderer* mr = obj->AddComponent<MeshRenderer>();
 	mr->SetMeshData(
-		100,
-		100,
-		100,
-		true,
-		false,
-		false,
-		false);
+		100,						// Mesh Resource Index
+		SHADER_LIGHTING_FWD,		// Shader Resource Index
+		100,						// Material Resource Index
+		true,						// Use Bump maps
+		false,						// Receive shadows
+		false,						// Has multiple diffuse textures
+		false);						// Is Animated mesh
 
 	// Start Game objects
 	for (auto i = m_GameObjects.begin(); i != m_GameObjects.end(); ++i)
 	{
 		(*i)->Start();
 	}
+
+	m_Renderer->SetShadingMode(ShadingMode::Forward);
 
 	return GE_OK;
 }
@@ -177,6 +186,9 @@ void VivaScene::OnSceneExit()
 	{
 		SAFE_CLOSE(m_GameObjects[i]);
 	}
+
+	SAFE_DELETE(m_Terrain);
+
 	m_GameObjects.clear();
 }
 
@@ -186,7 +198,22 @@ void VivaScene::Update(float dt)
 	Transform* t = m_GameObjects.back()->GetComponent<Transform>();
 	if (t)
 	{
-		t->RotateY(sinf(Time::ElapsedTime()) * dt);
+		if (Input::Keys[GLFW_KEY_UP] == GLFW_PRESS)
+		{
+			t->MovePosition(Vec3(0, 0, -10 * dt));
+		}
+		if (Input::Keys[GLFW_KEY_DOWN] == GLFW_PRESS)
+		{
+			t->MovePosition(Vec3(0, 0, 10 * dt));
+		}
+		if (Input::Keys[GLFW_KEY_LEFT] == GLFW_PRESS)
+		{
+			t->MovePosition(Vec3(-10 * dt, 0, 0));
+		}
+		if (Input::Keys[GLFW_KEY_RIGHT] == GLFW_PRESS)
+		{
+			t->MovePosition(Vec3(10 * dt, 0, 0));
+		}
 	}
 
 	// Change shader
@@ -200,6 +227,41 @@ void VivaScene::Update(float dt)
 	{
 		MeshRenderer* mr = m_GameObjects.back()->GetComponent<MeshRenderer>();
 		mr->SetShaderIndex(SHADER_LIGHTING_FWD);
+		m_TimeNow = Time::ElapsedTime();
+	}
+
+	// Change mesh
+	if (Input::Keys[GLFW_KEY_I] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		MeshRenderer* mr = m_GameObjects.back()->GetComponent<MeshRenderer>();
+		mr->SetMaterialIndex(100);
+		mr->SetMeshIndex(100);
+		mr->SetUseBumpMaps(true);
+
+		m_GameObjects.back()->GetComponent<Transform>()->SetScale(Vec3(0.5f));
+
+		m_TimeNow = Time::ElapsedTime();
+	}
+	if (Input::Keys[GLFW_KEY_U] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		MeshRenderer* mr = m_GameObjects.back()->GetComponent<MeshRenderer>();
+		mr->SetMaterialIndex(MATERIALS_MALE);
+		mr->SetMeshIndex(MESH_ID_MALE);
+		mr->SetUseBumpMaps(false);
+
+		m_GameObjects.back()->GetComponent<Transform>()->SetScale(Vec3(2.0f));
+
+		m_TimeNow = Time::ElapsedTime();
+	}
+
+	if (Input::Keys[GLFW_KEY_F8] == GLFW_PRESS && Time::ElapsedTime() - m_TimeNow > 0.5f)
+	{
+		if (!m_Renderer->ReloadShaders())
+		{
+			EventManager::Instance()->SendEvent(EVENT_SHUTDOWN, nullptr);
+			return;
+		}
+		
 		m_TimeNow = Time::ElapsedTime();
 	}
 

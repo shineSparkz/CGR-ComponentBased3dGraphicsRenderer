@@ -76,6 +76,7 @@ void main()
 	vec4 colour = texture(u_ColourMap, texcoord);
 	vec3 normal = texture(u_NormalMap, texcoord).xyz;
 	normal = normalize(normal);
-
+	
 	frag_colour = vec4(ambient_light, colour.a) + getDirectionalLightColour(normal) * colour;
+	//frag_colour = vec4(normal, 1.0);
 }

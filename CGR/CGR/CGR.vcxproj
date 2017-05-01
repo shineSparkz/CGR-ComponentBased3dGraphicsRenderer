@@ -178,6 +178,7 @@
     <ClCompile Include="src\EventManager.cpp" />
     <ClCompile Include="src\FLyCamera.cpp" />
     <ClCompile Include="src\Font.cpp" />
+    <ClCompile Include="src\FpsCamera.cpp" />
     <ClCompile Include="src\Frustum.cpp" />
     <ClCompile Include="src\GameObject.cpp" />
     <ClCompile Include="src\GBuffer.cpp" />
@@ -239,6 +240,7 @@
     <ClInclude Include="src\FlyCamera.h" />
     <ClInclude Include="src\Font.h" />
     <ClInclude Include="src\FontAlign.h" />
+    <ClInclude Include="src\FpsCamera.h" />
     <ClInclude Include="src\Frustum.h" />
     <ClInclude Include="src\GameObject.h" />
     <ClInclude Include="src\GBuffer.h" />

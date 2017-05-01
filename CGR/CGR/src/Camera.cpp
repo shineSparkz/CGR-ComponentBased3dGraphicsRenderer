@@ -63,6 +63,7 @@ void BaseCamera::Update()
 	{
 		m_Projection = glm::ortho<float>(-m_Range.x, m_Range.x, -m_Range.y, m_Range.y, m_PerspectiveSettings.near, m_PerspectiveSettings.far);
 		m_View = glm::lookAt(-m_Forward * m_Range.z, Vec3(0.0f), m_Up);
+		//m_View = glm::lookAt(m_Transform->Position(), m_Transform->Position() + m_Forward, m_Up);
 	}
 }
 
@@ -79,7 +80,7 @@ void BaseCamera::Init(CamType type, const Vec3& position, const Vec3& up, const 
 
 	m_Transform->SetPosition(position);
 	
-	this->Update();
+	//this->Update();
 }
 
 void BaseCamera::AddSkybox(float scale, unsigned cubeMapIndex)

@@ -50,7 +50,6 @@ layout (binding = 1, std140) uniform scene
 	float delta_time;
 };
 
-// TODO : This will go in material block
 uniform sampler2D 	u_sampler;
 uniform sampler2D	u_shadow_sampler;
 uniform sampler2D 	u_normal_sampler;
@@ -73,6 +72,7 @@ vec4 getDirectionalLightColour(in vec3 n);
 vec4 getPointLightColor(const PointLight ptLight, vec3 p, vec3 n);
 vec4 getSpotLightColor(const Spotlight spotLight, vec3 p);
 vec4 getSpecularColor(vec3 p, vec3 camPos, vec3 n, vec3 direction, vec3 light_colour);
+float getShadow(vec4 lightSpacePos);
 
 void main()
 {
@@ -159,9 +159,10 @@ vec4 getPointLightColor(const PointLight ptLight, vec3 p, vec3 n)
    if(dist < light_range)
    {
 		light_dir = normalize(light_dir); 
+		//float shadowFactor = u_use_shadow == 1 ? calcShadowFactor(varying_light_position) : 1.0;
 		vec4 colour = reflection(ptLight.intensity, ptLight.ambient_intensity, light_dir, p, n);
 		float attenuation = max(1.0, ptLight.aConstant + ptLight.aLinear * dist + ptLight.aQuadratic * dist*dist); 
-		return colour / attenuation;
+		return (colour ) / attenuation;
    }
    
    return vec4(0.0);
@@ -192,14 +193,16 @@ vec4 getSpotLightColor(const Spotlight spotLight, vec3 p)
     
 	// If we're inside cone, calculate color
 	if(angle > spotLight.coneAngle)
-		return vec4(spotLight.intensity, 1.0) * factor / (dist * spotLight.aLinear);
+	{
+		return (vec4(spotLight.intensity, 1.0) * factor) / (dist * spotLight.aLinear);
+	}
   
 	// No color otherwise
 	return vec4(0.0, 0.0, 0.0, 0.0);
 }
 
 float calcShadowFactor(vec4 lightSpacePos)
-{
+{	
 	vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
 	
 	vec2 uvCoords;
@@ -211,6 +214,7 @@ float calcShadowFactor(vec4 lightSpacePos)
 	if(depth < z + 0.00001)
 		return 0.5;
 	return 1.0;
+	
 }  
 
 vec3 calcBumpedNormal()

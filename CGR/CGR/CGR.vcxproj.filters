@@ -237,6 +237,9 @@
     <ClInclude Include="src\VivaScene.h">
       <Filter>Game</Filter>
     </ClInclude>
+    <ClInclude Include="src\FpsCamera.h">
+      <Filter>Game\Scripts</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -398,6 +401,9 @@
     </ClCompile>
     <ClCompile Include="src\VivaScene.cpp">
       <Filter>Game</Filter>
+    </ClCompile>
+    <ClCompile Include="src\FpsCamera.cpp">
+      <Filter>Game\Scripts</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

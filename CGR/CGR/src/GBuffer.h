@@ -4,10 +4,6 @@
 #include <vector>
 #include "gl_headers.h"
 
-#define GBUFFER_POSITION_TEXTURE_UNIT 0
-#define GBUFFER_DIFFUSE_TEXTURE_UNIT  1
-#define GBUFFER_NORMAL_TEXTURE_UNIT   2
-
 class GBuffer
 {
 public:

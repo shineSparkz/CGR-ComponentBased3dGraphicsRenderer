@@ -803,6 +803,7 @@ bool ResourceManager::loadDefaultDeferredShaders()
 {
 	Vec2 screenSize((float)Screen::FrameBufferWidth(), (float)Screen::FrameBufferHeight());
 
+	/*
 	// ---- Lava Shader (Def) ----
 	{
 		Shader vert(GL_VERTEX_SHADER);
@@ -828,6 +829,7 @@ bool ResourceManager::loadDefaultDeferredShaders()
 		m_Shaders[SHADER_LAVA_FWD]->SetUniformValue<int>("u_Sampler", &sampler);
 		m_Shaders[SHADER_LAVA_FWD]->SetUniformValue<Vec2>("u_Resolution", &screenSize);
 	}
+	*/
 
 	// ---- Std Geom Shader (Def) ----
 	{
@@ -848,10 +850,6 @@ bool ResourceManager::loadDefaultDeferredShaders()
 			WRITE_LOG("Shader program Link failure: Deferred Geom", "error");
 			return false;
 		}
-
-		int sampler = 0;
-		m_Shaders[SHADER_GEOM_PASS_DEF]->Use();
-		m_Shaders[SHADER_GEOM_PASS_DEF]->SetUniformValue<int>("u_ColourMap", &sampler);
 	}
 
 	// ---- Std Stencil Shader (Def) ----
@@ -892,17 +890,6 @@ bool ResourceManager::loadDefaultDeferredShaders()
 			WRITE_LOG("Shader program Link failure: Deferred point light", "error");
 			return false;
 		}
-
-		int p = (int)GBuffer::TexTypes::Position;
-		int d = (int)GBuffer::TexTypes::Diffuse;
-		int n = (int)GBuffer::TexTypes::Normal;
-		float matSpec = 0.1f;
-
-		m_Shaders[SHADER_POINT_LIGHT_PASS_DEF]->Use();
-		m_Shaders[SHADER_POINT_LIGHT_PASS_DEF]->SetUniformValue<int>("u_PositionMap", &p);
-		m_Shaders[SHADER_POINT_LIGHT_PASS_DEF]->SetUniformValue<int>("u_ColourMap", &d);
-		m_Shaders[SHADER_POINT_LIGHT_PASS_DEF]->SetUniformValue<int>("u_NormalMap", &n);
-		m_Shaders[SHADER_POINT_LIGHT_PASS_DEF]->SetUniformValue<Vec2>("u_ScreenSize", &screenSize);
 	}
 
 	// ---- Std Dir Light Shader (Def) ----
@@ -924,18 +911,6 @@ bool ResourceManager::loadDefaultDeferredShaders()
 			WRITE_LOG("Shader program Link failure: Deferred dir light", "error");
 			return false;
 		}
-
-		int p = (int)GBuffer::TexTypes::Position;
-		int d = (int)GBuffer::TexTypes::Diffuse;
-		int n = (int)GBuffer::TexTypes::Normal;
-		float matSpec = 0.2f;
-
-		m_Shaders[SHADER_DIR_LIGHT_PASS_DEF]->Use();
-
-		m_Shaders[SHADER_DIR_LIGHT_PASS_DEF]->SetUniformValue<int>("u_PositionMap", &p);
-		m_Shaders[SHADER_DIR_LIGHT_PASS_DEF]->SetUniformValue<int>("u_ColourMap", &d);
-		m_Shaders[SHADER_DIR_LIGHT_PASS_DEF]->SetUniformValue<int>("u_NormalMap", &n);
-		m_Shaders[SHADER_DIR_LIGHT_PASS_DEF]->SetUniformValue<Vec2>("u_ScreenSize", &screenSize);
 	}
 
 	return true;
